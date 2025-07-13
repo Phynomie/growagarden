@@ -1,15 +1,13 @@
--- Check if the script is running in the correct game
 if game.PlaceId ~= 126884695634066 then
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "GAG Script",
         Text = "This script only works in Grow a Garden!",
         Duration = 5,
-        Icon = "rbxassetid://6726579484"  -- Optional icon
+        Icon = "rbxassetid://6726579484"
     })
-    return  -- Stop the script if not in the right game
+    return
 end
 
--- Load the main script (with error handling)
 local success, err = pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Phynomie/growagarden/main/Main"))()
 end)
