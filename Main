@@ -86,15 +86,6 @@ tab:CreateToggle("Anti Collect Fruits", function(a)
     end
 end)
 
--- Existing functions
-tab:CreateButton("Sell All Fruits", function()
-    simulateClick(804, 106)
-    task.wait(0.2)
-    fireproximityprompt(workspace.NPCS.Steven.HumanoidRootPart.ProximityPrompt)
-    task.wait(2)
-    simulateClick(724, 366)
-end)
-
 tab2:CreateToggle("Auto Buy Seed/Gear/Egg", function(a)
     print(a and "Auto Buy: ON" or "Auto Buy: OFF")
 end)
@@ -105,6 +96,14 @@ end)
 
 tab3:CreateButton("Sprinker Script", function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Phynomie/tg/refs/heads/main/script.lua"))()
+end)
+
+tab3:CreateButton("Sell All Fruits", function()
+    simulateClick(804, 106)
+    task.wait(0.2)
+    fireproximityprompt(workspace.NPCS.Steven.HumanoidRootPart.ProximityPrompt)
+    task.wait(2)
+    simulateClick(724, 366)
 end)
 
 tab:Show()
