@@ -685,7 +685,7 @@ function InsideTab:CreateButton(text, callback)
     Button.BackgroundTransparency = 1.000
     Button.BorderSizePixel = 0
     Button.Position = UDim2.new(-0.00554528646, 0, 0.0607142858, 0)
-    Button.Size = UDim2.new(0, 36, 0, 21)
+    Button.Size = UDim2.new(0, buttonWidth, 0, 21)
     Button.ZIndex = 2
     Button.Font = Enum.Font.SourceSansSemibold
     Button.Text = text
