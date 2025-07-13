@@ -522,7 +522,7 @@ function InsideTab:CreateToggle(text,callback)
 Toggle_2.Parent = Container
 Toggle_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Toggle_2.BackgroundTransparency = 1.000
-Toggle_2.Size = UDim2.new(0, buttonWidth, 0, 50)
+Toggle_2.Size = UDim2.new(0, buttonWidth, 0, 30)
 Toggle_2.Font = Enum.Font.SourceSansSemibold
 Toggle_2.Text = text
 Toggle_2.TextColor3 = Color3.fromRGB(255, 255, 255)
