@@ -1,0 +1,110 @@
+local library = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Phynomie/growagarden/main/Library"))()
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local Main = library:CreateWindow("Grow a garden script (Creds to Phy)","Crimson")
+
+local tab = Main:CreateTab("Exploits")
+local tab2 = Main:CreateTab("Automation")
+local tab3 = Main:CreateTab("Misc")
+
+-- Farm protection system
+local savedPrompts = {}
+local playerFarm = nil
+
+local function findPlayerFarm()
+    local username = LocalPlayer.Name
+    local farms = workspace:FindFirstChild("Farm")
+    
+    if not farms then
+        warn("Farm system not found in workspace")
+        return nil
+    end
+
+    -- Search all farm structures recursively
+    for _, farmFolder in ipairs(farms:GetDescendants()) do
+        if farmFolder.Name == "Owner" and farmFolder:IsA("StringValue") and farmFolder.Value == username then
+            print("Found Your Farm! " .. username)
+            return farmFolder.Parent.Parent.Parent -- Adjust path based on actual hierarchy
+        end
+    end
+    
+    warn("Could not find farm belonging to: " .. username)
+    return nil
+end
+
+local function managePrompts(enable)
+    if not playerFarm then
+        playerFarm = findPlayerFarm()
+        if not playerFarm then return end
+    end
+
+    for _, prompt in ipairs(playerFarm:GetDescendants()) do
+        if prompt:IsA("ProximityPrompt") then
+            if enable then
+                -- Store original state if not already stored
+                if not savedPrompts[prompt] then
+                    savedPrompts[prompt] = {
+                        Enabled = prompt.Enabled,
+                        HoldDuration = prompt.HoldDuration,
+                        ActionText = prompt.ActionText
+                    }
+                end
+                -- Disable the prompt
+                prompt.Enabled = false
+                prompt.HoldDuration = math.huge
+                prompt.ActionText = "Disabled"
+            else
+                -- Restore original state if we have it
+                if savedPrompts[prompt] then
+                    prompt.Enabled = savedPrompts[prompt].Enabled
+                    prompt.HoldDuration = savedPrompts[prompt].HoldDuration
+                    prompt.ActionText = savedPrompts[prompt].ActionText
+                end
+            end
+        end
+    end
+end
+
+local function simulateClick(x, y)
+    VirtualInputManager:SendMouseMoveEvent(x, y, game)
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 1)
+    task.wait(0.1)
+    VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
+end
+
+-- Add Anti Collect Fruits toggle
+tab:CreateToggle("Anti Collect Fruits", function(a)
+    if a then
+        print("Anti Collect: ON")
+        managePrompts(true)
+    else
+        print("Anti Collect: OFF")
+        managePrompts(false)
+    end
+end)
+
+-- Existing functions
+tab:CreateButton("Sell All Fruits", function()
+    simulateClick(804, 106)
+    task.wait(0.2)
+    fireproximityprompt(workspace.NPCS.Steven.HumanoidRootPart.ProximityPrompt)
+    task.wait(2)
+    simulateClick(724, 366)
+end)
+
+tab2:CreateToggle("Auto Buy Seed/Gear/Egg", function(a)
+    print(a and "Auto Buy: ON" or "Auto Buy: OFF")
+end)
+
+tab2:CreateToggle("Auto Dinosaur Egg", function(a)
+    print(a and "Auto Dino Egg: ON" or "Auto Dino Egg: OFF")
+end)
+
+tab3:CreateButton("Sprinker Script", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Phynomie/tg/refs/heads/main/script.lua"))()
+end)
+
+tab:Show()
