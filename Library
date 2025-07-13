@@ -674,6 +674,9 @@ end
 function InsideTab:CreateButton(text, callback)
     text = text or "New Button"
     callback = callback or function() end
+    local textService = game:GetService("TextService")
+    local textSize = textService:GetTextSize(text, 14, Enum.Font.SourceSansSemibold, Vector2.new(1000, 50))
+    local buttonWidth = math.max(70, textSize.X + 20)
     local Button = Instance.new("TextButton")
     local Button_Roundify_3px = Instance.new("ImageLabel")
     Button.Name = "Btn"
