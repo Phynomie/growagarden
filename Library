@@ -282,81 +282,80 @@ function InsideTab:CreateDD(text, list, callback)
     local BodyYSize = 0
     local IsDropped = false
     
-    local Dropdown = Instance.new("TextLabel")
-    local TextButton = Instance.new("TextButton")
-    local TextButton_Roundify_2px = Instance.new("ImageLabel")
-    local DropdownContainer = Instance.new("ImageLabel")
-    local UIListLayout = Instance.new("UIListLayout")
+    -- Main container for the entire dropdown
+    local Container = Instance.new("Frame")
+    Container.BackgroundTransparency = 1
+    Container.Size = UDim2.new(1, 0, 0, 30)
+    Container.Parent = Frame
+    
+    -- Dropdown label
+    local DropdownLabel = Instance.new("TextLabel")
+    DropdownLabel.Name = "MultiDropdownLabel"
+    DropdownLabel.Parent = Container
+    DropdownLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownLabel.BackgroundTransparency = 1.000
+    DropdownLabel.Size = UDim2.new(0, 150, 0, 27)
+    DropdownLabel.Font = Enum.Font.SourceSansSemibold
+    DropdownLabel.Text = text
+    DropdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownLabel.TextSize = 14.000
+    DropdownLabel.TextXAlignment = Enum.TextXAlignment.Left
+    
+    -- Selected options display frame
+    local SelectedFrame = Instance.new("Frame")
+    SelectedFrame.Name = "SelectedFrame"
+    SelectedFrame.Parent = Container
+    SelectedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    SelectedFrame.BackgroundTransparency = 0.5
+    SelectedFrame.BorderSizePixel = 0
+    SelectedFrame.Position = UDim2.new(0, 160, 0, 0)
+    SelectedFrame.Size = UDim2.new(0, 150, 0, 27)
+    
+    -- Selected options display text
     local SelectedDisplay = Instance.new("TextLabel")
-    
-    Dropdown.Name = "MultiDropdown"
-    Dropdown.Parent = Frame
-    Dropdown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Dropdown.BackgroundTransparency = 1.000
-    Dropdown.Size = UDim2.new(0, 200, 0, 50)
-    Dropdown.Font = Enum.Font.SourceSansSemibold
-    Dropdown.Text = text
-    Dropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Dropdown.TextSize = 14.000
-    Dropdown.TextXAlignment = Enum.TextXAlignment.Left
-    
     SelectedDisplay.Name = "SelectedDisplay"
-    SelectedDisplay.Parent = Dropdown
+    SelectedDisplay.Parent = SelectedFrame
     SelectedDisplay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     SelectedDisplay.BackgroundTransparency = 1.000
-    SelectedDisplay.Position = UDim2.new(1, 0, 0, 0)
-    SelectedDisplay.Size = UDim2.new(0, 150, 0, 27)
+    SelectedDisplay.Size = UDim2.new(0, 120, 0, 27)
     SelectedDisplay.Font = Enum.Font.SourceSans
     SelectedDisplay.Text = "None"
     SelectedDisplay.TextColor3 = Color3.fromRGB(200, 200, 200)
     SelectedDisplay.TextSize = 14.000
     SelectedDisplay.TextXAlignment = Enum.TextXAlignment.Left
     
-    TextButton.Parent = Dropdown
+    -- Dropdown toggle button
+    local TextButton = Instance.new("TextButton")
+    TextButton.Name = "ToggleButton"
+    TextButton.Parent = SelectedFrame
     TextButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     TextButton.BackgroundTransparency = 1.000
-    TextButton.BorderColor3 = Color3.fromRGB(27, 42, 53)
-    TextButton.BorderSizePixel = 0
-    TextButton.Position = UDim2.new(1.8, 0, 0, 0)
-    TextButton.Size = UDim2.new(0, 31, 0, 27)
+    TextButton.Position = UDim2.new(1, -25, 0, 0)
+    TextButton.Size = UDim2.new(0, 25, 0, 27)
     TextButton.ZIndex = 2
     TextButton.Font = Enum.Font.SourceSansBold
     TextButton.Text = "+"
     TextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     TextButton.TextSize = 14.000
     
-    TextButton_Roundify_2px.Name = "TextButton_Roundify_2px"
-    TextButton_Roundify_2px.Parent = TextButton
-    TextButton_Roundify_2px.Active = true
-    TextButton_Roundify_2px.AnchorPoint = Vector2.new(0.5, 0.5)
-    TextButton_Roundify_2px.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    TextButton_Roundify_2px.BackgroundTransparency = 1.000
-    TextButton_Roundify_2px.Position = UDim2.new(0.5, 0, 0.5, 0)
-    TextButton_Roundify_2px.Selectable = true
-    TextButton_Roundify_2px.Size = UDim2.new(1, 0, 1, 0)
-    TextButton_Roundify_2px.Image = "rbxassetid://3570695787"
-    TextButton_Roundify_2px.ImageColor3 = theme2
-    TextButton_Roundify_2px.ScaleType = Enum.ScaleType.Slice
-    TextButton_Roundify_2px.SliceCenter = Rect.new(100, 100, 100, 100)
-    TextButton_Roundify_2px.SliceScale = 0.020
-    
+    -- Dropdown container for options
+    local DropdownContainer = Instance.new("Frame")
     DropdownContainer.Name = "DropdownContainer"
-    DropdownContainer.Parent = TextButton
-    DropdownContainer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownContainer.BackgroundTransparency = 1.000
-    DropdownContainer.Position = UDim2.new(1.46359456, 0, 0, 0)
-    DropdownContainer.Size = UDim2.new(0, 197, 0, 0) -- Height will be set dynamically
-    DropdownContainer.Image = "rbxassetid://3570695787"
-    DropdownContainer.ImageColor3 = theme2
+    DropdownContainer.Parent = Container
+    DropdownContainer.BackgroundColor3 = theme2
+    DropdownContainer.BackgroundTransparency = 0.1
+    DropdownContainer.BorderSizePixel = 0
+    DropdownContainer.Position = UDim2.new(0, 160, 0, 30)
+    DropdownContainer.Size = UDim2.new(0, 175, 0, 0) -- Height will be set dynamically
     DropdownContainer.Visible = false
-    DropdownContainer.ScaleType = Enum.ScaleType.Slice
-    DropdownContainer.SliceCenter = Rect.new(100, 100, 100, 100)
-    DropdownContainer.SliceScale = 0.020
     DropdownContainer.ZIndex = 3
+    DropdownContainer.ClipsDescendants = true
     
+    local UIListLayout = Instance.new("UIListLayout")
     UIListLayout.Parent = DropdownContainer
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     
+    -- Function to update the selected display text
     local function updateSelectedDisplay()
         if #selected == 0 then
             SelectedDisplay.Text = "None"
@@ -368,25 +367,28 @@ function InsideTab:CreateDD(text, list, callback)
         callback(selected)
     end
     
+    -- Create option buttons
     for i, v in pairs(list) do
         BodyYSize = BodyYSize + 27
-        local TextButton_2 = Instance.new("TextButton")
+        local OptionButton = Instance.new("TextButton")
         local Checkbox = Instance.new("Frame")
-        local Checkmark = Instance.new("ImageLabel")
+        local Checkmark = Instance.new("Frame")
         
-        TextButton_2.Parent = DropdownContainer
-        TextButton_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        TextButton_2.BackgroundTransparency = 1.000
-        TextButton_2.Size = UDim2.new(0, 197, 0, 27)
-        TextButton_2.Font = Enum.Font.SourceSansSemibold
-        TextButton_2.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TextButton_2.Text = "   " .. v
-        TextButton_2.TextSize = 14.000
-        TextButton_2.TextXAlignment = Enum.TextXAlignment.Left
-        TextButton_2.ZIndex = 4
+        OptionButton.Name = "Option_"..v
+        OptionButton.Parent = DropdownContainer
+        OptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        OptionButton.BackgroundTransparency = 1.000
+        OptionButton.Size = UDim2.new(0, 175, 0, 27)
+        OptionButton.Font = Enum.Font.SourceSansSemibold
+        OptionButton.Text = "   " .. v
+        OptionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        OptionButton.TextSize = 14.000
+        OptionButton.TextXAlignment = Enum.TextXAlignment.Left
+        OptionButton.ZIndex = 4
         
+        -- Checkbox
         Checkbox.Name = "Checkbox"
-        Checkbox.Parent = TextButton_2
+        Checkbox.Parent = OptionButton
         Checkbox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         Checkbox.BackgroundTransparency = 1.000
         Checkbox.Position = UDim2.new(0, 5, 0.5, -7)
@@ -396,20 +398,16 @@ function InsideTab:CreateDD(text, list, callback)
         Checkmark.Name = "Checkmark"
         Checkmark.Parent = Checkbox
         Checkmark.AnchorPoint = Vector2.new(0.5, 0.5)
-        Checkmark.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Checkmark.BackgroundTransparency = 1.000
+        Checkmark.BackgroundColor3 = theme3
+        Checkmark.BorderSizePixel = 0
         Checkmark.Position = UDim2.new(0.5, 0, 0.5, 0)
-        Checkmark.Size = UDim2.new(0, 14, 0, 14)
-        Checkmark.Image = "rbxassetid://3570695787"
-        Checkmark.ImageColor3 = theme2
-        Checkmark.ScaleType = Enum.ScaleType.Slice
-        Checkmark.SliceCenter = Rect.new(100, 100, 100, 100)
-        Checkmark.SliceScale = 0.020
+        Checkmark.Size = UDim2.new(0, 10, 0, 10)
         Checkmark.Visible = false
         
-        TextButton_2.MouseButton1Click:Connect(function()
+        OptionButton.MouseButton1Click:Connect(function()
             play("rbxassetid://178104975")
             
+            -- Toggle selection
             local index = table.find(selected, v)
             if index then
                 table.remove(selected, index)
@@ -417,15 +415,16 @@ function InsideTab:CreateDD(text, list, callback)
             else
                 table.insert(selected, v)
                 Checkmark.Visible = true
-                Checkmark.ImageColor3 = theme3
             end
             
             updateSelectedDisplay()
         end)
     end
     
-    DropdownContainer.Size = UDim2.new(0, 197, 0, BodyYSize)
+    -- Set container height based on number of options
+    DropdownContainer.Size = UDim2.new(0, 175, 0, BodyYSize)
     
+    -- Toggle dropdown visibility
     TextButton.MouseButton1Click:Connect(function()
         play("rbxassetid://178104975")
         IsDropped = not IsDropped
@@ -438,6 +437,19 @@ function InsideTab:CreateDD(text, list, callback)
         end
     end)
     
+    -- Close dropdown when clicking outside
+    game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+        if IsDropped and input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if not DropdownContainer:IsDescendantOf(input:GetMouseTarget()) and 
+               not TextButton:IsDescendantOf(input:GetMouseTarget()) then
+                IsDropped = false
+                TextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                DropdownContainer.Visible = false
+            end
+        end
+    end)
+    
+    -- Function to get current selections
     local dropdownFunctions = {}
     
     function dropdownFunctions:GetSelections()
@@ -454,7 +466,6 @@ function InsideTab:CreateDD(text, list, callback)
                 if table.find(newSelections, optionText) then
                     table.insert(selected, optionText)
                     checkmark.Visible = true
-                    checkmark.ImageColor3 = theme3
                 else
                     checkmark.Visible = false
                 end
