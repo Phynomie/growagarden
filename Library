@@ -364,9 +364,24 @@ function InsideTab:CreateDD(text, list, callback)
     DropdownContainer.ZIndex = 3
     DropdownContainer.ClipsDescendants = true
     
+    -- Scrolling frame for dropdown options
+    local OptionsScrollingFrame = Instance.new("ScrollingFrame")
+    OptionsScrollingFrame.Parent = DropdownContainer
+    OptionsScrollingFrame.BackgroundTransparency = 1
+    OptionsScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+    OptionsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    OptionsScrollingFrame.ScrollBarThickness = 5
+    OptionsScrollingFrame.ScrollBarImageColor3 = theme3
+    
     local UIListLayout = Instance.new("UIListLayout")
-    UIListLayout.Parent = DropdownContainer
+    UIListLayout.Parent = OptionsScrollingFrame
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    UIListLayout.Padding = UDim.new(0, 2)
+    
+    -- Calculate maximum height (5 items visible at a time)
+    local maxVisibleItems = 5
+    local itemHeight = 27
+    local maxHeight = maxVisibleItems * itemHeight + (maxVisibleItems - 1) * UIListLayout.Padding.Offset
     
     -- Function to update the selected display text
     local function updateSelectedDisplay()
@@ -386,7 +401,6 @@ function InsideTab:CreateDD(text, list, callback)
                 14, 
                 Enum.Font.SourceSans, 
                 Vector2.new(10000, 27)
-            )
             
             -- Enable scrolling if text is wider than the frame
             if textSize.X > SelectedScrollingFrame.AbsoluteSize.X then
@@ -402,16 +416,16 @@ function InsideTab:CreateDD(text, list, callback)
     
     -- Create option buttons
     for i, v in pairs(list) do
-        BodyYSize = BodyYSize + 27
+        BodyYSize = BodyYSize + itemHeight + UIListLayout.Padding.Offset
         local OptionButton = Instance.new("TextButton")
         local Checkbox = Instance.new("Frame")
         local Checkmark = Instance.new("Frame")
         
         OptionButton.Name = "Option_"..v
-        OptionButton.Parent = DropdownContainer
+        OptionButton.Parent = OptionsScrollingFrame
         OptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         OptionButton.BackgroundTransparency = 1.000
-        OptionButton.Size = UDim2.new(0, 180, 0, 27)
+        OptionButton.Size = UDim2.new(0, 180, 0, itemHeight)
         OptionButton.Font = Enum.Font.SourceSansSemibold
         OptionButton.Text = "   " .. v
         OptionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -467,8 +481,11 @@ function InsideTab:CreateDD(text, list, callback)
         end)
     end
     
-    -- Set container height based on number of options
-    DropdownContainer.Size = UDim2.new(0, 180, 0, BodyYSize)
+    -- Update scrolling frame canvas size
+    OptionsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, BodyYSize)
+    
+    -- Set container height based on number of options (capped at maxHeight)
+    DropdownContainer.Size = UDim2.new(0, 180, 0, math.min(maxHeight, BodyYSize))
     
     -- Toggle dropdown visibility
     TextButton.MouseButton1Click:Connect(function()
@@ -477,6 +494,8 @@ function InsideTab:CreateDD(text, list, callback)
         if IsDropped then
             TextButton.TextColor3 = theme3
             DropdownContainer.Visible = true
+            -- Reset scroll position when opening
+            OptionsScrollingFrame.CanvasPosition = Vector2.new(0, 0)
         else
             TextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
             DropdownContainer.Visible = false
@@ -504,7 +523,7 @@ function InsideTab:CreateDD(text, list, callback)
     
     function dropdownFunctions:SetSelections(newSelections)
         selected = {}
-        for _, option in pairs(DropdownContainer:GetChildren()) do
+        for _, option in pairs(OptionsScrollingFrame:GetChildren()) do
             if option:IsA("TextButton") then
                 local checkmark = option:FindFirstChild("Checkbox"):FindFirstChild("Checkmark")
                 local highlight = option:FindFirstChild("Highlight")
@@ -525,7 +544,7 @@ function InsideTab:CreateDD(text, list, callback)
     
     function dropdownFunctions:Clear()
         selected = {}
-        for _, option in pairs(DropdownContainer:GetChildren()) do
+        for _, option in pairs(OptionsScrollingFrame:GetChildren()) do
             if option:IsA("TextButton") then
                 option:FindFirstChild("Checkbox"):FindFirstChild("Checkmark").Visible = false
                 option:FindFirstChild("Highlight").Visible = false
@@ -546,7 +565,6 @@ function InsideTab:CreateDD(text, list, callback)
     
     return dropdownFunctions
 end
-
 function InsideTab:CreateDropdown(text, list, callback)
     local BodyYSize = 0
     local IsDropped = false
