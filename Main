@@ -3,6 +3,9 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 local Main = library:CreateWindow("Grow a garden script (Creds to Phy)","Crimson")
 
@@ -10,7 +13,6 @@ local tab = Main:CreateTab("Exploits")
 local tab2 = Main:CreateTab("Automation")
 local tab3 = Main:CreateTab("Misc")
 
--- Farm protection system
 local savedPrompts = {}
 local playerFarm = nil
 
@@ -23,11 +25,10 @@ local function findPlayerFarm()
         return nil
     end
 
-    -- Search all farm structures recursively
     for _, farmFolder in ipairs(farms:GetDescendants()) do
         if farmFolder.Name == "Owner" and farmFolder:IsA("StringValue") and farmFolder.Value == username then
             print("Found Your Farm! " .. username)
-            return farmFolder.Parent.Parent.Parent -- Adjust path based on actual hierarchy
+            return farmFolder.Parent.Parent.Parent
         end
     end
     
@@ -44,7 +45,6 @@ local function managePrompts(enable)
     for _, prompt in ipairs(playerFarm:GetDescendants()) do
         if prompt:IsA("ProximityPrompt") then
             if enable then
-                -- Store original state if not already stored
                 if not savedPrompts[prompt] then
                     savedPrompts[prompt] = {
                         Enabled = prompt.Enabled,
@@ -52,12 +52,10 @@ local function managePrompts(enable)
                         ActionText = prompt.ActionText
                     }
                 end
-                -- Disable the prompt
                 prompt.Enabled = false
                 prompt.HoldDuration = math.huge
                 prompt.ActionText = "Disabled"
             else
-                -- Restore original state if we have it
                 if savedPrompts[prompt] then
                     prompt.Enabled = savedPrompts[prompt].Enabled
                     prompt.HoldDuration = savedPrompts[prompt].HoldDuration
@@ -75,19 +73,343 @@ local function simulateClick(x, y)
     VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 1)
 end
 
--- Add Anti Collect Fruits toggle
+local function sendNotification(title, text, duration)
+    StarterGui:SetCore("SendNotification", {
+        Title = title,
+        Text = text,
+        Duration = duration or 5,
+        Icon = "rbxassetid://6726579484"
+    })
+end
+
+local function autoBuySeeds()
+    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    if sheckles < 1000000000 then
+        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+        return
+    end
+
+    local seedShop = LocalPlayer.PlayerGui:FindFirstChild("Seed_Shop")
+    if not seedShop then
+        sendNotification("GAG Script", "Seed shop not open!")
+        return
+    end
+
+    local scrollingFrame = seedShop.Frame:FindFirstChildOfClass("ScrollingFrame")
+    if not scrollingFrame then return end
+
+    for _, frame in ipairs(scrollingFrame:GetChildren()) do
+        if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
+            local mainFrame = frame.Main_Frame
+            local stockText = mainFrame:FindFirstChild("Stock_Text")
+            
+            if stockText and stockText.Text ~= "X0 Stock" then
+                local stockNum = tonumber(stockText.Text:match("X(%d+)"))
+                if stockNum and stockNum > 0 then
+                    for i = 1, stockNum do
+                        local args = {frame.Name}
+                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(unpack(args))
+                        task.wait(0.1)
+                    end
+                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.." seeds!")
+                end
+            end
+        end
+    end
+end
+
+local function autoBuyGears()
+    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    if sheckles < 1000000000 then
+        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+        return
+    end
+
+    local gearShop = LocalPlayer.PlayerGui:FindFirstChild("Gear_Shop")
+    if not gearShop then
+        sendNotification("GAG Script", "Gear shop not open!")
+        return
+    end
+
+    local scrollingFrame = gearShop.Frame:FindFirstChildOfClass("ScrollingFrame")
+    if not scrollingFrame then return end
+
+    for _, frame in ipairs(scrollingFrame:GetChildren()) do
+        if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
+            local mainFrame = frame.Main_Frame
+            local stockText = mainFrame:FindFirstChild("Stock_Text")
+            
+            if stockText and stockText.Text ~= "X0 Stock" then
+                local stockNum = tonumber(stockText.Text:match("X(%d+)"))
+                if stockNum and stockNum > 0 then
+                    for i = 1, stockNum do
+                        local args = {frame.Name}
+                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(unpack(args))
+                        task.wait(0.1)
+                    end
+                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.." gears!")
+                end
+            end
+        end
+    end
+end
+
+local function autoBuyEggs()
+    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    if sheckles < 1000000000 then
+        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+        return
+    end
+
+    local eggShop = LocalPlayer.PlayerGui:FindFirstChild("PetShop_UI")
+    if not eggShop then
+        sendNotification("GAG Script", "Gear shop not open!")
+        return
+    end
+
+    local scrollingFrame = eggShop.Frame:FindFirstChildOfClass("ScrollingFrame")
+    if not scrollingFrame then return end
+
+    for _, frame in ipairs(scrollingFrame:GetChildren()) do
+        if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
+            local mainFrame = frame.Main_Frame
+            local stockText = mainFrame:FindFirstChild("Stock_Text")
+            
+            if stockText and stockText.Text ~= "X0 Stock" then
+                local stockNum = tonumber(stockText.Text:match("X(%d+)"))
+                if stockNum and stockNum > 0 then
+                    for i = 1, stockNum do
+                        local args = {frame.Name}
+                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyPetEgg"):FireServer(unpack(args))
+                        task.wait(0.1)
+                    end
+                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.."!")
+                end
+            end
+        end
+    end
+end
+
+local function autoBuyTM()
+    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    if sheckles < 1000000000 then
+        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+        return
+    end
+
+    local TMShop = LocalPlayer.PlayerGui:FindFirstChild("TravelingMerchantShop_UI")
+    if not TMShop then
+        sendNotification("GAG Script", "Gear shop not open!")
+        return
+    end
+
+    local scrollingFrame = TMShop.Frame:FindFirstChildOfClass("ScrollingFrame")
+    if not scrollingFrame then return end
+
+    for _, frame in ipairs(scrollingFrame:GetChildren()) do
+        if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
+            local mainFrame = frame.Main_Frame
+            local stockText = mainFrame:FindFirstChild("Stock_Text")
+            
+            if stockText and stockText.Text ~= "X0 Stock" then
+                local stockNum = tonumber(stockText.Text:match("X(%d+)"))
+                if stockNum and stockNum > 0 then
+                    for i = 1, stockNum do
+                        local args = {frame.Name}
+                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyTravelingMerchantShopStock"):FireServer(unpack(args))
+                        task.wait(0.1)
+                    end
+                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.."!")
+                end
+            end
+        end
+    end
+end
+
 tab:CreateToggle("Anti Collect Fruits", function(a)
     if a then
-        print("Anti Collect: ON")
         managePrompts(true)
     else
-        print("Anti Collect: OFF")
         managePrompts(false)
     end
 end)
 
-tab2:CreateToggle("Auto Buy Seed/Gear/Egg", function(a)
-    print(a and "Auto Buy: ON" or "Auto Buy: OFF")
+tab:CreateButton("Sell Equipped Fruit", function()
+    local steven = workspace.NPCS:FindFirstChild("Steven")
+    if not steven then
+        warn("Steven NPC not found!")
+        return
+    end
+    
+    local npcHRP = steven:FindFirstChild("HumanoidRootPart")
+    if not npcHRP then
+        warn("Steven doesn't have HumanoidRootPart!")
+        return
+    end
+    local playerChar = LocalPlayer.Character
+    if not playerChar then
+        warn("Player character not found!")
+        return
+    end
+    
+    local playerHRP = playerChar:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then
+        warn("Player doesn't have HumanoidRootPart!")
+        return
+    end
+    
+    local originalCFrame = playerHRP.CFrame
+    
+    playerHRP.CFrame = npcHRP.CFrame * CFrame.new(0, 0, -3) 
+    
+    task.wait(0.2)
+    
+    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("Sell_Item"):FireServer()
+    
+    task.wait(0.2)
+    
+    playerHRP.CFrame = originalCFrame
+end)
+
+tab:CreateButton("Sell All Fruits", function()
+    local steven = workspace.NPCS:FindFirstChild("Steven")
+    if not steven then
+        warn("Steven NPC not found!")
+        return
+    end
+    
+    local npcHRP = steven:FindFirstChild("HumanoidRootPart")
+    if not npcHRP then
+        warn("Steven doesn't have HumanoidRootPart!")
+        return
+    end
+    local playerChar = LocalPlayer.Character
+    if not playerChar then
+        warn("Player character not found!")
+        return
+    end
+    
+    local playerHRP = playerChar:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then
+        warn("Player doesn't have HumanoidRootPart!")
+        return
+    end
+    
+    local originalCFrame = playerHRP.CFrame
+    
+    playerHRP.CFrame = npcHRP.CFrame * CFrame.new(0, 0, -3) 
+    
+    task.wait(0.2)
+    
+    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("Sell_Inventory"):FireServer()
+    
+    task.wait(0.2)
+    
+    playerHRP.CFrame = originalCFrame
+end)
+
+local autoBuyActive = false
+local buyLoop = nil
+
+local function stopBuyLoop()
+    if buyLoop then
+        coroutine.close(buyLoop)
+        buyLoop = nil
+    end
+    autoBuyActive = false
+end
+
+local countdownGui = Instance.new("ScreenGui")
+countdownGui.Name = "AutoBuyCountdown"
+countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 50)
+frame.Position = UDim2.new(0.5, -535, 0.55, 0)
+frame.AnchorPoint = Vector2.new(0.5, 0)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BackgroundTransparency = 0.5
+frame.BorderSizePixel = 0
+frame.Visible = false
+frame.Parent = countdownGui
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0.4, 0)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Next Auto-Buy In:"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.Gotham
+title.TextSize = 14
+title.Parent = frame
+
+local timerText = Instance.new("TextLabel")
+timerText.Size = UDim2.new(1, 0, 0.6, 0)
+timerText.Position = UDim2.new(0, 0, 0.4, 0)
+timerText.BackgroundTransparency = 1
+timerText.Text = "60s"
+timerText.TextColor3 = Color3.fromRGB(255, 255, 255)
+timerText.Font = Enum.Font.GothamBold
+timerText.TextSize = 18
+timerText.Parent = frame
+
+local progressBar = Instance.new("Frame")
+progressBar.Size = UDim2.new(1, 0, 0, 3)
+progressBar.Position = UDim2.new(0, 0, 1, -3)
+progressBar.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+progressBar.BorderSizePixel = 0
+progressBar.Parent = frame
+
+local progressFill = Instance.new("Frame")
+progressFill.Size = UDim2.new(1, 0, 1, 0)
+progressFill.Position = UDim2.new(0, 0, 0, 0)
+progressFill.BackgroundColor3 = Color3.fromRGB(220, 20, 60) 
+progressFill.BorderSizePixel = 0
+progressFill.Parent = progressBar
+
+local function startBuyLoop()
+    buyLoop = coroutine.create(function()
+        while autoBuyActive do
+            frame.Visible = true
+            
+            autoBuySeeds()
+            autoBuyGears()
+            autoBuyEggs()
+            autoBuyTM()
+            
+            for i = 60, 1, -1 do
+                if not autoBuyActive then break end
+                
+                timerText.Text = i.."s"
+                progressFill.Size = UDim2.new(i/60, 0, 1, 0)
+                
+                local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear)
+                local tween = TweenService:Create(progressFill, tweenInfo, {Size = UDim2.new((i-1)/60, 0, 1, 0)})
+                tween:Play()
+                
+                task.wait(1)
+            end
+            
+            if not autoBuyActive then
+                frame.Visible = false
+            end
+        end
+        stopBuyLoop()
+    end)
+    coroutine.resume(buyLoop)
+end
+
+tab2:CreateToggle("Auto Buy Seed/Gear/Egg/TM/", function(a)
+    autoBuyActive = a
+    
+    if a then
+        if not buyLoop then
+            startBuyLoop()
+        end
+    else
+        frame.Visible = false
+        stopBuyLoop()
+    end
 end)
 
 tab2:CreateToggle("Auto Dinosaur Egg", function(a)
@@ -98,12 +420,8 @@ tab3:CreateButton("Sprinker Script", function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Phynomie/tg/refs/heads/main/script.lua"))()
 end)
 
-tab3:CreateButton("Sell All Fruits", function()
-    simulateClick(804, 106)
-    task.wait(0.2)
-    fireproximityprompt(workspace.NPCS.Steven.HumanoidRootPart.ProximityPrompt)
-    task.wait(2)
-    simulateClick(724, 366)
+task.spawn(function()
+    playerFarm = findPlayerFarm()
 end)
 
 tab:Show()
