@@ -401,6 +401,7 @@ function InsideTab:CreateDD(text, list, callback)
                 14, 
                 Enum.Font.SourceSans, 
                 Vector2.new(10000, 27)
+            )
             
             -- Enable scrolling if text is wider than the frame
             if textSize.X > SelectedScrollingFrame.AbsoluteSize.X then
