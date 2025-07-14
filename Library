@@ -359,7 +359,7 @@ function InsideTab:CreateDD(text, list, callback)
     DropdownContainer.BackgroundTransparency = 0.1
     DropdownContainer.BorderSizePixel = 0
     DropdownContainer.Position = UDim2.new(0, 190, 0, 30)
-    DropdownContainer.Size = UDim2.new(0, 180, 0, math.min(maxHeight, BodyYSize))
+    DropdownContainer.Size = UDim2.new(0, 180, 0, 0)
     DropdownContainer.Visible = false
     DropdownContainer.ZIndex = 3
     DropdownContainer.ClipsDescendants = true
@@ -370,11 +370,8 @@ function InsideTab:CreateDD(text, list, callback)
     OptionsScrollingFrame.BackgroundTransparency = 1
     OptionsScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
     OptionsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    OptionsScrollingFrame.ScrollBarThickness = 6
-    OptionsScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-    OptionsScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(220, 220, 220)
-    OptionsScrollingFrame.BorderSizePixel = 0
-    OptionsScrollingFrame.ZIndex = 11
+    OptionsScrollingFrame.ScrollBarThickness = 7
+    OptionsScrollingFrame.ScrollBarImageColor3 = theme2
     
     local UIListLayout = Instance.new("UIListLayout")
     UIListLayout.Parent = OptionsScrollingFrame
