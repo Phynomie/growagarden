@@ -45,25 +45,34 @@ local function managePrompts(enable)
 
     for _, prompt in ipairs(playerFarm:GetDescendants()) do
         if prompt:IsA("ProximityPrompt") then
-            if enable then
-                -- Store original state if not already stored
-                if not savedPrompts[prompt] then
-                    savedPrompts[prompt] = {
-                        Enabled = prompt.Enabled,
-                        HoldDuration = prompt.HoldDuration,
-                        ActionText = prompt.ActionText
-                    }
+            local isEggPrompt = false
+            local current = prompt.Parent
+            while current ~= nil and current ~= playerFarm do
+                if current.Name == "PetEgg" then
+                    isEggPrompt = true
+                    break
                 end
-                -- Disable the prompt
-                prompt.Enabled = false
-                prompt.HoldDuration = math.huge
-                prompt.ActionText = "Disabled"
-            else
-                -- Restore original state if we have it
-                if savedPrompts[prompt] then
-                    prompt.Enabled = savedPrompts[prompt].Enabled
-                    prompt.HoldDuration = savedPrompts[prompt].HoldDuration
-                    prompt.ActionText = savedPrompts[prompt].ActionText
+                current = current.Parent
+            end
+            
+            if not isEggPrompt then
+                if enable then
+                    if not savedPrompts[prompt] then
+                        savedPrompts[prompt] = {
+                            Enabled = prompt.Enabled,
+                            HoldDuration = prompt.HoldDuration,
+                            ActionText = prompt.ActionText
+                        }
+                    end
+                    prompt.Enabled = false
+                    prompt.HoldDuration = math.huge
+                    prompt.ActionText = "Disabled"
+                else
+                    if savedPrompts[prompt] then
+                        prompt.Enabled = savedPrompts[prompt].Enabled
+                        prompt.HoldDuration = savedPrompts[prompt].HoldDuration
+                        prompt.ActionText = savedPrompts[prompt].ActionText
+                    end
                 end
             end
         end
