@@ -370,7 +370,7 @@ function InsideTab:CreateDD(text, list, callback)
     OptionsScrollingFrame.BackgroundTransparency = 1
     OptionsScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
     OptionsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    OptionsScrollingFrame.ScrollBarThickness = 5
+    OptionsScrollingFrame.ScrollBarThickness = 7
     OptionsScrollingFrame.ScrollBarImageColor3 = theme2
     
     local UIListLayout = Instance.new("UIListLayout")
