@@ -495,18 +495,8 @@ function InsideTab:CreateDD(text, list, callback)
         end
     end)
     
-    -- Function to get current selections
-    local dropdownFunctions = {
-        GetSelections = function() return selected end,
-        SetSelections = function(newSelections) --[existing code]-- end,
-        Clear = function() --[existing code]-- end,
-        Destroy = function()
-            if Container and Container.Parent then
-                Container:Destroy()
-            end
-        end,
-        GetContainer = function() return Container end
-    }
+    -- Create dropdown functions table
+    local dropdownFunctions = {}
     
     function dropdownFunctions:GetSelections()
         return selected
@@ -542,6 +532,16 @@ function InsideTab:CreateDD(text, list, callback)
             end
         end
         updateSelectedDisplay()
+    end
+    
+    function dropdownFunctions:Destroy()
+        if Container and Container.Parent then
+            Container:Destroy()
+        end
+    end
+    
+    function dropdownFunctions:GetContainer()
+        return Container
     end
     
     return dropdownFunctions
