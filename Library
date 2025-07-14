@@ -294,7 +294,7 @@ function InsideTab:CreateDD(text, list, callback)
     DropdownLabel.Parent = Container
     DropdownLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     DropdownLabel.BackgroundTransparency = 1.000
-    DropdownLabel.Size = UDim2.new(0, 180, 0, 27) -- Increased width for better spacing
+    DropdownLabel.Size = UDim2.new(0, 180, 0, 27)
     DropdownLabel.Font = Enum.Font.SourceSansSemibold
     DropdownLabel.Text = text
     DropdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -308,21 +308,25 @@ function InsideTab:CreateDD(text, list, callback)
     SelectedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     SelectedFrame.BackgroundTransparency = 0.5
     SelectedFrame.BorderSizePixel = 0
-    SelectedFrame.Position = UDim2.new(0, 190, 0, 0) -- Increased offset for better spacing
+    SelectedFrame.Position = UDim2.new(0, 190, 0, 0)
     SelectedFrame.Size = UDim2.new(0, 180, 0, 27)
     
-    -- Inner frame for selected items with padding
-    local SelectedInnerFrame = Instance.new("Frame")
-    SelectedInnerFrame.Name = "SelectedInnerFrame"
-    SelectedInnerFrame.Parent = SelectedFrame
-    SelectedInnerFrame.BackgroundTransparency = 1
-    SelectedInnerFrame.Position = UDim2.new(0, 5, 0, 0) -- Left padding
-    SelectedInnerFrame.Size = UDim2.new(0, 150, 0, 27)
+    -- Scrolling frame for selected items text
+    local SelectedScrollingFrame = Instance.new("ScrollingFrame")
+    SelectedScrollingFrame.Name = "SelectedScrollingFrame"
+    SelectedScrollingFrame.Parent = SelectedFrame
+    SelectedScrollingFrame.BackgroundTransparency = 1
+    SelectedScrollingFrame.Position = UDim2.new(0, 5, 0, 0)
+    SelectedScrollingFrame.Size = UDim2.new(0, 150, 0, 27)
+    SelectedScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    SelectedScrollingFrame.ScrollBarThickness = 0
+    SelectedScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.X
+    SelectedScrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
     
-    -- Selected options display text
+    -- Text label for selected items
     local SelectedDisplay = Instance.new("TextLabel")
     SelectedDisplay.Name = "SelectedDisplay"
-    SelectedDisplay.Parent = SelectedInnerFrame
+    SelectedDisplay.Parent = SelectedScrollingFrame
     SelectedDisplay.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     SelectedDisplay.BackgroundTransparency = 1.000
     SelectedDisplay.Size = UDim2.new(1, 0, 1, 0)
@@ -331,7 +335,7 @@ function InsideTab:CreateDD(text, list, callback)
     SelectedDisplay.TextColor3 = Color3.fromRGB(200, 200, 200)
     SelectedDisplay.TextSize = 14.000
     SelectedDisplay.TextXAlignment = Enum.TextXAlignment.Left
-    SelectedDisplay.ClipsDescendants = true -- For text truncation
+    SelectedDisplay.TextYAlignment = Enum.TextYAlignment.Center
     
     -- Dropdown toggle button
     local TextButton = Instance.new("TextButton")
@@ -355,7 +359,7 @@ function InsideTab:CreateDD(text, list, callback)
     DropdownContainer.BackgroundTransparency = 0.1
     DropdownContainer.BorderSizePixel = 0
     DropdownContainer.Position = UDim2.new(0, 190, 0, 30)
-    DropdownContainer.Size = UDim2.new(0, 180, 0, 0) -- Height will be set dynamically
+    DropdownContainer.Size = UDim2.new(0, 180, 0, 0)
     DropdownContainer.Visible = false
     DropdownContainer.ZIndex = 3
     DropdownContainer.ClipsDescendants = true
@@ -369,14 +373,29 @@ function InsideTab:CreateDD(text, list, callback)
         if #selected == 0 then
             SelectedDisplay.Text = "None"
             SelectedDisplay.TextColor3 = Color3.fromRGB(200, 200, 200)
+            SelectedScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
         else
-            -- Truncate text if too long
             local displayText = table.concat(selected, ", ")
-            if utf8.len(displayText) > 20 then
-                displayText = utf8.sub(displayText, 1, 17).."..."
-            end
             SelectedDisplay.Text = displayText
             SelectedDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
+            
+            -- Calculate required width for the text
+            local textService = game:GetService("TextService")
+            local textSize = textService:GetTextSize(
+                displayText, 
+                14, 
+                Enum.Font.SourceSans, 
+                Vector2.new(10000, 27)
+            )
+            
+            -- Enable scrolling if text is wider than the frame
+            if textSize.X > SelectedScrollingFrame.AbsoluteSize.X then
+                SelectedScrollingFrame.CanvasSize = UDim2.new(0, textSize.X + 10, 0, 0)
+                SelectedScrollingFrame.ScrollBarThickness = 3
+            else
+                SelectedScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+                SelectedScrollingFrame.ScrollBarThickness = 0
+            end
         end
         callback(selected)
     end
