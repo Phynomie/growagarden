@@ -322,6 +322,7 @@ function InsideTab:CreateDD(text, list, callback)
     SelectedScrollingFrame.ScrollBarThickness = 0
     SelectedScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.X
     SelectedScrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
+    SelectedScrollingFrame.ScrollBarImageColor3 = theme3
     
     -- Text label for selected items
     local SelectedDisplay = Instance.new("TextLabel")
