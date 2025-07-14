@@ -322,7 +322,6 @@ function InsideTab:CreateDD(text, list, callback)
     SelectedScrollingFrame.ScrollBarThickness = 0
     SelectedScrollingFrame.ScrollingDirection = Enum.ScrollingDirection.X
     SelectedScrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
-    SelectedScrollingFrame.ScrollBarImageColor3 = theme3
     
     -- Text label for selected items
     local SelectedDisplay = Instance.new("TextLabel")
@@ -372,7 +371,7 @@ function InsideTab:CreateDD(text, list, callback)
     OptionsScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
     OptionsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     OptionsScrollingFrame.ScrollBarThickness = 5
-    OptionsScrollingFrame.ScrollBarImageColor3 = theme3
+    OptionsScrollingFrame.ScrollBarImageColor3 = theme2
     
     local UIListLayout = Instance.new("UIListLayout")
     UIListLayout.Parent = OptionsScrollingFrame
