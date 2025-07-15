@@ -582,6 +582,77 @@ function InsideTab:CreateDD(text, list, callback)
     function dropdownFunctions:GetContainer()
         return Container
     end
+
+    function dropdownFunctions:Refresh(newList)
+        -- Remove all old option buttons
+        for _, child in pairs(OptionsScrollingFrame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+        -- Update the list
+        list = newList or {}
+        BodyYSize = 0
+        -- Recreate option buttons
+        for i, v in pairs(list) do
+            BodyYSize = BodyYSize + itemHeight + UIListLayout.Padding.Offset
+            local OptionButton = Instance.new("TextButton")
+            local Checkbox = Instance.new("Frame")
+            local Checkmark = Instance.new("Frame")
+            OptionButton.Name = "Option_"..v
+            OptionButton.Parent = OptionsScrollingFrame
+            OptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            OptionButton.BackgroundTransparency = 1.000
+            OptionButton.Size = UDim2.new(0, 180, 0, itemHeight)
+            OptionButton.Font = Enum.Font.SourceSansSemibold
+            OptionButton.Text = "   " .. v
+            OptionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            OptionButton.TextSize = 14.000
+            OptionButton.TextXAlignment = Enum.TextXAlignment.Left
+            OptionButton.ZIndex = 4
+            local Highlight = Instance.new("Frame")
+            Highlight.Name = "Highlight"
+            Highlight.Parent = OptionButton
+            Highlight.BackgroundColor3 = theme3
+            Highlight.BackgroundTransparency = 0.8
+            Highlight.BorderSizePixel = 0
+            Highlight.Size = UDim2.new(1, 0, 1, 0)
+            Highlight.Visible = false
+            Highlight.ZIndex = 3
+            Checkbox.Name = "Checkbox"
+            Checkbox.Parent = OptionButton
+            Checkbox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Checkbox.BackgroundTransparency = 1.000
+            Checkbox.Position = UDim2.new(0, 5, 0.5, -7)
+            Checkbox.Size = UDim2.new(0, 14, 0, 14)
+            Checkbox.ZIndex = 5
+            Checkmark.Name = "Checkmark"
+            Checkmark.Parent = Checkbox
+            Checkmark.AnchorPoint = Vector2.new(0.5, 0.5)
+            Checkmark.BackgroundColor3 = theme3
+            Checkmark.BorderSizePixel = 0
+            Checkmark.Position = UDim2.new(0.5, 0, 0.5, 0)
+            Checkmark.Size = UDim2.new(0, 10, 0, 10)
+            Checkmark.Visible = false
+            OptionButton.MouseButton1Click:Connect(function()
+                play("rbxassetid://178104975")
+                local index = table.find(selected, v)
+                if index then
+                    table.remove(selected, index)
+                    Checkmark.Visible = false
+                    Highlight.Visible = false
+                else
+                    table.insert(selected, v)
+                    Checkmark.Visible = true
+                    Highlight.Visible = true
+                end
+                updateSelectedDisplay()
+            end)
+        end
+        OptionsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, BodyYSize)
+        DropdownContainer.Size = UDim2.new(0, 180, 0, math.min(maxHeight, BodyYSize))
+        updateSelectedDisplay()
+    end
     
     return dropdownFunctions
 end
