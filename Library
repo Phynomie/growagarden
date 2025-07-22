@@ -70,6 +70,7 @@ local Screen = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
 local Top = Instance.new("ImageLabel")
 local Toggle = Instance.new("ImageButton")
+local ExitButton = Instance.new("ImageButton")
 local Main = Instance.new("ImageLabel")
 local Tabs = Instance.new("ImageLabel")
 local UIGridLayout = Instance.new("UIGridLayout")
@@ -105,6 +106,18 @@ MainContainer.Size = UDim2.new(0, 558, 0, 323)
 MainContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 MainContainer.Parent = Screen
+
+-- New exit button
+ExitButton.Name = "ExitButton"
+ExitButton.Parent = Top
+ExitButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ExitButton.BackgroundTransparency = 1.000
+ExitButton.Position = UDim2.new(0.95, 0, 0.1, 0)
+ExitButton.Size = UDim2.new(0, 18, 0, 18)
+ExitButton.Image = "rbxassetid://3926305904" -- Door icon
+ExitButton.ImageRectOffset = Vector2.new(324, 124)
+ExitButton.ImageRectSize = Vector2.new(36, 36)
+ExitButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
 
 local dragging = false
 local dragStart = nil
@@ -211,6 +224,32 @@ Toggle.MouseButton1Click:Connect(function()
 		Toggle.Rotation = 90
 		opened = true
 		    end
+end)
+
+-- Function to destroy the UI and clean up
+function library:Destroy()
+    -- Destroy all GUI elements
+    if Screen and Screen.Parent then
+        Screen:Destroy()
+    end
+    
+    -- Destroy any sounds
+    for _, v in next, workspace:GetChildren() do
+        if v.Name == "GUISound" then
+            v:Destroy()
+        end
+    end
+    
+    -- Call any cleanup functions if they exist
+    if self.OnDestroy then
+        self.OnDestroy()
+    end
+end
+
+-- Connect exit button
+ExitButton.MouseButton1Click:Connect(function()
+    play("rbxassetid://1412830636")
+    library:Destroy()
 end)
 
 local InsideLibrary = {}
