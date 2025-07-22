@@ -115,7 +115,7 @@ ExitButton.BackgroundTransparency = 1.000
 ExitButton.Position = UDim2.new(0.95, 0, 0.1, 0)
 ExitButton.Size = UDim2.new(0, 18, 0, 18)
 ExitButton.Image = "rbxassetid://3926305904" -- Door icon
-ExitButton.ImageRectOffset = Vector2.new(324, 124)
+ExitButton.ImageRectOffset = Vector2.new(164, 164)
 ExitButton.ImageRectSize = Vector2.new(36, 36)
 ExitButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
 
