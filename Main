@@ -847,21 +847,27 @@ table.insert(cleanupInstances.connections, playerRemovingConn)
 -- Modified Send Trade button
 tab3:CreateButton("Send Trade", function()
     local self = game:GetService("Players").LocalPlayer
-    if not selectedPlayer then return end
+    if not selectedPlayer then 
+        sendNotification("Trade Error", "Select a player first!", 3)
+        return 
+    end
+    
     local targetPlayer = game:GetService("Players"):FindFirstChild(selectedPlayer)
-    if not targetPlayer then return end
+    if not targetPlayer then 
+        sendNotification("Trade Error", "Player not found!", 3)
+        return 
+    end
 
-    -- Check equipped tool (what player is visibly holding)
+    -- Get equipped item with natural delay
+    task.wait(0.2)
     local heldObject = nil
     local character = self.Character
     if character then
         for _, tool in pairs(character:GetChildren()) do
             if tool:IsA("Tool") then
-                -- Check for pet (either has Age or KG in name)
-                if string.find(tool.Name, "%[Age %d+%]") or  -- Pattern for [Age X]
-                   string.find(tool.Name, "%[%d+%.?%d*kg%]", 1, true) or  -- Pattern for [Xkg] (case insensitive)
-                   string.find(tool.Name, "%[%d+%.?%d* kg%]", 1, true) then  -- Pattern for [X kg] (case insensitive)
-                
+                if string.find(tool.Name, "%[Age %d+%]") or
+                   string.find(tool.Name:lower(), "%[%d+%.?%d*kg%]") or
+                   string.find(tool.Name:lower(), "%[%d+%.?%d* kg%]") then
                     heldObject = tool
                     break
                 end
@@ -870,54 +876,52 @@ tab3:CreateButton("Send Trade", function()
     end
 
     if not heldObject then
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Trade Error",
-            Text = "You're not holding anything!",
-            Duration = 3
-        })
+        sendNotification("Trade Error", "You're not holding anything tradable!", 3)
         return
     end
 
-    -- Handle pet trade
+    -- Handle pet trade differently
     if string.find(heldObject.Name, "%[Age %d+%]") then
+        task.wait(0.3) -- Natural delay
         game:GetService("ReplicatedStorage").GameEvents.PetGiftingService:FireServer("GivePet", targetPlayer)
+        sendNotification("Trade Sent", "Sent pet to "..targetPlayer.Name, 3)
         return
     end
 
-    -- Handle item trade
+    -- Natural trade approach
     local targetChar = targetPlayer.Character
-local selfChar = LocalPlayer.Character
+    local selfChar = LocalPlayer.Character
 
-if targetChar and selfChar then
-    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
-    local selfHRP = selfChar:FindFirstChild("HumanoidRootPart")
-    
-    if targetHRP and selfHRP then
-        -- Save original position
-        local originalPos = selfHRP.CFrame
+    if targetChar and selfChar then
+        local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+        local selfHRP = selfChar:FindFirstChild("HumanoidRootPart")
         
-        -- Teleport in front of target (2 units away)
-        local offset = targetHRP.CFrame.LookVector * -2
-        selfHRP.CFrame = targetHRP.CFrame + offset + Vector3.new(0, 0, 0)
-        
-        -- Find and fire prompt
-        local prompt = targetHRP:FindFirstChildOfClass("ProximityPrompt")
-        if prompt then
-            -- Wait briefly for position to update
-            wait(0.1)
-            
-            -- Fire prompt 3 times for reliability
-            for i = 1, 1 do
+        if targetHRP and selfHRP then
+            -- Walk naturally toward player instead of teleporting
+            local humanoid = selfChar:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid:MoveTo(targetHRP.Position + Vector3.new(2, 0, 2))
+                task.wait(1) -- Wait to reach player
+            end
+
+            -- Find prompt naturally
+            local prompt = targetHRP:FindFirstChildOfClass("ProximityPrompt")
+            if prompt then
+                -- Human-like interaction delay
+                task.wait(0.5)
+                
+                -- Single prompt fire (no spamming)
                 fireproximityprompt(prompt)
-                wait(0.05)
+                sendNotification("Trade Sent", "Sent trade to "..targetPlayer.Name, 3)
+                
+                -- Walk back naturally
+                task.wait(0.5)
+                if humanoid then
+                    humanoid:MoveTo(selfHRP.Position)
+                end
             end
         end
-        
-        -- Return to original position after 0.3 seconds total
-        wait(0.1)
-        selfHRP.CFrame = originalPos
     end
-end
 end)
 
 tab3:CreateButton("Sprinker Script", function()
