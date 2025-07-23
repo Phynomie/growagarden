@@ -7,6 +7,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 
+local cleanupInstances = {
+    countdownGui = nil,
+    connections = {},
+    loops = {}
+}
+
 local Main = library:CreateWindow("Grow a garden script (Creds to Phy)","Crimson")
 
 local tab = Main:CreateTab("Exploits")
@@ -16,6 +22,7 @@ local tab3 = Main:CreateTab("Misc")
 -- Farm protection system
 local savedPrompts = {}
 local playerFarm = nil
+local enabled = nil
 
 local function findPlayerFarm()
     local username = LocalPlayer.Name
@@ -29,7 +36,7 @@ local function findPlayerFarm()
     for _, farmFolder in ipairs(farms:GetDescendants()) do
         if farmFolder.Name == "Owner" and farmFolder:IsA("StringValue") and farmFolder.Value == username then
             print("Found Your Farm! " .. username)
-            return farmFolder.Parent.Parent.Parent -- Adjust path based on actual hierarchy
+            return farmFolder.Parent.Parent.Parent
         end
     end
     
@@ -45,17 +52,17 @@ local function managePrompts(enable)
 
     for _, prompt in ipairs(playerFarm:GetDescendants()) do
         if prompt:IsA("ProximityPrompt") then
-            local isEggPrompt = false
+            local isEggORCratePrompt = false
             local current = prompt.Parent
             while current ~= nil and current ~= playerFarm do
-                if current.Name == "PetEgg" then
-                    isEggPrompt = true
+                if current.Name == "PetEgg" or current.Name == "CosmeticCrate" then
+                    isEggORCratePrompt = true
                     break
                 end
                 current = current.Parent
             end
             
-            if not isEggPrompt then
+            if not isEggORCratePrompt then
                 if enable then
                     if not savedPrompts[prompt] then
                         savedPrompts[prompt] = {
@@ -97,8 +104,8 @@ end
 
 local function autoBuySeeds()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 1000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+    if sheckles < 10000000000 then -- 1 billion
+        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
         return
     end
 
@@ -133,8 +140,8 @@ end
 
 local function autoBuyGears()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 1000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+    if sheckles < 10000000000 then -- 1 billion
+        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
         return
     end
 
@@ -169,8 +176,8 @@ end
 
 local function autoBuyEggs()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 1000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+    if sheckles < 10000000000 then -- 1 billion
+        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
         return
     end
 
@@ -205,8 +212,8 @@ end
 
 local function autoBuyTM()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 1000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 1B sheckles!")
+    if sheckles < 10000000000 then -- 1 billion
+        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
         return
     end
 
@@ -245,6 +252,18 @@ tab:CreateToggle("Anti Collect Fruits", function(a)
     else
         managePrompts(false)
     end
+end)
+
+tab:CreateButton("Anti Afk", function()
+    if enabled then return end
+    sendNotification("✅ Anti-AFK", "Anti AFK has been enabled.", 5)
+    
+    -- Store connection for cleanup
+    for i,v in pairs(getconnections(game.Players.LocalPlayer.Idled)) do
+        table.insert(cleanupInstances.connections, v)
+        v:Disable()
+    end
+    enabled = true
 end)
 
 tab:CreateButton("Sell Equipped Fruit", function()
@@ -322,23 +341,24 @@ tab:CreateButton("Sell All Fruits", function()
 end)
 
 local autoBuyActive = false
-local buyLoop = nil
+cleanupInstances.loops.buyLoop = nil
 
 local function stopBuyLoop()
-    if buyLoop then
-        coroutine.close(buyLoop)
-        buyLoop = nil
+    if cleanupInstances.loops.buyLoop then
+        coroutine.close(cleanupInstances.loops.buyLoop)
+        cleanupInstances.loops.buyLoop = nil
     end
     autoBuyActive = false
+    if frame then frame.Visible = false end
 end
 
-local countdownGui = Instance.new("ScreenGui")
-countdownGui.Name = "AutoBuyCountdown"
-countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+cleanupInstances.countdownGui = Instance.new("ScreenGui")
+cleanupInstances.countdownGui.Name = "AutoBuyCountdown"
+cleanupInstances.countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.085, 0, 0.7, 0)
+frame.Position = UDim2.new(0.095, 0, 0.59, 0)
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BackgroundTransparency = 0.5
@@ -381,7 +401,7 @@ progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBar
 
 local function startBuyLoop()
-    buyLoop = coroutine.create(function()
+    cleanupInstances.loops.buyLoop = coroutine.create(function()
         while autoBuyActive do
             frame.Visible = true
             
@@ -402,31 +422,271 @@ local function startBuyLoop()
                 
                 task.wait(1)
             end
-            
-            if not autoBuyActive then
-                frame.Visible = false
-            end
         end
         stopBuyLoop()
     end)
-    coroutine.resume(buyLoop)
+    coroutine.resume(cleanupInstances.loops.buyLoop)
 end
 
-tab2:CreateToggle("Auto Buy Seed/Gear/Egg/TM/", function(a)
+tab2:CreateToggle("Auto Buy Seed/Gear/Egg/TM", function(a)
     autoBuyActive = a
     
     if a then
-        if not buyLoop then
+        if not cleanupInstances.loops.buyLoop then
             startBuyLoop()
         end
     else
-        frame.Visible = false
         stopBuyLoop()
     end
 end)
 
-tab2:CreateToggle("Auto Dinosaur Egg", function(a)
-    print(a and "Auto Dino Egg: ON" or "Auto Dino Egg: OFF")
+-- Auto Pickup Fruits with Mutation
+local selectedMutation = nil
+local autoPickupActive = false
+
+-- List of attributes to ignore in the dropdown
+local IGNORED_ATTRIBUTES = {
+    "DoneGrowTime",
+    "GrowRateMulti",
+    "MaxAge"
+}
+
+-- Function to scan farm for all available mutations (excluding ignored ones)
+local function scanForMutations()
+    local mutationList = {}
+    
+    if not playerFarm then
+        playerFarm = findPlayerFarm()
+        if not playerFarm then return mutationList end
+    end
+
+    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+    if plantsPhysical then
+        for _, plant in pairs(plantsPhysical:GetChildren()) do
+            -- Check for Fruits folder
+            local fruitsFolder = plant:FindFirstChild("Fruits")
+            if fruitsFolder then
+                for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                    -- Get all attributes (mutations)
+                    for attrName, _ in pairs(fruit:GetAttributes()) do
+                        -- Only add if not in ignored list
+                        if not table.find(IGNORED_ATTRIBUTES, attrName) and not table.find(mutationList, attrName) then
+                            table.insert(mutationList, attrName)
+                        end
+                    end
+                end
+            else
+                -- Check the plant itself if no Fruits folder
+                for attrName, _ in pairs(plant:GetAttributes()) do
+                    if not table.find(IGNORED_ATTRIBUTES, attrName) and not table.find(mutationList, attrName) then
+                        table.insert(mutationList, attrName)
+                    end
+                end
+            end
+        end
+    end
+    
+    return mutationList
+end
+
+-- Create the mutation dropdown with filtered mutations
+local mutationDropdown = tab2:CreateDDO("Select Mutation", {}, function(selected)
+    selectedMutation = selected
+end)
+
+-- Update mutation list initially and when farm changes (with ignored attributes filtered out)
+task.spawn(function()
+    while true do
+        local mutations = scanForMutations() -- This now returns only non-ignored attributes
+        mutationDropdown:SetOptions(mutations)
+        wait(30) -- Rescan every 30 seconds
+    end
+end)
+
+-- Auto pickup function (unchanged)
+local function collectFruitsWithMutation()
+    while autoPickupActive and selectedMutation do
+        if not playerFarm then
+            playerFarm = findPlayerFarm()
+            if not playerFarm then break end
+        end
+
+        local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+        if plantsPhysical then
+            for _, plant in pairs(plantsPhysical:GetChildren()) do
+                -- Check Fruits folder first
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                local fruitsToCheck = fruitsFolder and fruitsFolder:GetChildren() or {plant}
+                
+                for _, fruit in pairs(fruitsToCheck) do
+                    if fruit:GetAttribute(selectedMutation) then
+                        -- Find the proximity prompt
+                        local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                        if not prompt then
+                            -- Sometimes prompt is under a numbered child
+                            for _, child in pairs(fruit:GetChildren()) do
+                                if child:IsA("Model") or child:IsA("Part") then
+                                    prompt = child:FindFirstChildWhichIsA("ProximityPrompt")
+                                    if prompt then break end
+                                end
+                            end
+                        end
+                        
+                        -- If prompt found, collect the fruit
+                        if prompt then
+                            -- Teleport to fruit
+                            local char = LocalPlayer.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                local hrp = char.HumanoidRootPart
+                                local originalPos = hrp.CFrame
+                                
+                                -- Teleport close to fruit
+                                hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2)
+                                
+                                -- Fire prompt
+                                task.wait(0.2)
+                                fireproximityprompt(prompt)
+                                
+                                -- Return to original position
+                                task.wait(0.1)
+                                hrp.CFrame = originalPos
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        wait(0.5) -- Delay between scans
+    end
+end
+
+-- Create the toggle (unchanged)
+tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
+    autoPickupActive = state
+    if state then
+        if not selectedMutation then
+            sendNotification("Pickup Error", "Select a mutation first!", 5)
+            return
+        end
+        task.spawn(collectFruitsWithMutation)
+        sendNotification("Auto Pickup", "Started collecting "..selectedMutation, 5)
+    else
+        sendNotification("Auto Pickup", "Stopped collecting", 3)
+    end
+end)
+
+local selectedPlayer = nil
+local playerDropdown = tab3:CreateDDO("Send Trade Only To:", {}, function(selected)
+    selectedPlayer = selected
+end)
+
+-- Function to update player list
+local function updatePlayerList()
+    local playerList = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then -- Don't include yourself
+            table.insert(playerList, player.Name)
+        end
+    end
+    playerDropdown:SetOptions(playerList)
+end
+
+-- Initial update
+updatePlayerList()
+
+-- Update when players join/leave
+local playerAddedConn = Players.PlayerAdded:Connect(function(player)
+    updatePlayerList()
+end)
+
+local playerRemovingConn = Players.PlayerRemoving:Connect(function(player)
+    updatePlayerList()
+    if selectedPlayer == player.Name then
+        selectedPlayer = nil
+        playerDropdown:Clear()
+    end
+end)
+
+-- Store connections for cleanup
+table.insert(cleanupInstances.connections, playerAddedConn)
+table.insert(cleanupInstances.connections, playerRemovingConn)
+
+-- Modified Send Trade button
+tab3:CreateButton("Send Trade", function()
+    local self = game:GetService("Players").LocalPlayer
+    if not selectedPlayer then return end
+    local targetPlayer = game:GetService("Players"):FindFirstChild(selectedPlayer)
+    if not targetPlayer then return end
+
+    -- Check equipped tool (what player is visibly holding)
+    local heldObject = nil
+    local character = self.Character
+    if character then
+        for _, tool in pairs(character:GetChildren()) do
+            if tool:IsA("Tool") then
+                -- Check for pet (has Age in name)
+                if string.find(tool.Name, "%[Age %d+%]") then
+                    heldObject = tool
+                    break
+                -- Check for item (has KG in name)
+                elseif string.find(string.lower(tool.Name), "%[%d+%.?%d*kg%]") then
+                    heldObject = tool
+                    break
+                end
+            end
+        end
+    end
+
+    if not heldObject then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Trade Error",
+            Text = "You're not holding anything!",
+            Duration = 3
+        })
+        return
+    end
+
+    -- Handle pet trade
+    if string.find(heldObject.Name, "%[Age %d+%]") then
+        game:GetService("ReplicatedStorage").GameEvents.PetGiftingService:FireServer("GivePet", targetPlayer)
+        return
+    end
+
+    -- Handle item trade
+    local targetChar = targetPlayer.Character
+local selfChar = LocalPlayer.Character
+
+if targetChar and selfChar then
+    local targetHRP = targetChar:FindFirstChild("HumanoidRootPart")
+    local selfHRP = selfChar:FindFirstChild("HumanoidRootPart")
+    
+    if targetHRP and selfHRP then
+        -- Save original position
+        local originalPos = selfHRP.CFrame
+        
+        -- Teleport in front of target (2 units away)
+        local offset = targetHRP.CFrame.LookVector * -2
+        selfHRP.CFrame = targetHRP.CFrame + offset + Vector3.new(0, 0, 0)
+        
+        -- Find and fire prompt
+        local prompt = targetHRP:FindFirstChildOfClass("ProximityPrompt")
+        if prompt then
+            -- Wait briefly for position to update
+            wait(0.1)
+            
+            -- Fire prompt 3 times for reliability
+            for i = 1, 1 do
+                fireproximityprompt(prompt)
+                wait(0.05)
+            end
+        end
+        
+        -- Return to original position after 0.3 seconds total
+        wait(0.1)
+        selfHRP.CFrame = originalPos
+    end
+end
 end)
 
 tab3:CreateButton("Sprinker Script", function()
@@ -438,3 +698,41 @@ task.spawn(function()
 end)
 
 tab:Show()
+
+library.OnDestroy = function()
+    print("Destroying all created instances...")
+    
+    -- Stop all loops
+    for _, loop in pairs(cleanupInstances.loops) do
+        if type(loop) == "thread" then
+            coroutine.close(loop)
+        end
+    end
+    
+    -- Disconnect all connections
+    for _, connection in ipairs(cleanupInstances.connections) do
+        if connection.Connected then
+            connection:Disconnect()
+        end
+    end
+    
+    -- Reset prompts
+    managePrompts(false)
+    
+    -- Destroy GUI instances
+    if cleanupInstances.countdownGui then
+        cleanupInstances.countdownGui:Destroy()
+    end
+    
+    -- Reset variables
+    enabled = nil
+    autoBuyActive = false
+    savedPrompts = {}
+    playerFarm = nil
+    
+    -- Clear tables
+    cleanupInstances.connections = {}
+    cleanupInstances.loops = {}
+    
+    print("Cleanup complete!")
+end
