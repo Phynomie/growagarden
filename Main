@@ -298,6 +298,19 @@ tab:CreateToggle("Weight Calculator", function(enabled)
         end
 
         if not foundTool then
+            for _, player in ipairs(services.Players:GetPlayers()) do
+                if player ~= LocalPlayer then  -- Skip local player since we already checked
+                    local otherChar = player.Character or player.CharacterAdded:Wait()
+                    local tool = player.Backpack:FindFirstChild("Magnifying Glass") or otherChar:FindFirstChild("Magnifying Glass")
+                    if tool then
+                        foundTool = tool
+                        break
+                    end
+                end
+            end
+        end
+
+        if not foundTool then
             Notification:CreateNotification("You must obtain a Magnifying Glass first! 🔎")
             return false
         end
