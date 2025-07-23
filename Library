@@ -892,6 +892,27 @@ function InsideTab:CreateDDO(text, list, callback)
         end
         updateSelectedDisplay()
     end
+
+    function dropdownFunctions:SetOptions(newOptions)
+        -- Clear existing options
+        for _, child in ipairs(OptionsScrollingFrame:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+        
+        -- Reset selection
+        selected = nil
+        updateSelectedDisplay()
+    
+        -- Add new options
+        for i, v in pairs(newOptions) do
+            local option = createDropdownOption(OptionsScrollingFrame, v, theme, (selected == v), function()
+                -- Selection handler
+            end)
+            BodyYSize = BodyYSize + itemHeight + UIListLayout.Padding.Offset
+        end
+    end
     
     function dropdownFunctions:Destroy()
         if Container and Container.Parent then
