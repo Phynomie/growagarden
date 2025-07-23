@@ -254,6 +254,154 @@ tab:CreateToggle("Anti Collect Fruits", function(a)
     end
 end)
 
+tab:CreateToggle("Weight Calculator", function(enabled)
+    if enabled then
+        -- Check if we're in a proper execution context
+        if not game:IsLoaded() then
+            warn("Game must be fully loaded to use Weight Calculator")
+            return false
+        end
+
+        -- Get services in a protected call
+        local success, services = pcall(function()
+            return {
+                ReplicatedStorage = game:GetService("ReplicatedStorage"),
+                RunService = game:GetService("RunService"),
+                UserInputService = game:GetService("UserInputService"),
+                Players = game:GetService("Players")
+            }
+        end)
+
+        if not success then
+            warn("Failed to get required services: "..tostring(services))
+            return false
+        end
+
+        local Notification
+        local success, err = pcall(function()
+            Notification = require(services.ReplicatedStorage.Modules.Notification)
+        end)
+        if not success then
+            warn("Failed to load Notification module: "..tostring(err))
+            return false
+        end
+
+        -- First try to find and duplicate a Magnifying Glass from any player
+        local foundTool
+        for _, player in ipairs(services.Players:GetPlayers()) do
+            local char = player.Character or player.CharacterAdded:Wait()
+            local tool = player.Backpack:FindFirstChild("Magnifying Glass") or char:FindFirstChild("Magnifying Glass")
+            if tool then
+                foundTool = tool
+                break
+            end
+        end
+
+        if not foundTool then
+            Notification:CreateNotification("You must obtain a Magnifying Glass first! 🔎")
+            return false
+        end
+
+        -- Create a proper clone with all attributes
+        local clone = foundTool:Clone()
+        clone:SetAttribute("Uses", 9999)
+        clone.Name = "Weight Calculator x9999"
+        clone.Parent = LocalPlayer.Backpack
+        Notification:CreateNotification("Weight Calculator obtained! 🔎")
+
+        -- Set up click detection
+        local clickConnection
+        local lastClickTime = 0
+
+        local function onMouseClick(input, gameProcessed)
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1 
+               or gameProcessed 
+               or tick() - lastClickTime < 0.4 then
+                return
+            end
+            lastClickTime = tick()
+
+            -- Check if holding Magnifying Glass
+            local character = LocalPlayer.Character
+            if not character then return end
+
+            local tool = character:FindFirstChildOfClass("Tool")
+            if not tool or not tool.Name:find("Magnifying Glass") then 
+                Notification:CreateNotification("Equip the Magnifying Glass first! 🔎")
+                return
+            end
+
+            -- Standard raycasting method with error handling
+            local raycastResult
+            local success, err = pcall(function()
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterDescendantsInstances = {workspace.Farm}
+                raycastParams.FilterType = Enum.RaycastFilterType.Include
+                
+                local camera = workspace.CurrentCamera
+                local mousePos = services.UserInputService:GetMouseLocation()
+                local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+                
+                raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+            end)
+
+            if not success or not raycastResult then
+                warn("Raycast failed: "..tostring(err))
+                return
+            end
+
+            -- Find the harvestable plant
+            local hitModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
+            if not hitModel or not hitModel:HasTag("Harvestable") then
+                Notification:CreateNotification("Not a valid plant! 🔎")
+                return
+            end
+
+            -- Check for weight value
+            local weightValue = hitModel:FindFirstChild("Weight")
+            if weightValue and weightValue:IsA("NumberValue") then
+                Notification:CreateNotification("Weight: "..tostring(weightValue.Value).." kg ⚖️")
+            else
+                Notification:CreateNotification("No weight data found! ⚖️")
+            end
+
+            -- Add highlight effect with error handling
+            pcall(function()
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "WeightHighlight"
+                highlight.FillColor = Color3.new(1, 0.7, 0.2)
+                highlight.FillTransparency = 0.7
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.OutlineTransparency = 0
+                highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+                highlight.Adornee = hitModel
+                highlight.Parent = workspace
+
+                task.delay(2, function()
+                    pcall(function() highlight:Destroy() end)
+                end)
+            end)
+        end
+
+        -- Store connection for cleanup
+        clickConnection = services.UserInputService.InputBegan:Connect(onMouseClick)
+        cleanupInstances.connections["WeightCalculator"] = clickConnection
+
+        Notification:CreateNotification("Weight Calculator active! Click plants to weigh them ⚖️")
+    else
+        -- Clean up when toggled off
+        if cleanupInstances.connections["WeightCalculator"] then
+            pcall(function()
+                cleanupInstances.connections["WeightCalculator"]:Disconnect()
+            end)
+            cleanupInstances.connections["WeightCalculator"] = nil
+        end
+        if Notification then
+            Notification:CreateNotification("Weight Calculator disabled ⚖️")
+        end
+    end
+end)
+
 tab:CreateButton("Anti Afk", function()
     if enabled then return end
     sendNotification("✅ Anti-AFK", "Anti AFK has been enabled.", 5)
