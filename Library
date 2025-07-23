@@ -904,14 +904,84 @@ function InsideTab:CreateDDO(text, list, callback)
         -- Reset selection
         selected = nil
         updateSelectedDisplay()
+        list = newOptions
     
         -- Add new options
         for i, v in pairs(newOptions) do
-            local option = createDropdownOption(OptionsScrollingFrame, v, theme, (selected == v), function()
-                -- Selection handler
-            end)
             BodyYSize = BodyYSize + itemHeight + UIListLayout.Padding.Offset
+            local OptionButton = Instance.new("TextButton")
+            local Checkbox = Instance.new("Frame")
+            local Checkmark = Instance.new("Frame")
+            
+            OptionButton.Name = "Option_"..v
+            OptionButton.Parent = OptionsScrollingFrame
+            OptionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            OptionButton.BackgroundTransparency = 1.000
+            OptionButton.Size = UDim2.new(0, 180, 0, itemHeight)
+            OptionButton.Font = Enum.Font.SourceSansSemibold
+            OptionButton.Text = "   " .. v
+            OptionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            OptionButton.TextSize = 14.000
+            OptionButton.TextXAlignment = Enum.TextXAlignment.Left
+            OptionButton.ZIndex = 4
+            
+            -- Highlight selected option
+            local Highlight = Instance.new("Frame")
+            Highlight.Name = "Highlight"
+            Highlight.Parent = OptionButton
+            Highlight.BackgroundColor3 = theme3
+            Highlight.BackgroundTransparency = 0.8
+            Highlight.BorderSizePixel = 0
+            Highlight.Size = UDim2.new(1, 0, 1, 0)
+            Highlight.Visible = (selected == v)
+            Highlight.ZIndex = 3
+            
+            -- Checkbox
+            Checkbox.Name = "Checkbox"
+            Checkbox.Parent = OptionButton
+            Checkbox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Checkbox.BackgroundTransparency = 1.000
+            Checkbox.Position = UDim2.new(0, 5, 0.5, -7)
+            Checkbox.Size = UDim2.new(0, 14, 0, 14)
+            Checkbox.ZIndex = 5
+            
+            Checkmark.Name = "Checkmark"
+            Checkmark.Parent = Checkbox
+            Checkmark.AnchorPoint = Vector2.new(0.5, 0.5)
+            Checkmark.BackgroundColor3 = theme3
+            Checkmark.BorderSizePixel = 0
+            Checkmark.Position = UDim2.new(0.5, 0, 0.5, 0)
+            Checkmark.Size = UDim2.new(0, 10, 0, 10)
+            Checkmark.Visible = (selected == v)
+            
+            OptionButton.MouseButton1Click:Connect(function()
+                play("rbxassetid://178104975")
+                
+                -- Update selection
+                selected = v
+                
+                -- Update all options' visual states
+                for _, option in pairs(OptionsScrollingFrame:GetChildren()) do
+                    if option:IsA("TextButton") then
+                        local highlight = option:FindFirstChild("Highlight")
+                        local checkmark = option:FindFirstChild("Checkbox"):FindFirstChild("Checkmark")
+                        highlight.Visible = (option.Text:match("%s*(.+)") == v)
+                        checkmark.Visible = (option.Text:match("%s*(.+)") == v)
+                    end
+                end
+                
+                updateSelectedDisplay()
+                DropdownContainer.Visible = false
+                IsDropped = false
+                TextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            end)
         end
+        
+        -- Update scrolling frame canvas size
+        OptionsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, BodyYSize)
+        
+        -- Set container height based on number of options (capped at maxHeight)
+        DropdownContainer.Size = UDim2.new(0, 180, 0, math.min(maxHeight, BodyYSize))
     end
     
     function dropdownFunctions:Destroy()
