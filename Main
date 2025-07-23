@@ -866,6 +866,18 @@ end)
 
 tab:Show()
 
+local Path = LocalPlayer
+local hook;
+hook = hookmetamethod(game, "__namecall", newcclosure(function...)
+    local Args = {...}
+    local Self = Args[1]
+    local method = getnamecallmethod()
+    if not checkcaller() and Self == Path and method == "Kick" then
+        return
+    end
+    return hook(...)
+end)
+
 library.OnDestroy = function()
     print("Destroying all created instances...")
     
