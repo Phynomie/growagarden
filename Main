@@ -358,7 +358,7 @@ cleanupInstances.countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("Pl
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.095, 0, 0.59, 0)
+frame.Position = UDim2.new(0.085, 0, 0.7, 0)
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BackgroundTransparency = 0.5
@@ -448,7 +448,13 @@ local autoPickupActive = false
 local IGNORED_ATTRIBUTES = {
     "DoneGrowTime",
     "GrowRateMulti",
-    "MaxAge"
+    "MaxAge",
+    "FruitSpawnIndex",
+    "FruitVersion",
+    "WeightMulti",
+    "SetVariant",
+    "IsOutlined",
+    "Inspected"
 }
 
 -- Function to scan farm for all available mutations (excluding ignored ones)
