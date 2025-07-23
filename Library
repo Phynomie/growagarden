@@ -1332,27 +1332,32 @@ return switchactions
 end
 
 function InsideTab:CreateCheckbox(text,callback)
+    local Container = Instance.new("Frame")
+    Container.BackgroundTransparency = 1
+    Container.Size = UDim2.new(1, 0, 0, 23)
+    Container.Parent = Frame
+    
     local Cheat = Instance.new("TextLabel")
     local MainCheatFrame = Instance.new("ImageLabel")
     local InsideCheatFrame = Instance.new("ImageLabel")
     local CheatButton = Instance.new("TextButton")
     
-    
     Cheat.Name = "Cheat"
-    Cheat.Parent = Frame
+    Cheat.Parent = Container
     Cheat.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Cheat.BackgroundTransparency = 1.000
-    Cheat.Size = UDim2.new(0, 200, 0, 50)
-    Cheat.Text = text
+    Cheat.Size = UDim2.new(0, 200, 0, 23)
+    Cheat.Text = "   "..text -- Added spaces before text
     Cheat.Font = Enum.Font.SourceSansSemibold
     Cheat.TextColor3 = Color3.fromRGB(255, 255, 255)
     Cheat.TextSize = 14.000
+    Cheat.TextXAlignment = Enum.TextXAlignment.Left
     
     MainCheatFrame.Name = "MainCheatFrame"
     MainCheatFrame.Parent = Cheat
     MainCheatFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     MainCheatFrame.BackgroundTransparency = 1.000
-    MainCheatFrame.Position = UDim2.new(1, 0, 0.129999995, 0)
+    MainCheatFrame.Position = UDim2.new(0, 0, 0.1, 0) -- Adjusted position
     MainCheatFrame.Size = UDim2.new(0, 18, 0, 18)
     MainCheatFrame.Image = "rbxassetid://3570695787"
     MainCheatFrame.ImageColor3 = theme2
@@ -1384,18 +1389,37 @@ function InsideTab:CreateCheckbox(text,callback)
     CheatButton.ZIndex = 2
 
     local enabledcheat = false
-    function triggercheat()
-    enabledcheat = not enabledcheat
-    pcall(callback,enabledcheat)
-    play("rbxassetid://6309164078")
-    if enabledcheat then
-        InsideCheatFrame.ImageColor3 = theme3
-    else
-        InsideCheatFrame.ImageColor3 = theme2
-    end
+    local function triggercheat()
+        enabledcheat = not enabledcheat
+        pcall(callback, enabledcheat)
+        play("rbxassetid://6309164078")
+        if enabledcheat then
+            InsideCheatFrame.ImageColor3 = theme3
+        else
+            InsideCheatFrame.ImageColor3 = theme2
+        end
     end
     
     CheatButton.MouseButton1Click:Connect(triggercheat)
+    
+    -- Add return functions similar to CreateToggle
+    local checkboxFunctions = {}
+    
+    function checkboxFunctions:Set(state)
+        enabledcheat = state
+        if enabledcheat then
+            InsideCheatFrame.ImageColor3 = theme3
+        else
+            InsideCheatFrame.ImageColor3 = theme2
+        end
+        pcall(callback, enabledcheat)
+    end
+    
+    function checkboxFunctions:Get()
+        return enabledcheat
+    end
+    
+    return checkboxFunctions
 end
 
 function InsideTab:CreateButton(text, callback)
