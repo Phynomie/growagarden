@@ -763,20 +763,17 @@ local function collectFruitsWithMutation()
         local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
         if plantsPhysical then
             for _, plant in pairs(plantsPhysical:GetChildren()) do
-                -- Check Fruits folder first
-                local fruitsFolder = plant:FindFirstChild("Fruits")
-                local fruitsToCheck = fruitsFolder and fruitsFolder:GetChildren() or {plant}
-                
-                for _, fruit in pairs(fruitsToCheck) do
-                    if fruit:GetAttribute(selectedMutation) then
-                        -- Find the proximity prompt
-                        local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                -- Recursive function to scan all fruit parts
+                local function scanFruitModel(model)
+                    if model:GetAttribute(selectedMutation) then
+                        -- Find the proximity prompt at any level
+                        local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
                         if not prompt then
-                            -- Sometimes prompt is under a numbered child
-                            for _, child in pairs(fruit:GetChildren()) do
-                                if child:IsA("Model") or child:IsA("Part") then
-                                    prompt = child:FindFirstChildWhichIsA("ProximityPrompt")
-                                    if prompt then break end
+                            -- Deep search for prompts in all descendants
+                            for _, descendant in pairs(model:GetDescendants()) do
+                                if descendant:IsA("ProximityPrompt") then
+                                    prompt = descendant
+                                    break
                                 end
                             end
                         end
@@ -790,7 +787,7 @@ local function collectFruitsWithMutation()
                                 local originalPos = hrp.CFrame
                                 
                                 -- Teleport close to fruit
-                                hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2)
+                                hrp.CFrame = model:GetPivot() * CFrame.new(0, 0, -2)
                                 
                                 -- Fire prompt
                                 task.wait(0.2)
@@ -803,10 +800,27 @@ local function collectFruitsWithMutation()
                         end
                     end
                 end
+
+                -- Check both Fruits folder and direct children
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                if fruitsFolder then
+                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                        -- Scan the fruit and all its nested children
+                        scanFruitModel(fruit)
+                        for _, subPart in pairs(fruit:GetDescendants()) do
+                            if subPart:IsA("Model") or subPart:IsA("BasePart") then
+                                scanFruitModel(subPart)
+                            end
+                        end
+                    end
+                else
+                    -- Check the plant itself if no Fruits folder
+                    scanFruitModel(plant)
+                end
             end
         end
         
-        wait(0.5) -- Delay between scans
+        task.wait(0.5) -- Delay between scans
     end
 end
 
