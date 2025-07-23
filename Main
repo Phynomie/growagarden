@@ -792,12 +792,11 @@ tab3:CreateButton("Send Trade", function()
     if character then
         for _, tool in pairs(character:GetChildren()) do
             if tool:IsA("Tool") then
-                -- Check for pet (has Age in name)
-                if string.find(tool.Name, "%[Age %d+%]") then
-                    heldObject = tool
-                    break
-                -- Check for item (has KG in name)
-                elseif string.find(string.lower(tool.Name), "%[%d+%.?%d*kg%]") then
+                -- Check for pet (either has Age or KG in name)
+                if string.find(tool.Name, "%[Age %d+%]") or  -- Pattern for [Age X]
+                   string.find(tool.Name, "%[%d+%.?%d*kg%]", 1, true) or  -- Pattern for [Xkg] (case insensitive)
+                   string.find(tool.Name, "%[%d+%.?%d* kg%]", 1, true) then  -- Pattern for [X kg] (case insensitive)
+                
                     heldObject = tool
                     break
                 end
