@@ -258,6 +258,35 @@ end)
 -- Weight Calculator Toggle
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
+
+        if not game:IsLoaded() then
+            warn("Game must be fully loaded to use Weight Calculator")
+            return false
+        end
+
+        local success, services = pcall(function()
+            return {
+                ReplicatedStorage = game:GetService("ReplicatedStorage"),
+                RunService = game:GetService("RunService"),
+                UserInputService = game:GetService("UserInputService"),
+                Players = game:GetService("Players")
+            }
+        end)
+
+        if not success then
+            warn("Failed to load Notification module: "..tostring(err))
+            return false
+        end
+
+        local Notification
+        local success, err = pcall(function()
+            Notification = require(services.ReplicatedStorage.Modules.Notification)
+        end)
+        if not success then
+            warn("Failed to load Notification module: "..tostring(err))
+            return false
+        end
+
         -- First check if we already have a Weight Calculator
         local existingTool = LocalPlayer.Backpack:FindFirstChild("Weight Calculator") or 
                            (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator"))
@@ -335,7 +364,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
 
             local tool = character:FindFirstChild("Weight Calculator")
             if not tool then 
-                sendNotification("Warning", "You need to equip the Weight Calculator first!", 3)
+                Notification:CreateNotification("You need to equip the Weight Calculator first 🔎")
                 return
             end
 
@@ -358,9 +387,9 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             -- Check for weight value
             local weight = hitModel:FindFirstChild("Weight")
             if weight and weight:IsA("NumberValue") then
-                sendNotification("Weight Calculator", "Weight: "..tostring(weight.Value), 3)
+                Notification:CreateNotification("Weight: "..tostring(weight.Value).." kg ⚖️")
             else
-                sendNotification("Error", "This fruit has no Weight value", 3)
+                Notification:CreateNotification("No weight data found! ⚖️")
             end
 
             -- Highlight the plant
