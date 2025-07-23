@@ -352,9 +352,9 @@ local function stopBuyLoop()
     if frame then frame.Visible = false end
 end
 
-cleanupInstances.countdownGui = Instance.new("ScreenGui")
-cleanupInstances.countdownGui.Name = "AutoBuyCountdown"
-cleanupInstances.countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+local countdownGui = Instance.new("ScreenGui")
+countdownGui.Name = "AutoBuyCountdown"
+countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 50)
