@@ -876,7 +876,7 @@ table.insert(cleanupInstances.connections, playerAddedConn)
 table.insert(cleanupInstances.connections, playerRemovingConn)
 
 -- Modified Send Trade button
-tab3:CreateButton("Send Trade", function()
+tab3:CreateButton("Send to Player", function()
     local self = game:GetService("Players").LocalPlayer
     if not selectedPlayer then 
         sendNotification("Trade Error", "Select a player first!", 3)
