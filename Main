@@ -254,73 +254,68 @@ tab:CreateToggle("Anti Collect Fruits", function(a)
     end
 end)
 
+-- Weight Calculator Toggle
+-- Weight Calculator Toggle
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
-        -- Check if we're in a proper execution context
-        if not game:IsLoaded() then
-            warn("Game must be fully loaded to use Weight Calculator")
-            return false
-        end
-
-        -- Get services in a protected call
-        local success, services = pcall(function()
-            return {
-                ReplicatedStorage = game:GetService("ReplicatedStorage"),
-                RunService = game:GetService("RunService"),
-                UserInputService = game:GetService("UserInputService"),
-                Players = game:GetService("Players")
-            }
-        end)
-
-        if not success then
-            warn("Failed to get required services: "..tostring(services))
-            return false
-        end
-
-        local Notification
-        local success, err = pcall(function()
-            Notification = require(services.ReplicatedStorage.Modules.Notification)
-        end)
-        if not success then
-            warn("Failed to load Notification module: "..tostring(err))
-            return false
-        end
-
-        -- First try to find and duplicate a Magnifying Glass from any player
-        local foundTool
-        for _, player in ipairs(services.Players:GetPlayers()) do
-            local char = player.Character or player.CharacterAdded:Wait()
-            local tool = player.Backpack:FindFirstChild("Magnifying Glass") or char:FindFirstChild("Magnifying Glass")
-            if tool then
-                foundTool = tool
-                break
-            end
-        end
-
-        if not foundTool then
-            for _, player in ipairs(services.Players:GetPlayers()) do
-                if player ~= LocalPlayer then  -- Skip local player since we already checked
-                    local otherChar = player.Character or player.CharacterAdded:Wait()
-                    local tool = player.Backpack:FindFirstChild("Magnifying Glass") or otherChar:FindFirstChild("Magnifying Glass")
+        -- First check if we already have a Weight Calculator
+        local existingTool = LocalPlayer.Backpack:FindFirstChild("Weight Calculator") or 
+                           (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator"))
+        
+        if existingTool then
+            -- Ensure it has the right attributes
+            existingTool:SetAttribute("Uses", 999999)
+            sendNotification("Info", "Using existing Weight Calculator", 3)
+        else
+            -- Try to find and duplicate a Magnifying Glass
+            local foundTool = nil
+            for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+                if player ~= LocalPlayer then
+                    local tool = player.Backpack:FindFirstChild("Magnifying Glass") or player.Character:FindFirstChild("Magnifying Glass")
                     if tool then
                         foundTool = tool
                         break
                     end
                 end
             end
-        end
 
-        if not foundTool then
-            Notification:CreateNotification("You must obtain a Magnifying Glass first! 🔎")
-            return false
-        end
+            if not foundTool then
+                sendNotification("Error", "No Magnifying Glass found on any player! You must obtain one first.", 5)
+                return false
+            end
 
-        -- Create a proper clone with all attributes
-        local clone = foundTool:Clone()
-        clone:SetAttribute("Uses", 9999)
-        clone.Name = "Weight Calculator x9999"
-        clone.Parent = LocalPlayer.Backpack
-        Notification:CreateNotification("Weight Calculator obtained! 🔎")
+            -- Create a proper clone
+            local clone = foundTool:Clone()
+            clone:SetAttribute("Uses", 999999)
+            clone.Parent = LocalPlayer.Backpack
+            
+            -- Wait for the clone to appear in backpack
+            wait(0.3)
+            
+            -- Find all Magnifying Glasses in backpack
+            local glasses = {}
+            for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+                if tool:IsA("Tool") and tool.Name:match("^Magnifying Glass") then
+                    table.insert(glasses, tool)
+                end
+            end
+
+            -- Rename logic:
+            if #glasses >= 2 then
+                -- If 2+ glasses found, rename the second one
+                glasses[2].Name = "Weight Calculator"
+                existingTool = glasses[2]
+                sendNotification("Success", "Renamed "..glasses[2].Name.." to Weight Calculator", 3)
+            elseif #glasses == 1 then
+                -- If only 1 found, rename it
+                glasses[1].Name = "Weight Calculator"
+                existingTool = glasses[1]
+                sendNotification("Success", "Created Weight Calculator from "..glasses[1].Name, 3)
+            else
+                sendNotification("Error", "No Magnifying Glass tools found to rename", 5)
+                return false
+            end
+        end
 
         -- Set up click detection
         local clickConnection
@@ -334,84 +329,77 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             end
             lastClickTime = tick()
 
-            -- Check if holding Magnifying Glass
+            -- Check if holding Weight Calculator
             local character = LocalPlayer.Character
             if not character then return end
 
-            local tool = character:FindFirstChildOfClass("Tool")
-            if not tool or not tool.Name:find("Magnifying Glass") then 
-                Notification:CreateNotification("Equip the Magnifying Glass first! 🔎")
+            local tool = character:FindFirstChild("Weight Calculator")
+            if not tool then 
+                sendNotification("Warning", "You need to equip the Weight Calculator first!", 3)
                 return
             end
 
-            -- Standard raycasting method with error handling
-            local raycastResult
-            local success, err = pcall(function()
-                local raycastParams = RaycastParams.new()
-                raycastParams.FilterDescendantsInstances = {workspace.Farm}
-                raycastParams.FilterType = Enum.RaycastFilterType.Include
-                
-                local camera = workspace.CurrentCamera
-                local mousePos = services.UserInputService:GetMouseLocation()
-                local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-                
-                raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
-            end)
+            -- Perform raycast
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {workspace.Farm}
+            raycastParams.FilterType = Enum.RaycastFilterType.Include
 
-            if not success or not raycastResult then
-                warn("Raycast failed: "..tostring(err))
-                return
-            end
+            local mousePos = UserInputService:GetMouseLocation()
+            local camera = workspace.CurrentCamera
+            local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+
+            local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+            if not raycastResult then return end
 
             -- Find the harvestable plant
             local hitModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
-            if not hitModel or not hitModel:HasTag("Harvestable") then
-                Notification:CreateNotification("Not a valid plant! 🔎")
-                return
-            end
+            if not hitModel or not hitModel:HasTag("Harvestable") then return end
 
             -- Check for weight value
-            local weightValue = hitModel:FindFirstChild("Weight")
-            if weightValue and weightValue:IsA("NumberValue") then
-                Notification:CreateNotification("Weight: "..tostring(weightValue.Value).." kg ⚖️")
+            local weight = hitModel:FindFirstChild("Weight")
+            if weight and weight:IsA("NumberValue") then
+                sendNotification("Weight Calculator", "Weight: "..tostring(weight.Value), 3)
             else
-                Notification:CreateNotification("No weight data found! ⚖️")
+                sendNotification("Error", "This fruit has no Weight value", 3)
             end
 
-            -- Add highlight effect with error handling
-            pcall(function()
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "WeightHighlight"
-                highlight.FillColor = Color3.new(1, 0.7, 0.2)
-                highlight.FillTransparency = 0.7
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.OutlineTransparency = 0
-                highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-                highlight.Adornee = hitModel
-                highlight.Parent = workspace
+            -- Highlight the plant
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "WeightHighlight"
+            highlight.FillColor = Color3.new(1, 0.5, 0) -- Orange color
+            highlight.FillTransparency = 0.7
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.OutlineTransparency = 0
+            highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+            highlight.Adornee = hitModel
+            highlight.Parent = workspace
 
-                task.delay(2, function()
-                    pcall(function() highlight:Destroy() end)
-                end)
+            task.delay(2, function()
+                highlight:Destroy()
             end)
         end
 
         -- Store connection for cleanup
-        clickConnection = services.UserInputService.InputBegan:Connect(onMouseClick)
+        clickConnection = UserInputService.InputBegan:Connect(onMouseClick)
         cleanupInstances.connections["WeightCalculator"] = clickConnection
 
-        Notification:CreateNotification("Weight Calculator active! Click plants to weigh them ⚖️")
+        sendNotification("Enabled", "Weight Calculator active - click fruits while holding the tool", 5)
     else
         -- Clean up when toggled off
         if cleanupInstances.connections["WeightCalculator"] then
-            pcall(function()
-                cleanupInstances.connections["WeightCalculator"]:Disconnect()
-            end)
+            cleanupInstances.connections["WeightCalculator"]:Disconnect()
             cleanupInstances.connections["WeightCalculator"] = nil
         end
-        if Notification then
-            Notification:CreateNotification("Weight Calculator disabled ⚖️")
+        
+        -- Remove Weight Calculator tool when disabled
+        if LocalPlayer.Backpack:FindFirstChild("Weight Calculator") then
+            LocalPlayer.Backpack["Weight Calculator"]:Destroy()
         end
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator") then
+            LocalPlayer.Character["Weight Calculator"]:Destroy()
+        end
+        
+        sendNotification("Disabled", "Weight Calculator turned off and removed", 3)
     end
 end)
 
