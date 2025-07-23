@@ -831,25 +831,25 @@ function InsideTab:CreateDDO(text, list, callback)
     clickConn = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
         if IsDropped and input.UserInputType == Enum.UserInputType.MouseButton1 then
             local mouse = game:GetService("Players").LocalPlayer:GetMouse()
-            local mousePos = mouse.X, mouse.Y
+            local mousePos = Vector2.new(mouse.X, mouse.Y)  -- Fixed: Create Vector2 instead of tuple
         
             local containerPos = DropdownContainer.AbsolutePosition
             local containerSize = DropdownContainer.AbsoluteSize
             local buttonPos = TextButton.AbsolutePosition
             local buttonSize = TextButton.AbsoluteSize
-        
+    
             local isOverContainer = 
                 mousePos.X >= containerPos.X and 
                 mousePos.X <= containerPos.X + containerSize.X and
                 mousePos.Y >= containerPos.Y and 
                 mousePos.Y <= containerPos.Y + containerSize.Y
-            
+        
             local isOverButton = 
                 mousePos.X >= buttonPos.X and 
                 mousePos.X <= buttonPos.X + buttonSize.X and
                 mousePos.Y >= buttonPos.Y and 
                 mousePos.Y <= buttonPos.Y + buttonSize.Y
-            
+        
             if not isOverContainer and not isOverButton then
                 IsDropped = false
                 TextButton.TextColor3 = Color3.fromRGB(255, 255, 255)
