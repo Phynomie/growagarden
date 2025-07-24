@@ -312,7 +312,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                            (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator"))
         
         if existingTool then
-            sendNotification("Info", "Using existing Weight Calculator", 3)
+            createColoredNotification("Using existing Weight Calculator", "Rarity: Common")
         else
             -- Create a new tool from scratch
             local weightTool = Instance.new("Tool")
@@ -324,114 +324,164 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             -- Add tooltip text
             local toolTip = Instance.new("StringValue")
             toolTip.Name = "ToolTip"
-            toolTip.Value = "Click on fruits to check their weight"
+            toolTip.Value = "Touch fruits to check their weight"
             toolTip.Parent = weightTool
             
             weightTool.Parent = LocalPlayer.Backpack
-            sendNotification("Success", "Created Weight Calculator", 3)
+            createColoredNotification("Created Weight Calculator", "Rarity: Common")
         end
 
-        -- Set up click detection
-        local clickConnection
-        local lastClickTime = 0
-
-        local function onMouseClick(input, gameProcessed)
-            if input.UserInputType ~= Enum.UserInputType.MouseButton1 
-               or gameProcessed 
-               or tick() - lastClickTime < 0.4 then
-                return
-            end
-            lastClickTime = tick()
-
-            -- Check if holding Weight Calculator
-            local character = LocalPlayer.Character
-            if not character then return end
-
-            local tool = character:FindFirstChild("Weight Calculator")
-            if not tool then 
-                sendNotification("Info", "Equip the Weight Calculator first", 3)
-                return
-            end
-
-            -- Perform raycast
-            local raycastParams = RaycastParams.new()
-            raycastParams.FilterDescendantsInstances = {workspace.Farm}
-            raycastParams.FilterType = Enum.RaycastFilterType.Include
-
-            local mousePos = UserInputService:GetMouseLocation()
-            local camera = workspace.CurrentCamera
-            local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-
-            local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
-            if not raycastResult then return end
-
-            -- Find the harvestable plant
-            local hitModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
-            if not hitModel or not hitModel:HasTag("Harvestable") then return end
-
-            -- Check for weight value
-            local weight = hitModel:FindFirstChild("Weight")
-            if weight and weight:IsA("NumberValue") then
-                -- Create custom notification
-                local notification = Instance.new("BillboardGui")
-                notification.Name = "WeightNotification"
-                notification.Adornee = hitModel.PrimaryPart or hitModel:FindFirstChildWhichIsA("BasePart")
-                notification.Size = UDim2.new(0, 200, 0, 50)
-                notification.StudsOffset = Vector3.new(0, 3, 0)
-                notification.AlwaysOnTop = true
-                notification.LightInfluence = 1
-                notification.MaxDistance = 50
+        -- Mobile-friendly touch detection
+        local function onToolEquipped(tool)
+            if tool.Name ~= "Weight Calculator" then return end
+            
+            -- For mobile devices, we'll use touch events instead of mouse clicks
+            local touchConnection
+            local lastTouchTime = 0
+            
+            local function onTouchBegan(touch, gameProcessed)
+                if gameProcessed or tick() - lastTouchTime < 0.4 then return end
+                lastTouchTime = tick()
                 
-                local frame = Instance.new("Frame")
-                frame.Size = UDim2.new(1, 0, 1, 0)
-                frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                frame.BackgroundTransparency = 0.5
-                frame.BorderSizePixel = 0
-                frame.Parent = notification
+                -- Perform raycast from touch position
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterDescendantsInstances = {workspace.Farm}
+                raycastParams.FilterType = Enum.RaycastFilterType.Include
                 
-                local textLabel = Instance.new("TextLabel")
-                textLabel.Size = UDim2.new(1, 0, 1, 0)
-                textLabel.Text = "Weight: "..tostring(weight.Value).." kg"
-                textLabel.TextColor3 = Color3.new(1, 1, 1)
-                textLabel.Font = Enum.Font.GothamBold
-                textLabel.TextSize = 14
-                textLabel.BackgroundTransparency = 1
-                textLabel.Parent = frame
+                local camera = workspace.CurrentCamera
+                local ray = camera:ViewportPointToRay(touch.Position.X, touch.Position.Y)
                 
-                notification.Parent = hitModel
+                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+                if not raycastResult then return end
                 
-                -- Remove after delay
-                task.delay(3, function()
-                    notification:Destroy()
+                -- Find the harvestable plant
+                local hitModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
+                if not hitModel or not hitModel:HasTag("Harvestable") then return end
+                
+                -- Check for weight value
+                local weight = hitModel:FindFirstChild("Weight")
+                if weight and weight:IsA("NumberValue") then
+                    -- Create notification with weight
+                    local rarity = hitModel:FindFirstChild("Rarity") and hitModel.Rarity.Value or "Common"
+                    createColoredNotification(string.format("%s - Weight: %.2f kg", hitModel.Name, weight.Value), "Rarity: "..rarity)
+                end
+                
+                -- Highlight the plant briefly
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "WeightHighlight"
+                highlight.FillColor = Color3.new(1, 0.5, 0) -- Orange color
+                highlight.FillTransparency = 0.7
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.OutlineTransparency = 0
+                highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+                highlight.Adornee = hitModel
+                highlight.Parent = workspace
+
+                task.delay(2, function()
+                    highlight:Destroy()
                 end)
             end
+            
+            -- Connect touch events for mobile
+            touchConnection = UserInputService.TouchStarted:Connect(onTouchBegan)
+            cleanupInstances.connections["WeightCalculatorTouch"] = touchConnection
+            
+            -- For non-mobile, keep the click detection as fallback
+            local clickConnection
+            local lastClickTime = 0
+            
+            local function onMouseClick(input, gameProcessed)
+                if input.UserInputType ~= Enum.UserInputType.MouseButton1 
+                   or gameProcessed 
+                   or tick() - lastClickTime < 0.4 then
+                    return
+                end
+                lastClickTime = tick()
+                
+                -- Perform raycast from mouse position
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterDescendantsInstances = {workspace.Farm}
+                raycastParams.FilterType = Enum.RaycastFilterType.Include
+                
+                local mousePos = UserInputService:GetMouseLocation()
+                local camera = workspace.CurrentCamera
+                local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+                
+                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+                if not raycastResult then return end
+                
+                -- Find the harvestable plant
+                local hitModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
+                if not hitModel or not hitModel:HasTag("Harvestable") then return end
+                
+                -- Check for weight value
+                local weight = hitModel:FindFirstChild("Weight")
+                if weight and weight:IsA("NumberValue") then
+                    -- Create notification with weight
+                    local rarity = hitModel:FindFirstChild("Rarity") and hitModel.Rarity.Value or "Common"
+                    createColoredNotification(string.format("%s - Weight: %.2f kg", hitModel.Name, weight.Value), "Rarity: "..rarity)
+                end
+                
+                -- Highlight the plant briefly
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "WeightHighlight"
+                highlight.FillColor = Color3.new(1, 0.5, 0) -- Orange color
+                highlight.FillTransparency = 0.7
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.OutlineTransparency = 0
+                highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+                highlight.Adornee = hitModel
+                highlight.Parent = workspace
 
-            -- Highlight the plant
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "WeightHighlight"
-            highlight.FillColor = Color3.new(1, 0.5, 0) -- Orange color
-            highlight.FillTransparency = 0.7
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.OutlineTransparency = 0
-            highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-            highlight.Adornee = hitModel
-            highlight.Parent = workspace
-
-            task.delay(2, function()
-                highlight:Destroy()
+                task.delay(2, function()
+                    highlight:Destroy()
+                end)
+            end
+            
+            -- Connect click events for non-mobile
+            clickConnection = UserInputService.InputBegan:Connect(onMouseClick)
+            cleanupInstances.connections["WeightCalculatorClick"] = clickConnection
+            
+            -- Cleanup when tool is unequipped
+            local unequippedConnection
+            unequippedConnection = tool.Unequipped:Connect(function()
+                if touchConnection then touchConnection:Disconnect() end
+                if clickConnection then clickConnection:Disconnect() end
+                if unequippedConnection then unequippedConnection:Disconnect() end
             end)
+            
+            cleanupInstances.connections["WeightCalculatorUnequip"] = unequippedConnection
         end
-
-        -- Store connection for cleanup
-        clickConnection = UserInputService.InputBegan:Connect(onMouseClick)
-        cleanupInstances.connections["WeightCalculator"] = clickConnection
-
-        sendNotification("Enabled", "Weight Calculator active - click fruits while holding the tool", 5)
+        
+        -- Connect to equipped event
+        local equippedConnection
+        equippedConnection = LocalPlayer.CharacterAdded:Connect(function(character)
+            local humanoid = character:WaitForChild("Humanoid")
+            humanoid:GetPropertyChangedSignal("EquippedTool"):Connect(function()
+                if humanoid.EquippedTool then
+                    onToolEquipped(humanoid.EquippedTool)
+                end
+            end)
+        end)
+        
+        -- If already has character, set up immediately
+        if LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.EquippedTool then
+                onToolEquipped(humanoid.EquippedTool)
+            end
+        end
+        
+        cleanupInstances.connections["WeightCalculatorEquipped"] = equippedConnection
+        
+        createColoredNotification("Weight Calculator active - touch/click fruits while holding the tool", "Rarity: Common")
     else
         -- Clean up when toggled off
-        if cleanupInstances.connections["WeightCalculator"] then
-            cleanupInstances.connections["WeightCalculator"]:Disconnect()
-            cleanupInstances.connections["WeightCalculator"] = nil
+        for name, connection in pairs(cleanupInstances.connections) do
+            if name:find("WeightCalculator") then
+                connection:Disconnect()
+                cleanupInstances.connections[name] = nil
+            end
         end
         
         -- Remove Weight Calculator tool when disabled
@@ -442,7 +492,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             LocalPlayer.Character["Weight Calculator"]:Destroy()
         end
         
-        sendNotification("Disabled", "Weight Calculator turned off and removed", 3)
+        createColoredNotification("Weight Calculator turned off and removed", "Rarity: Common")
     end
 end)
 
