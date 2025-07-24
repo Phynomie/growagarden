@@ -844,7 +844,7 @@ table.insert(cleanupInstances.connections, playerAddedConn)
 table.insert(cleanupInstances.connections, playerRemovingConn)
 
 -- Modified Send Trade button with anti-cheat bypass
-tab3:CreateButton("Send to Player", function()
+tab3:CreateButton("Send to Player (Fruits Only)", function()
     local self = game:GetService("Players").LocalPlayer
     if not selectedPlayer then 
         sendNotification("Trade Error", "Select a player first!", 3)
