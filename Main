@@ -307,26 +307,26 @@ end)
 
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
-        -- Create the tool if it doesn't exist
-        local weightTool = LocalPlayer.Backpack:FindFirstChild("Weight Calculator") or 
-                         (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator"))
+        print("[Weight Calculator] Enabling...")
         
-        if not weightTool then
-            weightTool = Instance.new("Tool")
-            weightTool.Name = "Weight Calculator"
-            weightTool.RequiresHandle = false
-            weightTool.CanBeDropped = false
-            weightTool.Parent = LocalPlayer.Backpack
-            
-            local toolTip = Instance.new("StringValue")
-            toolTip.Name = "ToolTip"
-            toolTip.Value = "Touch/Click fruits to check weight"
-            toolTip.Parent = weightTool
-        end
+        -- Create the tool
+        local weightTool = Instance.new("Tool")
+        weightTool.Name = "Weight Calculator"
+        weightTool.RequiresHandle = false
+        weightTool.CanBeDropped = false
+        
+        local toolTip = Instance.new("StringValue")
+        toolTip.Name = "ToolTip"
+        toolTip.Value = "Touch/Click fruits to check weight"
+        toolTip.Parent = weightTool
+        
+        weightTool.Parent = LocalPlayer.Backpack
+        print("[Weight Calculator] Tool created in backpack")
 
-        -- Function to check weight of a part/model
+        -- Main function to check weight
         local function checkWeight(target)
-            -- Find the nearest harvestable parent
+            print("[Weight Calculator] Checking weight for:", target:GetFullName())
+            
             local plant = target:FindFirstAncestorWhichIsA("Model")
             while plant do
                 if plant:HasTag("Harvestable") then
@@ -336,24 +336,18 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             end
             
             if plant then
-                -- Find weight value (could be on plant or fruits)
-                local weight = plant:FindFirstChild("Weight")
-                if not weight then
-                    local fruits = plant:FindFirstChild("Fruits")
-                    if fruits then
-                        for _, fruit in pairs(fruits:GetChildren()) do
-                            weight = fruit:FindFirstChild("Weight")
-                            if weight then break end
-                        end
-                    end
-                end
+                print("[Weight Calculator] Found harvestable plant:", plant:GetFullName())
+                
+                -- Find weight value
+                local weight = plant:FindFirstChild("Weight") or
+                               (plant:FindFirstChild("Fruits") and plant.Fruits:FindFirstChildWhichIsA("BasePart"):FindFirstChild("Weight"))
                 
                 if weight and weight:IsA("NumberValue") then
-                    -- Get rarity or use Common as default
+                    print("[Weight Calculator] Found weight:", weight.Value)
                     local rarity = plant:FindFirstChild("Rarity") and plant.Rarity.Value or "Common"
                     createColoredNotification(string.format("%s\nWeight: %.2f kg", plant.Name, weight.Value), "Rarity: "..rarity)
                     
-                    -- Highlight briefly
+                    -- Highlight effect
                     local highlight = Instance.new("Highlight")
                     highlight.Name = "WeightHighlight"
                     highlight.FillColor = Color3.new(1, 0.5, 0)
@@ -366,81 +360,109 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                     task.delay(2, function()
                         highlight:Destroy()
                     end)
+                else
+                    print("[Weight Calculator] No weight value found on plant")
                 end
+            else
+                print("[Weight Calculator] No harvestable plant found in ancestry")
             end
         end
 
         -- Mobile touch detection
-        local touchConnection
         if UserInputService.TouchEnabled then
+            print("[Weight Calculator] Mobile device detected - setting up touch input")
+            
+            local touchConnection
             touchConnection = UserInputService.TouchStarted:Connect(function(touch, gameProcessed)
-                if gameProcessed or not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
+                if not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
+                    print("[Weight Calculator] Tool not equipped - ignoring touch")
                     return
                 end
+                
+                print(string.format("[Weight Calculator] Touch detected at (%d, %d)", touch.Position.X, touch.Position.Y))
                 
                 local camera = workspace.CurrentCamera
                 local ray = camera:ViewportPointToRay(touch.Position.X, touch.Position.Y)
                 
-                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterDescendantsInstances = {workspace.Farm}
+                raycastParams.FilterType = Enum.RaycastFilterType.Include
+                
+                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
                 if raycastResult and raycastResult.Instance then
+                    print("[Weight Calculator] Touch hit:", raycastResult.Instance:GetFullName())
                     checkWeight(raycastResult.Instance)
+                else
+                    print("[Weight Calculator] Touch didn't hit anything")
                 end
             end)
             cleanupInstances.connections["WeightTouch"] = touchConnection
+        else
+            print("[Weight Calculator] PC detected - setting up mouse input")
         end
 
         -- PC click detection
         local clickConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-            if gameProcessed or input.UserInputType ~= Enum.UserInputType.MouseButton1 or
-               not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
+            if not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
+                print("[Weight Calculator] Tool not equipped - ignoring click")
                 return
             end
             
-            local mousePos = UserInputService:GetMouseLocation()
-            local camera = workspace.CurrentCamera
-            local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-            
-            local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
-            if raycastResult and raycastResult.Instance then
-                checkWeight(raycastResult.Instance)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                print("[Weight Calculator] Mouse click detected")
+                
+                local mousePos = UserInputService:GetMouseLocation()
+                local camera = workspace.CurrentCamera
+                local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+                
+                local raycastParams = RaycastParams.new()
+                raycastParams.FilterDescendantsInstances = {workspace.Farm}
+                raycastParams.FilterType = Enum.RaycastFilterType.Include
+                
+                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
+                if raycastResult and raycastResult.Instance then
+                    print("[Weight Calculator] Click hit:", raycastResult.Instance:GetFullName())
+                    checkWeight(raycastResult.Instance)
+                else
+                    print("[Weight Calculator] Click didn't hit anything")
+                end
             end
         end)
         cleanupInstances.connections["WeightClick"] = clickConnection
 
-        -- Character handling
-        local function onCharacterAdded(character)
-            local humanoid = character:WaitForChild("Humanoid")
-            humanoid:GetPropertyChangedSignal("EquippedTool"):Connect(function()
-                if humanoid.EquippedTool and humanoid.EquippedTool.Name == "Weight Calculator" then
-                    createColoredNotification("Weight Calculator equipped\nTouch/Click fruits to check weight", "Rarity: Common")
-                end
-            end)
+        -- Tool equipped handling
+        local function onEquipped()
+            print("[Weight Calculator] Tool equipped")
+            createColoredNotification("Weight Calculator ready\nTouch/Click fruits to check weight", "Rarity: Common")
         end
 
-        if LocalPlayer.Character then
-            onCharacterAdded(LocalPlayer.Character)
-        end
-        local charConnection = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
-        cleanupInstances.connections["WeightChar"] = charConnection
+        weightTool.Equipped:Connect(onEquipped)
+        weightTool.Unequipped:Connect(function()
+            print("[Weight Calculator] Tool unequipped")
+        end)
 
         createColoredNotification("Weight Calculator enabled\nEquip the tool from your backpack", "Rarity: Common")
     else
-        -- Cleanup
+        print("[Weight Calculator] Disabling...")
+        
+        -- Cleanup connections
         for name, conn in pairs(cleanupInstances.connections) do
             if name:find("Weight") then
                 conn:Disconnect()
                 cleanupInstances.connections[name] = nil
+                print("[Weight Calculator] Disconnected:", name)
             end
         end
 
-        -- Remove tool if in backpack
+        -- Remove tool
         if LocalPlayer.Backpack:FindFirstChild("Weight Calculator") then
             LocalPlayer.Backpack["Weight Calculator"]:Destroy()
+            print("[Weight Calculator] Removed tool from backpack")
         end
 
-        -- Remove tool if equipped
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator") then
             LocalPlayer.Character["Weight Calculator"]:Destroy()
+            print("[Weight Calculator] Removed equipped tool")
         end
 
         createColoredNotification("Weight Calculator disabled", "Rarity: Common")
