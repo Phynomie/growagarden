@@ -696,82 +696,84 @@ tab2:CreateToggle("Auto Buy Seed/Gear/Egg/TM", function(a)
     end
 end)
 
+local MUTATION_ATTRIBUTES = {
+    "Rainbow",       -- 50x
+    "Gold",          -- 20x
+    "Shocked",       -- 100x
+    "Frozen",        -- 10x
+    "Wet",           -- 2x
+    "Chilled",       -- 2x
+    "Choc",          -- 2x
+    "Moonlit",       -- 2x
+    "Bloodlit",      -- 4x
+    "Celestial",     -- 120x
+    "Disco",         -- 125x
+    "Zombified",     -- 25x
+    "Plasma",        -- 5x
+    "Voidtouched",   -- 135x
+    "Pollinated",    -- 3x
+    "Honeyglazed",   -- 5x
+    "Dawnbound",     -- 150x
+    "Heavenly",      -- 5x
+    "Cooked",        -- 10x
+    "Burnt",         -- 4x
+    "Molten",        -- 25x
+    "Meteoric",      -- 125x
+    "Windstruck",    -- 2x
+    "Alienlike",     -- 100x
+    "Sundried",      -- 85x
+    "Verdant",       -- 4x
+    "Paradisal",     -- 100x
+    "Twisted",       -- 5x
+    "Galactic",      -- 120x
+    "Aurora",        -- 90x
+    "Cloudtouched",  -- 5x
+    "Drenched",      -- 5x
+    "Fried",         -- 8x
+    "Amber",         -- 10x
+    "Oldamber",      -- 20x
+    "Ancientamber",  -- 50x
+    "Sandy",         -- 3x
+    "Clay",          -- 5x
+    "Ceramic",       -- 30x
+    "Friendbound",   -- 70x
+    "Tempestous",    -- 12x
+    "Infected",      -- 75x
+    "Tranquil",      -- 20x
+    "Chakra",        -- 8x
+    "Foxfire",       -- 90x
+    "Toxic",         -- 12x
+    "Radioactive"    -- 80x
+}
+
 -- Auto Pickup Fruits with Mutation
 local selectedMutation = nil
 local autoPickupActive = false
 
--- List of attributes to ignore in the dropdown
-local IGNORED_ATTRIBUTES = {
-    "DoneGrowTime",
-    "GrowRateMulti",
-    "MaxAge",
-    "FruitSpawnIndex",
-    "FruitVersion",
-    "WeightMulti",
-    "SetVariant",
-    "IsOutlined",
-    "Inspected",
-    "SkipRotation"
-}
-
--- Function to scan farm for all available mutations (excluding ignored ones)
-local function scanForMutations()
-    local mutationList = {}
-    
-    if not playerFarm then
-        playerFarm = findPlayerFarm()
-        if not playerFarm then return mutationList end
-    end
-
-    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-    if plantsPhysical then
-        for _, plant in pairs(plantsPhysical:GetChildren()) do
-            -- Check for Fruits folder
-            local fruitsFolder = plant:FindFirstChild("Fruits")
-            if fruitsFolder then
-                for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                    -- Get all attributes (mutations)
-                    for attrName, _ in pairs(fruit:GetAttributes()) do
-                        -- Only add if not in ignored list
-                        if not table.find(IGNORED_ATTRIBUTES, attrName) and not table.find(mutationList, attrName) then
-                            table.insert(mutationList, attrName)
-                        end
-                    end
-                end
-            else
-                -- Check the plant itself if no Fruits folder
-                for attrName, _ in pairs(plant:GetAttributes()) do
-                    if not table.find(IGNORED_ATTRIBUTES, attrName) and not table.find(mutationList, attrName) then
-                        table.insert(mutationList, attrName)
-                    end
-                end
-            end
+-- Function to check if a plant has any of our desired mutations
+local function hasDesiredMutation(plant)
+    for _, attrName in ipairs(MUTATION_ATTRIBUTES) do
+        if plant:GetAttribute(attrName) then
+            return true
         end
     end
-    
-    return mutationList
+    return false
 end
 
--- Create the mutation dropdown with filtered mutations
-local mutationDropdown = tab2:CreateDDO("Select Mutation", {}, function(selected)
+-- Create the mutation dropdown with our static list
+local mutationDropdown = tab2:CreateDDO("Select Mutation", MUTATION_ATTRIBUTES, function(selected)
     selectedMutation = selected
 end)
 
--- Update mutation list initially and when farm changes (with ignored attributes filtered out)
-task.spawn(function()
-    while true do
-        local mutations = scanForMutations() -- This now returns only non-ignored attributes
-        mutationDropdown:SetOptions(mutations)
-        wait(30) -- Rescan every 30 seconds
-    end
-end)
-
--- Auto pickup function (unchanged)
+-- Auto pickup function
 local function collectFruitsWithMutation()
     while autoPickupActive and selectedMutation do
         if not playerFarm then
             playerFarm = findPlayerFarm()
-            if not playerFarm then break end
+            if not playerFarm then 
+                createColoredNotification("Couldn't find your farm!", "Rarity: Common")
+                break 
+            end
         end
 
         local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
@@ -838,18 +840,18 @@ local function collectFruitsWithMutation()
     end
 end
 
--- Create the toggle (unchanged)
+-- Create the toggle
 tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
     autoPickupActive = state
     if state then
         if not selectedMutation then
-            sendNotification("Pickup Error", "Select a mutation first!", 5)
+            createColoredNotification("Select a mutation first!", "Rarity: Common")
             return
         end
         task.spawn(collectFruitsWithMutation)
-        sendNotification("Auto Pickup", "Started collecting "..selectedMutation, 5)
+        createColoredNotification("Started collecting "..selectedMutation, "Rarity: Uncommon")
     else
-        sendNotification("Auto Pickup", "Stopped collecting", 3)
+        createColoredNotification("Stopped collecting", "Rarity: Common")
     end
 end)
 
