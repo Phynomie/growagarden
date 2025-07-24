@@ -697,176 +697,155 @@ tab2:CreateToggle("Auto Buy Seed/Gear/Egg/TM", function(a)
 end)
 
 local MUTATION_ATTRIBUTES = {
-    "Rainbow (50x)",       -- 50x
-    "Gold (20x)",          -- 20x
-    "Shocked (100x)",      -- 100x
-    "Frozen (10x)",        -- 10x
-    "Wet (2x)",            -- 2x
-    "Chilled (2x)",        -- 2x
-    "Choc (2x)",           -- 2x
-    "Moonlit (2x)",        -- 2x
-    "Bloodlit (4x)",       -- 4x
-    "Celestial (120x)",    -- 120x
-    "Disco (125x)",        -- 125x
-    "Zombified (25x)",     -- 25x
-    "Plasma (5x)",         -- 5x
-    "Voidtouched (135x)",  -- 135x
-    "Pollinated (3x)",     -- 3x
-    "Honeyglazed (5x)",    -- 5x
-    "Dawnbound (150x)",    -- 150x
-    "Heavenly (5x)",       -- 5x
-    "Cooked (10x)",        -- 10x
-    "Burnt (4x)",          -- 4x
-    "Molten (25x)",        -- 25x
-    "Meteoric (125x)",     -- 125x
-    "Windstruck (2x)",     -- 2x
-    "Alienlike (100x)",    -- 100x
-    "Sundried (85x)",      -- 85x
-    "Verdant (4x)",        -- 4x
-    "Paradisal (100x)",    -- 100x
-    "Twisted (5x)",        -- 5x
-    "Galactic (120x)",     -- 120x
-    "Aurora (90x)",        -- 90x
-    "Cloudtouched (5x)",   -- 5x
-    "Drenched (5x)",       -- 5x
-    "Fried (8x)",          -- 8x
-    "Amber (10x)",         -- 10x
-    "Oldamber (20x)",      -- 20x
-    "Ancientamber (50x)",  -- 50x
-    "Sandy (3x)",          -- 3x
-    "Clay (5x)",           -- 5x
-    "Ceramic (30x)",       -- 30x
-    "Friendbound (70x)",   -- 70x
-    "Tempestous (12x)",    -- 12x
-    "Infected (75x)",      -- 75x
-    "Tranquil (20x)",      -- 20x
-    "Chakra (8x)",         -- 8x
-    "Foxfire (90x)",       -- 90x
-    "Toxic (12x)",         -- 12x
-    "Radioactive (80x)"    -- 80x
+    "Rainbow",       -- 50x
+    "Gold",          -- 20x
+    "Shocked",       -- 100x
+    "Frozen",        -- 10x
+    "Wet",           -- 2x
+    "Chilled",       -- 2x
+    "Choc",          -- 2x
+    "Moonlit",       -- 2x
+    "Bloodlit",      -- 4x
+    "Celestial",     -- 120x
+    "Disco",         -- 125x
+    "Zombified",     -- 25x
+    "Plasma",        -- 5x
+    "Voidtouched",   -- 135x
+    "Pollinated",    -- 3x
+    "Honeyglazed",   -- 5x
+    "Dawnbound",     -- 150x
+    "Heavenly",      -- 5x
+    "Cooked",        -- 10x
+    "Burnt",         -- 4x
+    "Molten",        -- 25x
+    "Meteoric",      -- 125x
+    "Windstruck",    -- 2x
+    "Alienlike",     -- 100x
+    "Sundried",      -- 85x
+    "Verdant",       -- 4x
+    "Paradisal",     -- 100x
+    "Twisted",       -- 5x
+    "Galactic",      -- 120x
+    "Aurora",        -- 90x
+    "Cloudtouched",  -- 5x
+    "Drenched",      -- 5x
+    "Fried",         -- 8x
+    "Amber",         -- 10x
+    "Oldamber",      -- 20x
+    "Ancientamber",  -- 50x
+    "Sandy",         -- 3x
+    "Clay",          -- 5x
+    "Ceramic",       -- 30x
+    "Friendbound",   -- 70x
+    "Tempestous",    -- 12x
+    "Infected",      -- 75x
+    "Tranquil",      -- 20x
+    "Chakra",        -- 8x
+    "Foxfire",       -- 90x
+    "Toxic",         -- 12x
+    "Radioactive"    -- 80x
 }
 
-local function getBaseMutationName(fullName)
-    return fullName:gsub("%s*%b()", "")  -- Removes "(xx)" and spaces
-end
-
--- Create cleaned mutation list for dropdown
-local cleanedMutationList = {}
-for _, mutation in ipairs(MUTATION_ATTRIBUTES) do
-    table.insert(cleanedMutationList, getBaseMutationName(mutation))
-end
-
--- Auto Pickup Variables
+-- Auto Pickup Fruits with Mutation
 local selectedMutation = nil
 local autoPickupActive = false
-local pickupCoroutine = nil
+local pickupCoroutine = nil  -- Track the running coroutine
 
 local function stopPickup()
     if pickupCoroutine then
-        coroutine.close(pickupCoroutine)
+        coroutine.close(pickupCoroutine)  -- Force stop the coroutine
         pickupCoroutine = nil
     end
     autoPickupActive = false
 end
 
-local function checkMutationExists()
-    if not playerFarm then
-        playerFarm = findPlayerFarm()
-        if not playerFarm then return false end
-    end
-
-    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-    if plantsPhysical then
-        for _, plant in pairs(plantsPhysical:GetChildren()) do
-            -- Check plant attributes
-            for attrName, _ in pairs(plant:GetAttributes()) do
-                if getBaseMutationName(attrName) == selectedMutation then
-                    return true
-                end
-            end
-            
-            -- Check fruits
-            local fruitsFolder = plant:FindFirstChild("Fruits")
-            if fruitsFolder then
-                for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                    for attrName, _ in pairs(fruit:GetAttributes()) do
-                        if getBaseMutationName(attrName) == selectedMutation then
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return false
-end
-
--- Create the mutation dropdown with our static list
-local mutationDropdown = tab2:CreateDDO("Select Mutation", cleanedMutationList, function(selected)
-    selectedMutation = selected
-end)
-
-local function scanFruitModel(model)
-    for attrName, _ in pairs(model:GetAttributes()) do
-        if getBaseMutationName(attrName) == selectedMutation then
+-- Function to check if a plant has any of our desired mutations
+local function hasDesiredMutation(plant)
+    for _, attrName in ipairs(MUTATION_ATTRIBUTES) do
+        if plant:GetAttribute(attrName) then
             return true
         end
     end
     return false
 end
 
+-- Create the mutation dropdown with our static list
+local mutationDropdown = tab2:CreateDDO("Select Mutation", MUTATION_ATTRIBUTES, function(selected)
+    selectedMutation = selected
+end)
+
 -- Auto pickup function
 local function collectFruitsWithMutation()
     while autoPickupActive and selectedMutation do
         if not playerFarm then
             playerFarm = findPlayerFarm()
-            if not playerFarm then break end
+            if not playerFarm then 
+                createColoredNotification("Couldn't find your farm!", "Rarity: Common")
+                break 
+            end
         end
 
         local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
         if plantsPhysical then
             for _, plant in pairs(plantsPhysical:GetChildren()) do
-                -- Check Fruits folder
-                local fruitsFolder = plant:FindFirstChild("Fruits")
-                if fruitsFolder then
-                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                        if scanFruitModel(fruit) then
-                            local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt") or
-                                           fruit:FindFirstDescendantWhichIsA("ProximityPrompt")
-                            if prompt then
-                                local char = LocalPlayer.Character
-                                if char and char.PrimaryPart then
-                                    local originalPos = char.PrimaryPart.CFrame
-                                    char.PrimaryPart.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2)
-                                    task.wait(0.2)
-                                    fireproximityprompt(prompt)
-                                    task.wait(0.1)
-                                    char.PrimaryPart.CFrame = originalPos
+                -- Recursive function to scan all fruit parts
+                local function scanFruitModel(model)
+                    if model:GetAttribute(selectedMutation) then
+                        -- Find the proximity prompt at any level
+                        local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
+                        if not prompt then
+                            -- Deep search for prompts in all descendants
+                            for _, descendant in pairs(model:GetDescendants()) do
+                                if descendant:IsA("ProximityPrompt") then
+                                    prompt = descendant
+                                    break
                                 end
+                            end
+                        end
+                        
+                        -- If prompt found, collect the fruit
+                        if prompt then
+                            -- Teleport to fruit
+                            local char = LocalPlayer.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                local hrp = char.HumanoidRootPart
+                                local originalPos = hrp.CFrame
+                                
+                                -- Teleport close to fruit
+                                hrp.CFrame = model:GetPivot() * CFrame.new(0, 0, -2)
+                                
+                                -- Fire prompt
+                                task.wait(0.4)
+                                fireproximityprompt(prompt)
+                                
+                                -- Return to original position
+                                task.wait(0.1)
+                                hrp.CFrame = originalPos
                             end
                         end
                     end
                 end
-                
-                -- Check plant itself
-                if scanFruitModel(plant) then
-                    local prompt = plant:FindFirstChildWhichIsA("ProximityPrompt") or
-                                   plant:FindFirstDescendantWhichIsA("ProximityPrompt")
-                    if prompt then
-                        local char = LocalPlayer.Character
-                        if char and char.PrimaryPart then
-                            local originalPos = char.PrimaryPart.CFrame
-                            char.PrimaryPart.CFrame = plant:GetPivot() * CFrame.new(0, 0, -2)
-                            task.wait(0.2)
-                            fireproximityprompt(prompt)
-                            task.wait(0.1)
-                            char.PrimaryPart.CFrame = originalPos
+
+                -- Check both Fruits folder and direct children
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                if fruitsFolder then
+                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                        -- Scan the fruit and all its nested children
+                        scanFruitModel(fruit)
+                        for _, subPart in pairs(fruit:GetDescendants()) do
+                            if subPart:IsA("Model") or subPart:IsA("BasePart") then
+                                scanFruitModel(subPart)
+                            end
                         end
                     end
+                else
+                    -- Check the plant itself if no Fruits folder
+                    scanFruitModel(plant)
                 end
             end
         end
-        task.wait(0.5)
+        
+        task.wait(0.5) -- Delay between scans
     end
 end
 
@@ -876,15 +855,16 @@ tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
     if state then
         if not selectedMutation then
             createColoredNotification("Select a mutation first!", "Rarity: Common")
-            return false
+            return false  -- Return false to keep toggle off
         end
         
+        -- Check if mutation exists first
         if not checkMutationExists() then
             createColoredNotification(selectedMutation.." not found in farm!", "Rarity: Common")
-            return false
+            return false  -- Return false to keep toggle off
         end
         
-        stopPickup()
+        stopPickup()  -- Stop any existing pickup
         pickupCoroutine = coroutine.create(collectFruitsWithMutation)
         coroutine.resume(pickupCoroutine)
         createColoredNotification("Started collecting "..selectedMutation, "Rarity: Uncommon")
@@ -892,7 +872,6 @@ tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
         stopPickup()
         createColoredNotification("Stopped collecting", "Rarity: Common")
     end
-    return true
 end)
 
 tab3:CreateButton("Sprinkler Script", function()
