@@ -307,192 +307,143 @@ end)
 
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
-        -- First check if we already have a Weight Calculator
-        local existingTool = LocalPlayer.Backpack:FindFirstChild("Weight Calculator") or 
-                           (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator"))
+        -- Create the tool if it doesn't exist
+        local weightTool = LocalPlayer.Backpack:FindFirstChild("Weight Calculator") or 
+                         (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator"))
         
-        if existingTool then
-            createColoredNotification("Using existing Weight Calculator", "Rarity: Common")
-        else
-            -- Create a new tool from scratch
-            local weightTool = Instance.new("Tool")
+        if not weightTool then
+            weightTool = Instance.new("Tool")
             weightTool.Name = "Weight Calculator"
             weightTool.RequiresHandle = false
             weightTool.CanBeDropped = false
-            weightTool:SetAttribute("Uses", 999999)
+            weightTool.Parent = LocalPlayer.Backpack
             
-            -- Add tooltip text
             local toolTip = Instance.new("StringValue")
             toolTip.Name = "ToolTip"
-            toolTip.Value = "Touch fruits to check their weight"
+            toolTip.Value = "Touch/Click fruits to check weight"
             toolTip.Parent = weightTool
-            
-            weightTool.Parent = LocalPlayer.Backpack
-            createColoredNotification("Created Weight Calculator", "Rarity: Common")
         end
 
-        -- Mobile-friendly touch detection
-        local function onToolEquipped(tool)
-            if tool.Name ~= "Weight Calculator" then return end
+        -- Function to check weight of a part/model
+        local function checkWeight(target)
+            -- Find the nearest harvestable parent
+            local plant = target:FindFirstAncestorWhichIsA("Model")
+            while plant do
+                if plant:HasTag("Harvestable") then
+                    break
+                end
+                plant = plant:FindFirstAncestorWhichIsA("Model")
+            end
             
-            -- For mobile devices, we'll use touch events instead of mouse clicks
-            local touchConnection
-            local lastTouchTime = 0
-            
-            local function onTouchBegan(touch, gameProcessed)
-                if gameProcessed or tick() - lastTouchTime < 0.4 then return end
-                lastTouchTime = tick()
+            if plant then
+                -- Find weight value (could be on plant or fruits)
+                local weight = plant:FindFirstChild("Weight")
+                if not weight then
+                    local fruits = plant:FindFirstChild("Fruits")
+                    if fruits then
+                        for _, fruit in pairs(fruits:GetChildren()) do
+                            weight = fruit:FindFirstChild("Weight")
+                            if weight then break end
+                        end
+                    end
+                end
                 
-                -- Perform raycast from touch position
-                local raycastParams = RaycastParams.new()
-                raycastParams.FilterDescendantsInstances = {workspace.Farm}
-                raycastParams.FilterType = Enum.RaycastFilterType.Include
+                if weight and weight:IsA("NumberValue") then
+                    -- Get rarity or use Common as default
+                    local rarity = plant:FindFirstChild("Rarity") and plant.Rarity.Value or "Common"
+                    createColoredNotification(string.format("%s\nWeight: %.2f kg", plant.Name, weight.Value), "Rarity: "..rarity)
+                    
+                    -- Highlight briefly
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "WeightHighlight"
+                    highlight.FillColor = Color3.new(1, 0.5, 0)
+                    highlight.FillTransparency = 0.7
+                    highlight.OutlineColor = Color3.new(1, 1, 1)
+                    highlight.OutlineTransparency = 0
+                    highlight.Adornee = plant
+                    highlight.Parent = workspace
+                    
+                    task.delay(2, function()
+                        highlight:Destroy()
+                    end)
+                end
+            end
+        end
+
+        -- Mobile touch detection
+        local touchConnection
+        if UserInputService.TouchEnabled then
+            touchConnection = UserInputService.TouchStarted:Connect(function(touch, gameProcessed)
+                if gameProcessed or not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
+                    return
+                end
                 
                 local camera = workspace.CurrentCamera
                 local ray = camera:ViewportPointToRay(touch.Position.X, touch.Position.Y)
                 
-                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
-                if not raycastResult then return end
-                
-                -- Find the harvestable plant
-                local hitModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
-                if not hitModel or not hitModel:HasTag("Harvestable") then return end
-                
-                -- Check for weight value
-                local weight = hitModel:FindFirstChild("Weight")
-                if weight and weight:IsA("NumberValue") then
-                    -- Create notification with weight
-                    local rarity = hitModel:FindFirstChild("Rarity") and hitModel.Rarity.Value or "Common"
-                    createColoredNotification(string.format("%s - Weight: %.2f kg", hitModel.Name, weight.Value), "Rarity: "..rarity)
+                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
+                if raycastResult and raycastResult.Instance then
+                    checkWeight(raycastResult.Instance)
                 end
-                
-                -- Highlight the plant briefly
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "WeightHighlight"
-                highlight.FillColor = Color3.new(1, 0.5, 0) -- Orange color
-                highlight.FillTransparency = 0.7
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.OutlineTransparency = 0
-                highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-                highlight.Adornee = hitModel
-                highlight.Parent = workspace
-
-                task.delay(2, function()
-                    highlight:Destroy()
-                end)
-            end
-            
-            -- Connect touch events for mobile
-            touchConnection = UserInputService.TouchStarted:Connect(onTouchBegan)
-            cleanupInstances.connections["WeightCalculatorTouch"] = touchConnection
-            
-            -- For non-mobile, keep the click detection as fallback
-            local clickConnection
-            local lastClickTime = 0
-            
-            local function onMouseClick(input, gameProcessed)
-                if input.UserInputType ~= Enum.UserInputType.MouseButton1 
-                   or gameProcessed 
-                   or tick() - lastClickTime < 0.4 then
-                    return
-                end
-                lastClickTime = tick()
-                
-                -- Perform raycast from mouse position
-                local raycastParams = RaycastParams.new()
-                raycastParams.FilterDescendantsInstances = {workspace.Farm}
-                raycastParams.FilterType = Enum.RaycastFilterType.Include
-                
-                local mousePos = UserInputService:GetMouseLocation()
-                local camera = workspace.CurrentCamera
-                local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-                
-                local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
-                if not raycastResult then return end
-                
-                -- Find the harvestable plant
-                local hitModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
-                if not hitModel or not hitModel:HasTag("Harvestable") then return end
-                
-                -- Check for weight value
-                local weight = hitModel:FindFirstChild("Weight")
-                if weight and weight:IsA("NumberValue") then
-                    -- Create notification with weight
-                    local rarity = hitModel:FindFirstChild("Rarity") and hitModel.Rarity.Value or "Common"
-                    createColoredNotification(string.format("%s - Weight: %.2f kg", hitModel.Name, weight.Value), "Rarity: "..rarity)
-                end
-                
-                -- Highlight the plant briefly
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "WeightHighlight"
-                highlight.FillColor = Color3.new(1, 0.5, 0) -- Orange color
-                highlight.FillTransparency = 0.7
-                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                highlight.OutlineTransparency = 0
-                highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-                highlight.Adornee = hitModel
-                highlight.Parent = workspace
-
-                task.delay(2, function()
-                    highlight:Destroy()
-                end)
-            end
-            
-            -- Connect click events for non-mobile
-            clickConnection = UserInputService.InputBegan:Connect(onMouseClick)
-            cleanupInstances.connections["WeightCalculatorClick"] = clickConnection
-            
-            -- Cleanup when tool is unequipped
-            local unequippedConnection
-            unequippedConnection = tool.Unequipped:Connect(function()
-                if touchConnection then touchConnection:Disconnect() end
-                if clickConnection then clickConnection:Disconnect() end
-                if unequippedConnection then unequippedConnection:Disconnect() end
             end)
-            
-            cleanupInstances.connections["WeightCalculatorUnequip"] = unequippedConnection
+            cleanupInstances.connections["WeightTouch"] = touchConnection
         end
-        
-        -- Connect to equipped event
-        local equippedConnection
-        equippedConnection = LocalPlayer.CharacterAdded:Connect(function(character)
+
+        -- PC click detection
+        local clickConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed or input.UserInputType ~= Enum.UserInputType.MouseButton1 or
+               not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
+                return
+            end
+            
+            local mousePos = UserInputService:GetMouseLocation()
+            local camera = workspace.CurrentCamera
+            local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+            
+            local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000)
+            if raycastResult and raycastResult.Instance then
+                checkWeight(raycastResult.Instance)
+            end
+        end)
+        cleanupInstances.connections["WeightClick"] = clickConnection
+
+        -- Character handling
+        local function onCharacterAdded(character)
             local humanoid = character:WaitForChild("Humanoid")
             humanoid:GetPropertyChangedSignal("EquippedTool"):Connect(function()
-                if humanoid.EquippedTool then
-                    onToolEquipped(humanoid.EquippedTool)
+                if humanoid.EquippedTool and humanoid.EquippedTool.Name == "Weight Calculator" then
+                    createColoredNotification("Weight Calculator equipped\nTouch/Click fruits to check weight", "Rarity: Common")
                 end
             end)
-        end)
-        
-        -- If already has character, set up immediately
-        if LocalPlayer.Character then
-            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.EquippedTool then
-                onToolEquipped(humanoid.EquippedTool)
-            end
         end
-        
-        cleanupInstances.connections["WeightCalculatorEquipped"] = equippedConnection
-        
-        createColoredNotification("Weight Calculator active - touch/click fruits while holding the tool", "Rarity: Common")
+
+        if LocalPlayer.Character then
+            onCharacterAdded(LocalPlayer.Character)
+        end
+        local charConnection = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
+        cleanupInstances.connections["WeightChar"] = charConnection
+
+        createColoredNotification("Weight Calculator enabled\nEquip the tool from your backpack", "Rarity: Common")
     else
-        -- Clean up when toggled off
-        for name, connection in pairs(cleanupInstances.connections) do
-            if name:find("WeightCalculator") then
-                connection:Disconnect()
+        -- Cleanup
+        for name, conn in pairs(cleanupInstances.connections) do
+            if name:find("Weight") then
+                conn:Disconnect()
                 cleanupInstances.connections[name] = nil
             end
         end
-        
-        -- Remove Weight Calculator tool when disabled
+
+        -- Remove tool if in backpack
         if LocalPlayer.Backpack:FindFirstChild("Weight Calculator") then
             LocalPlayer.Backpack["Weight Calculator"]:Destroy()
         end
+
+        -- Remove tool if equipped
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator") then
             LocalPlayer.Character["Weight Calculator"]:Destroy()
         end
-        
-        createColoredNotification("Weight Calculator turned off and removed", "Rarity: Common")
+
+        createColoredNotification("Weight Calculator disabled", "Rarity: Common")
     end
 end)
 
