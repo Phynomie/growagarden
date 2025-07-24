@@ -7,6 +7,53 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 
+-- Load Notification module
+local Notification
+local success, err = pcall(function()
+    Notification = require(ReplicatedStorage.Modules.Notification)
+end)
+if not success then
+    warn("Failed to load Notification module: "..tostring(err))
+    -- Fallback to default notifications
+    Notification = {
+        CreateNotification = function(text)
+            StarterGui:SetCore("SendNotification", {
+                Title = "GAG Script",
+                Text = text,
+                Duration = 5
+            })
+        end
+    }
+end
+
+-- Rarity color mapping
+local RARITY_COLORS = {
+    Common = "#FFFFFF",       -- White
+    Uncommon = "#00FF00",     -- Light Green
+    Rare = "#0000FF",         -- Blue
+    Legendary = "#FFFF00",    -- Light Yellow
+    Mythical = "#800080",     -- Light Purple
+    Divine = "#FFA500",       -- Orange
+    Prismatic = "#00FFFF",    -- Aqua
+    Transcendent = "#000000"  -- Black
+}
+
+local function getRarityColor(rarityText)
+    -- Extract the actual rarity name from the text (e.g., "Rarity: Common" -> "Common")
+    local rarity = rarityText:gsub("Rarity: ", ""):gsub("%s+", "")
+    return RARITY_COLORS[rarity] or RARITY_COLORS.Common
+end
+
+local function createColoredNotification(text, rarityText)
+    local color = getRarityColor(rarityText)
+    if color == RARITY_COLORS.Common then
+        -- Default color (no HTML tags)
+        Notification:CreateNotification(text)
+    else
+        Notification:CreateNotification(string.format('<font color="%s">%s</font>', color, text))
+    end
+end
+
 local cleanupInstances = {
     countdownGui = nil,
     connections = {},
@@ -105,13 +152,13 @@ end
 local function autoBuySeeds()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
     if sheckles < 10000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
+        createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
     end
 
     local seedShop = LocalPlayer.PlayerGui:FindFirstChild("Seed_Shop")
     if not seedShop then
-        sendNotification("GAG Script", "Seed shop not open!")
+        createColoredNotification("Seed shop not open!", "Rarity: Common")
         return
     end
 
@@ -122,6 +169,7 @@ local function autoBuySeeds()
         if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
             local mainFrame = frame.Main_Frame
             local stockText = mainFrame:FindFirstChild("Stock_Text")
+            local rarityText = mainFrame:FindFirstChild("Rarity_Text") and mainFrame.Rarity_Text.Text or "Rarity: Common"
             
             if stockText and stockText.Text ~= "X0 Stock" then
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
@@ -131,7 +179,7 @@ local function autoBuySeeds()
                         ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(unpack(args))
                         task.wait(0.1)
                     end
-                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.." seeds!")
+                    createColoredNotification("Bought "..stockNum.." "..frame.Name.." seeds!", rarityText)
                 end
             end
         end
@@ -141,13 +189,13 @@ end
 local function autoBuyGears()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
     if sheckles < 10000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
+        createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
     end
 
     local gearShop = LocalPlayer.PlayerGui:FindFirstChild("Gear_Shop")
     if not gearShop then
-        sendNotification("GAG Script", "Gear shop not open!")
+        createColoredNotification("Gear shop not open!", "Rarity: Common")
         return
     end
 
@@ -158,6 +206,7 @@ local function autoBuyGears()
         if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
             local mainFrame = frame.Main_Frame
             local stockText = mainFrame:FindFirstChild("Stock_Text")
+            local rarityText = mainFrame:FindFirstChild("Rarity_Text") and mainFrame.Rarity_Text.Text or "Rarity: Common"
             
             if stockText and stockText.Text ~= "X0 Stock" then
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
@@ -167,7 +216,7 @@ local function autoBuyGears()
                         ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyGearStock"):FireServer(unpack(args))
                         task.wait(0.1)
                     end
-                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.." gears!")
+                    createColoredNotification("Bought "..stockNum.." "..frame.Name.." gears!", rarityText)
                 end
             end
         end
@@ -177,13 +226,13 @@ end
 local function autoBuyEggs()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
     if sheckles < 10000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
+        createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
     end
 
     local eggShop = LocalPlayer.PlayerGui:FindFirstChild("PetShop_UI")
     if not eggShop then
-        sendNotification("GAG Script", "Gear shop not open!")
+        createColoredNotification("Gear shop not open!", "Rarity: Common")
         return
     end
 
@@ -194,6 +243,7 @@ local function autoBuyEggs()
         if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
             local mainFrame = frame.Main_Frame
             local stockText = mainFrame:FindFirstChild("Stock_Text")
+            local rarityText = mainFrame:FindFirstChild("Rarity_Text") and mainFrame.Rarity_Text.Text or "Rarity: Common"
             
             if stockText and stockText.Text ~= "X0 Stock" then
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
@@ -203,7 +253,7 @@ local function autoBuyEggs()
                         ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyPetEgg"):FireServer(unpack(args))
                         task.wait(0.1)
                     end
-                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.."!")
+                    createColoredNotification("Bought "..stockNum.." "..frame.Name.."!", rarityText)
                 end
             end
         end
@@ -213,13 +263,13 @@ end
 local function autoBuyTM()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
     if sheckles < 10000000000 then -- 1 billion
-        sendNotification("GAG Script", "You can only use this if you have more than 10B sheckles!")
+        createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
     end
 
     local TMShop = LocalPlayer.PlayerGui:FindFirstChild("TravelingMerchantShop_UI")
     if not TMShop then
-        sendNotification("GAG Script", "Gear shop not open!")
+        createColoredNotification("Gear shop not open!", "Rarity: Common")
         return
     end
 
@@ -230,6 +280,7 @@ local function autoBuyTM()
         if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
             local mainFrame = frame.Main_Frame
             local stockText = mainFrame:FindFirstChild("Stock_Text")
+            local rarityText = mainFrame:FindFirstChild("Rarity_Text") and mainFrame.Rarity_Text.Text or "Rarity: Common"
             
             if stockText and stockText.Text ~= "X0 Stock" then
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
@@ -239,7 +290,7 @@ local function autoBuyTM()
                         ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyTravelingMerchantShopStock"):FireServer(unpack(args))
                         task.wait(0.1)
                     end
-                    sendNotification("GAG Script", "Bought "..stockNum.." "..frame.Name.."!")
+                    createColoredNotification("Bought "..stockNum.." "..frame.Name.."!", rarityText)
                 end
             end
         end
@@ -549,15 +600,6 @@ end)
 local autoBuyActive = false
 cleanupInstances.loops.buyLoop = nil
 
-local function stopBuyLoop()
-    if cleanupInstances.loops.buyLoop then
-        coroutine.close(cleanupInstances.loops.buyLoop)
-        cleanupInstances.loops.buyLoop = nil
-    end
-    autoBuyActive = false
-    if frame then frame.Visible = false end
-end
-
 local countdownGui = Instance.new("ScreenGui")
 countdownGui.Name = "AutoBuyCountdown"
 countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -605,6 +647,14 @@ progressFill.Position = UDim2.new(0, 0, 0, 0)
 progressFill.BackgroundColor3 = Color3.fromRGB(220, 20, 60) -- Crimson
 progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBar
+
+local function stopBuyLoop()
+    if cleanupInstances.loops.buyLoop then
+        cleanupInstances.loops.buyLoop = nil
+    end
+    autoBuyActive = false
+    frame.Visible = false
+end
 
 local function startBuyLoop()
     cleanupInstances.loops.buyLoop = coroutine.create(function()
