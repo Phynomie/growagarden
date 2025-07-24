@@ -254,96 +254,30 @@ tab:CreateToggle("Anti Collect Fruits", function(a)
     end
 end)
 
--- Weight Calculator Toggle
--- Weight Calculator Toggle
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
-
-        if not game:IsLoaded() then
-            warn("Game must be fully loaded to use Weight Calculator")
-            return false
-        end
-
-        local success, services = pcall(function()
-            return {
-                ReplicatedStorage = game:GetService("ReplicatedStorage"),
-                RunService = game:GetService("RunService"),
-                UserInputService = game:GetService("UserInputService"),
-                Players = game:GetService("Players")
-            }
-        end)
-
-        if not success then
-            warn("Failed to load Notification module: "..tostring(err))
-            return false
-        end
-
-        local Notification
-        local success, err = pcall(function()
-            Notification = require(services.ReplicatedStorage.Modules.Notification)
-        end)
-        if not success then
-            warn("Failed to load Notification module: "..tostring(err))
-            return false
-        end
-
         -- First check if we already have a Weight Calculator
         local existingTool = LocalPlayer.Backpack:FindFirstChild("Weight Calculator") or 
                            (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator"))
         
         if existingTool then
-            -- Ensure it has the right attributes
-            existingTool:SetAttribute("Uses", 999999)
             sendNotification("Info", "Using existing Weight Calculator", 3)
         else
-            -- Try to find and duplicate a Magnifying Glass
-            local foundTool = nil
-            for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-                if player ~= LocalPlayer then
-                    local tool = player.Backpack:FindFirstChild("Magnifying Glass") or player.Character:FindFirstChild("Magnifying Glass")
-                    if tool then
-                        foundTool = tool
-                        break
-                    end
-                end
-            end
-
-            if not foundTool then
-                sendNotification("Error", "No Magnifying Glass found on any player! You must obtain one first.", 5)
-                return false
-            end
-
-            -- Create a proper clone
-            local clone = foundTool:Clone()
-            clone:SetAttribute("Uses", 999999)
-            clone.Parent = LocalPlayer.Backpack
+            -- Create a new tool from scratch
+            local weightTool = Instance.new("Tool")
+            weightTool.Name = "Weight Calculator"
+            weightTool.RequiresHandle = false
+            weightTool.CanBeDropped = false
+            weightTool:SetAttribute("Uses", 999999)
             
-            -- Wait for the clone to appear in backpack
-            wait(0.3)
+            -- Add tooltip text
+            local toolTip = Instance.new("StringValue")
+            toolTip.Name = "ToolTip"
+            toolTip.Value = "Click on fruits to check their weight"
+            toolTip.Parent = weightTool
             
-            -- Find all Magnifying Glasses in backpack
-            local glasses = {}
-            for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name:match("^Magnifying Glass") then
-                    table.insert(glasses, tool)
-                end
-            end
-
-            -- Rename logic:
-            if #glasses >= 2 then
-                -- If 2+ glasses found, rename the second one
-                glasses[2].Name = "Weight Calculator"
-                existingTool = glasses[2]
-                sendNotification("Success", "Renamed "..glasses[2].Name.." to Weight Calculator", 3)
-            elseif #glasses == 1 then
-                -- If only 1 found, rename it
-                glasses[1].Name = "Weight Calculator"
-                existingTool = glasses[1]
-                sendNotification("Success", "Created Weight Calculator from "..glasses[1].Name, 3)
-            else
-                sendNotification("Error", "No Magnifying Glass tools found to rename", 5)
-                return false
-            end
+            weightTool.Parent = LocalPlayer.Backpack
+            sendNotification("Success", "Created Weight Calculator", 3)
         end
 
         -- Set up click detection
@@ -364,7 +298,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
 
             local tool = character:FindFirstChild("Weight Calculator")
             if not tool then 
-                Notification:CreateNotification("You need to equip the Weight Calculator first 🔎")
+                sendNotification("Info", "Equip the Weight Calculator first", 3)
                 return
             end
 
@@ -387,9 +321,38 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             -- Check for weight value
             local weight = hitModel:FindFirstChild("Weight")
             if weight and weight:IsA("NumberValue") then
-                Notification:CreateNotification("Weight: "..tostring(weight.Value).." kg ⚖️")
-            else
-                Notification:CreateNotification("No weight data found! ⚖️")
+                -- Create custom notification
+                local notification = Instance.new("BillboardGui")
+                notification.Name = "WeightNotification"
+                notification.Adornee = hitModel.PrimaryPart or hitModel:FindFirstChildWhichIsA("BasePart")
+                notification.Size = UDim2.new(0, 200, 0, 50)
+                notification.StudsOffset = Vector3.new(0, 3, 0)
+                notification.AlwaysOnTop = true
+                notification.LightInfluence = 1
+                notification.MaxDistance = 50
+                
+                local frame = Instance.new("Frame")
+                frame.Size = UDim2.new(1, 0, 1, 0)
+                frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                frame.BackgroundTransparency = 0.5
+                frame.BorderSizePixel = 0
+                frame.Parent = notification
+                
+                local textLabel = Instance.new("TextLabel")
+                textLabel.Size = UDim2.new(1, 0, 1, 0)
+                textLabel.Text = "Weight: "..tostring(weight.Value).." kg"
+                textLabel.TextColor3 = Color3.new(1, 1, 1)
+                textLabel.Font = Enum.Font.GothamBold
+                textLabel.TextSize = 14
+                textLabel.BackgroundTransparency = 1
+                textLabel.Parent = frame
+                
+                notification.Parent = hitModel
+                
+                -- Remove after delay
+                task.delay(3, function()
+                    notification:Destroy()
+                end)
             end
 
             -- Highlight the plant
