@@ -860,58 +860,6 @@ local function updatePlayerList()
     playerDropdown:SetOptions(playerList)
 end
 
--- Human-like movement function
-local function moveToPosition(position, timeout)
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return false end
-    
-    position = position + Vector3.new(math.random(-1.5, 1.5), 0, math.random(-1.5, 1.5))
-    humanoid:MoveTo(position)
-    
-    local startTime = tick()
-    while (humanoid.RootPart.Position - position).Magnitude > 3 and (tick() - startTime) < (timeout or 5) do
-        if math.random(1, 10) == 1 then
-            task.wait(math.random(5, 20)/10)
-        end
-        task.wait(0.1)
-    end
-    
-    return (humanoid.RootPart.Position - position).Magnitude <= 3
-end
-
--- Human-like delay function
-local function humanWait(min, max)
-    task.wait(math.random(min*10, max*10)/10)
-end
-
--- Simulate mouse click with human-like imperfections
-local function humanClick(button)
-    local absPos = button.AbsolutePosition
-    local absSize = button.AbsoluteSize
-    
-    -- Add random offset to click position
-    local clickX = absPos.X + absSize.X/2 + math.random(-10, 10)
-    local clickY = absPos.Y + absSize.Y/2 + math.random(-10, 10)
-    
-    VirtualInputManager:SendMouseMoveEvent(clickX, clickY, game)
-    humanWait(1, 3)
-    VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, true, game, 1)
-    humanWait(5, 15)
-    VirtualInputManager:SendMouseButtonEvent(clickX, clickY, 0, false, game, 1)
-end
-
--- Find pet gift UI elements
-local function findPetGiftElements()
-    local petUI = LocalPlayer.PlayerGui:FindFirstChild("PetUI") or LocalPlayer.PlayerGui:FindFirstChild("PetMenu")
-    if not petUI then return nil end
-    
-    local giftButton = petUI:FindFirstChild("GiftButton", true)
-    local playerList = petUI:FindFirstChild("PlayerList", true)
-    local confirmButton = petUI:FindFirstChild("ConfirmButton", true)
-    
-    return giftButton, playerList, confirmButton
-end
-
 -- Initial update
 updatePlayerList()
 
@@ -932,10 +880,9 @@ end)
 table.insert(cleanupInstances.connections, playerAddedConn)
 table.insert(cleanupInstances.connections, playerRemovingConn)
 
--- Modified Send Trade button with both fruit and pet support
+-- Modified Send Trade button with anti-cheat bypass
 tab3:CreateButton("Send to Player", function()
-    humanWait(5, 10) -- Initial delay
-    
+    local self = game:GetService("Players").LocalPlayer
     if not selectedPlayer then 
         sendNotification("Trade Error", "Select a player first!", 3)
         return 
@@ -947,14 +894,17 @@ tab3:CreateButton("Send to Player", function()
         return 
     end
 
-    -- Check held item
-    humanWait(2, 4)
+    -- Human-like delay before checking inventory
+    task.wait(math.random(2, 4)/10) -- 0.2-0.4 second delay
+    
     local heldObject = nil
-    local character = LocalPlayer.Character
+    local character = self.Character
     if character then
+        -- Simulate natural tool checking
         for _, tool in pairs(character:GetChildren()) do
             if tool:IsA("Tool") then
-                humanWait(5, 15)
+                -- Random micro-delay between checks
+                task.wait(math.random(5, 15)/100)
                 
                 if string.find(tool.Name, "%[Age %d+%]") or
                    string.find(tool.Name:lower(), "%[%d+%.?%d*kg%]") or
@@ -971,52 +921,7 @@ tab3:CreateButton("Send to Player", function()
         return
     end
 
-    -- Handle pet trade through UI
-    if string.find(heldObject.Name, "%[Age %d+%]") then
-        -- Open pet menu
-        game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.P, false, game)
-        humanWait(1, 3)
-        
-        -- Find gift UI elements
-        local giftButton, playerList, confirmButton = findPetGiftElements()
-        if not (giftButton and playerList and confirmButton) then
-            sendNotification("Trade Error", "Couldn't find pet gift UI!", 3)
-            game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.P, false, game) -- Close menu
-            return
-        end
-        
-        -- Click gift button
-        humanClick(giftButton)
-        humanWait(1, 2)
-        
-        -- Find and select target player
-        local playerFound = false
-        for _, child in ipairs(playerList:GetChildren()) do
-            if child:IsA("TextButton") and child.Text:lower():find(targetPlayer.Name:lower()) then
-                humanClick(child)
-                playerFound = true
-                break
-            end
-        end
-        
-        if not playerFound then
-            sendNotification("Trade Error", "Player not found in list!", 3)
-            game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.P, false, game) -- Close menu
-            return
-        end
-        
-        -- Confirm gift
-        humanWait(1, 2)
-        humanClick(confirmButton)
-        sendNotification("Trade Sent", "Sent pet to "..targetPlayer.Name, 3)
-        
-        -- Close menu
-        humanWait(1, 2)
-        game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.P, false, game)
-        return
-    end
-
-    -- Handle fruit trade through proximity prompt
+    -- Natural trade approach with human-like behavior
     local targetChar = targetPlayer.Character
     local selfChar = LocalPlayer.Character
 
@@ -1025,27 +930,49 @@ tab3:CreateButton("Send to Player", function()
         local selfHRP = selfChar:FindFirstChild("HumanoidRootPart")
         
         if targetHRP and selfHRP then
-            -- Approach player
-            if not moveToPosition(targetHRP.Position + Vector3.new(2, 0, 2), 8) then
-                sendNotification("Trade Error", "Couldn't reach player!", 3)
-                return
+            -- Calculate distance to player
+            local distance = (targetHRP.Position - selfHRP.Position).Magnitude
+            
+            -- Only approach if not already close
+            if distance > 10 then
+                -- Walk naturally toward player with pathfinding
+                local humanoid = selfChar:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    -- Randomize the approach position slightly
+                    local approachOffset = Vector3.new(
+                        math.random(-2, 2),
+                        0,
+                        math.random(-2, 2)
+                    )
+                    
+                    humanoid:MoveTo(targetHRP.Position + approachOffset)
+                    
+                    -- Wait until close or timeout after 5 seconds
+                    local startTime = tick()
+                    while (targetHRP.Position - selfHRP.Position).Magnitude > 5 and (tick() - startTime) < 5 do
+                        task.wait(0.1)
+                    end
+                end
             end
 
-            -- Find and activate trade prompt
-            humanWait(3, 7)
+            -- Find prompt naturally with delay
+            task.wait(math.random(3, 7)/10) -- 0.3-0.7 second delay
+            
             local prompt = targetHRP:FindFirstChildOfClass("ProximityPrompt")
-
             if prompt then
-                humanWait(5, 10)
+                -- Human-like interaction delays
+                task.wait(math.random(5, 10)/10) -- 0.5-1.0 second delay
+                
+                -- Simulate human prompt activation (not instant)
                 for i = 1, math.random(1, 2) do
                     fireproximityprompt(prompt)
-                    humanWait(1, 3)
+                    task.wait(math.random(1, 3)/10) -- 0.1-0.3 second between activations
                 end
                 
                 sendNotification("Trade Sent", "Sent trade to "..targetPlayer.Name, 3)
                 
-                -- Move away
-                humanWait(5, 10)
+                -- Natural walk away
+                task.wait(math.random(5, 10)/10) -- 0.5-1.0 second delay
                 local humanoid = selfChar:FindFirstChildOfClass("Humanoid")
                 if humanoid then
                     humanoid:MoveTo(selfHRP.Position + Vector3.new(math.random(-3, 3), 0, math.random(-3, 3)))
