@@ -393,9 +393,35 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                                (plant:FindFirstChild("Fruits") and plant.Fruits:FindFirstChildWhichIsA("BasePart"):FindFirstChild("Weight"))
                 
                 if weight and weight:IsA("NumberValue") then
-                    print("[Weight Calculator] Found weight:", weight.Value)
+                    local weightKg = weight.Value
+                    print("[Weight Calculator] Found weight:", weightKg)
+
+                    -- Max modifiers values (from your image)
+                    local sumOfModifiers = 1566
+                    local numModifiers = 32
+
+                    -- Calculate value per kg
+                    local basePerKg = 50 * (1 + sumOfModifiers - numModifiers)
+                    local totalValue = basePerKg * weightKg
+
+                    -- Format total value
+                    local function formatBillions(num)
+                        if num >= 1e9 then
+                            return string.format("$%.0f (%.3f Billion)", num, num / 1e9)
+                        elseif num >= 1e6 then
+                            return string.format("$%.0f (%.3f Million)", num, num / 1e6)
+                        else
+                            return string.format("$%.0f", num)
+                        end
+                    end
+
+                    local formattedValue = formatBillions(totalValue)
+
+                    -- Get plant name & rarity
                     local rarity = plant:FindFirstChild("Rarity") and plant.Rarity.Value or "Common"
-                    createColoredNotification(string.format("%s\nWeight: %.2f kg", plant.Name, weight.Value), "Rarity: "..rarity)
+                    local name = plant.Name
+
+                    createColoredNotification(string.format("%s\nWeight: %.3f kg\nValue with max mutations: %s", name, weightKg, formattedValue), "Rarity: " .. rarity)
                     
                     -- Highlight effect
                     local highlight = Instance.new("Highlight")
