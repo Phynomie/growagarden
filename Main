@@ -261,40 +261,90 @@ local function autoBuyEggs()
 end
 
 local function autoBuyTM()
-    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 10000000000 then -- 1 billion
-        createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
-        return
-    end
-
+    -- First check if the shop is even open
     local TMShop = LocalPlayer.PlayerGui:FindFirstChild("TravelingMerchantShop_UI")
     if not TMShop then
-        createColoredNotification("Gear shop not open!", "Rarity: Common")
-        return
+        createColoredNotification("Traveling Merchant shop not open!", "Rarity: Common")
+        return false
+    end
+
+    -- Check honey UI if it exists (for honey-based purchases)
+    local honeyUI = LocalPlayer.PlayerGui:FindFirstChild("Honey_UI")
+    local playerHoney = 0
+    if honeyUI and honeyUI:FindFirstChild("Frame") and honeyUI.Frame:FindFirstChild("TextLabel1") then
+        playerHoney = tonumber(honeyUI.Frame.TextLabel1.Text:match("%d+")) or 0
     end
 
     local scrollingFrame = TMShop.Frame:FindFirstChildOfClass("ScrollingFrame")
-    if not scrollingFrame then return end
+    if not scrollingFrame then return false end
+
+    local madePurchase = false
 
     for _, frame in ipairs(scrollingFrame:GetChildren()) do
         if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
             local mainFrame = frame.Main_Frame
             local stockText = mainFrame:FindFirstChild("Stock_Text")
+            local priceText = mainFrame:FindFirstChild("Price_Text") -- Check for price text
             local rarityText = mainFrame:FindFirstChild("Rarity_Text") and mainFrame.Rarity_Text.Text or "Rarity: Common"
             
             if stockText and stockText.Text ~= "X0 Stock" then
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
                 if stockNum and stockNum > 0 then
-                    for i = 1, stockNum do
-                        local args = {frame.Name}
-                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyTravelingMerchantShopStock"):FireServer(unpack(args))
-                        task.wait(0.1)
+                    -- Check if this is a honey purchase
+                    local isHoneyPurchase = false
+                    local price = 0
+                    
+                    if priceText then
+                        local priceStr = priceText.Text:lower()
+                        if priceStr:find("honey") then
+                            isHoneyPurchase = true
+                            price = tonumber(priceStr:match("%d+")) or 0
+                        end
                     end
-                    createColoredNotification("Bought "..stockNum.." "..frame.Name.."!", rarityText)
+
+                    if isHoneyPurchase then
+                        -- Honey-based item logic
+                        if playerHoney >= price then
+                            for i = 1, stockNum do
+                                if playerHoney >= price then -- Check honey again in case it changed
+                                    local args = {frame.Name}
+                                    ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyTravelingMerchantShopStock"):FireServer(unpack(args))
+                                    playerHoney = playerHoney - price
+                                    task.wait(0.1)
+                                    madePurchase = true
+                                else
+                                    createColoredNotification("Ran out of honey while purchasing "..frame.Name, "Rarity: Common")
+                                    break
+                                end
+                            end
+                            if madePurchase then
+                                createColoredNotification("Bought "..stockNum.." "..frame.Name.." for honey!", rarityText)
+                            end
+                        else
+                            createColoredNotification("You need "..price.." honey to buy "..frame.Name, "Rarity: Common")
+                        end
+                    else
+                        -- Sheckles-based item logic
+                        local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+                        if sheckles >= 10000000000 then -- 10B sheckles check
+                            for i = 1, stockNum do
+                                local args = {frame.Name}
+                                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyTravelingMerchantShopStock"):FireServer(unpack(args))
+                                task.wait(0.1)
+                                madePurchase = true
+                            end
+                            createColoredNotification("Bought "..stockNum.." "..frame.Name.."!", rarityText)
+                        else
+                            createColoredNotification("You need 10B sheckles to buy regular TM items", "Rarity: Common")
+                            break
+                        end
+                    end
                 end
             end
         end
     end
+
+    return madePurchase
 end
 
 tab:CreateToggle("Anti Collect Fruits", function(a)
