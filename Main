@@ -882,7 +882,7 @@ local function scanForMutations()
     return mutationList
 end
 
-local trowelToggle = tab2:CreateToggle("Auto Trowel (Bone Blossom)", function(enabled)
+local trowelToggle = tab2:CreateToggle("Auto Trowel (Tri-Moon Method)", function(enabled)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack then 
         createColoredNotification("Backpack not found!", "Rarity: Common")
@@ -926,7 +926,7 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel (Bone Blossom)", function(en
                 return
             end
             
-            -- Look for Bone Blossom plants
+            -- Look for Bone Blossom plants in Plants_Physical
             local plantsPhysical = farm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
             if plantsPhysical then
                 for _, plant in ipairs(plantsPhysical:GetChildren()) do
@@ -941,24 +941,25 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel (Bone Blossom)", function(en
                                 local originalPos = hrp.CFrame
                                 
                                 -- Position in front of the plant
-                                hrp.CFrame = mainPart.CFrame * CFrame.new(0, 0, -2)
+                                hrp.CFrame = mainPart.CFrame * CFrame.new(0, 0, -2) * CFrame.Angles(0, math.pi, 0)
                                 
                                 -- Simulate clicking the plant with trowel
                                 task.wait(0.2)
+                                
+                                -- Fire the remote to use trowel on the PLANT (not fruits)
                                 local args = {
                                     "Pickup",  -- Action type
                                     trowelTool,  -- Trowel tool
-                                    plant      -- Plant to dig
+                                    plant      -- The actual plant model
                                 }
                                 
-                                -- Fire the remote (adjust if the remote name is different)
                                 ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TrowelRemote"):InvokeServer(unpack(args))
                                 
                                 -- Return to original position
                                 task.wait(0.1)
                                 hrp.CFrame = originalPos
                                 
-                                createColoredNotification("Used trowel on Bone Blossom", "Rarity: Common")
+                                createColoredNotification("Used trowel on Bone Blossom plant", "Rarity: Common")
                                 return true -- Success
                             end
                         end
@@ -966,7 +967,7 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel (Bone Blossom)", function(en
                 end
             end
             
-            createColoredNotification("No Bone Blossom found in your farm!", "Rarity: Common")
+            createColoredNotification("No Bone Blossom plants found in your farm!", "Rarity: Common")
             return false
         end
         
