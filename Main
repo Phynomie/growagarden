@@ -882,7 +882,7 @@ local function scanForMutations()
     return mutationList
 end
 
-local trowelToggle = tab2:CreateToggle("Auto Trowel", function(enabled)
+local trowelToggle = tab2:CreateToggle("Auto Trowel (Bone Blossom)", function(enabled)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack then 
         createColoredNotification("Backpack not found!", "Rarity: Common")
@@ -914,6 +914,79 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel", function(enabled)
         -- Equip the trowel
         trowelTool.Parent = LocalPlayer.Character
         createColoredNotification(trowelTool.Name.." equipped", "Rarity: Common")
+        
+        -- Function to find and use trowel on Bone Blossom plants
+        local function useTrowelOnBoneBlossom()
+            if not enabled then return end -- Stop if toggle is off
+            
+            -- Find player's farm
+            local farm = findPlayerFarm()
+            if not farm then
+                createColoredNotification("Couldn't find your farm!", "Rarity: Common")
+                return
+            end
+            
+            -- Look for Bone Blossom plants
+            local plantsPhysical = farm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+            if plantsPhysical then
+                for _, plant in ipairs(plantsPhysical:GetChildren()) do
+                    if plant.Name == "Bone Blossom" then
+                        -- Find the main plant part (usually the stem)
+                        local mainPart = plant:FindFirstChild("Stem") or plant:FindFirstChildWhichIsA("BasePart")
+                        if mainPart then
+                            -- Teleport to plant (adjust distance as needed)
+                            local char = LocalPlayer.Character
+                            if char and char:FindFirstChild("HumanoidRootPart") then
+                                local hrp = char.HumanoidRootPart
+                                local originalPos = hrp.CFrame
+                                
+                                -- Position in front of the plant
+                                hrp.CFrame = mainPart.CFrame * CFrame.new(0, 0, -2)
+                                
+                                -- Simulate clicking the plant with trowel
+                                task.wait(0.2)
+                                local args = {
+                                    "Pickup",  -- Action type
+                                    trowelTool,  -- Trowel tool
+                                    plant      -- Plant to dig
+                                }
+                                
+                                -- Fire the remote (adjust if the remote name is different)
+                                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TrowelRemote"):InvokeServer(unpack(args))
+                                
+                                -- Return to original position
+                                task.wait(0.1)
+                                hrp.CFrame = originalPos
+                                
+                                createColoredNotification("Used trowel on Bone Blossom", "Rarity: Common")
+                                return true -- Success
+                            end
+                        end
+                    end
+                end
+            end
+            
+            createColoredNotification("No Bone Blossom found in your farm!", "Rarity: Common")
+            return false
+        end
+        
+        -- Try to use trowel immediately
+        local success = useTrowelOnBoneBlossom()
+        
+        -- Set up periodic checking if not successful
+        if not success then
+            cleanupInstances.loops["AutoTrowelLoop"] = game:GetService("RunService").Heartbeat:Connect(function()
+                if not enabled then
+                    cleanupInstances.loops["AutoTrowelLoop"]:Disconnect()
+                    return
+                end
+                
+                -- Check every 5 seconds
+                if os.time() % 5 == 0 then
+                    useTrowelOnBoneBlossom()
+                end
+            end)
+        end
     else
         -- If holding a tool that contains "Trowel", put it back
         if currentTool and string.find(string.lower(currentTool.Name), "trowel") then
@@ -921,7 +994,11 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel", function(enabled)
             createColoredNotification(currentTool.Name.." unequipped", "Rarity: Common")
         end
         
-        -- Don't automatically re-equip previous tool
+        -- Clean up any running loops
+        if cleanupInstances.loops["AutoTrowelLoop"] then
+            cleanupInstances.loops["AutoTrowelLoop"]:Disconnect()
+            cleanupInstances.loops["AutoTrowelLoop"] = nil
+        end
     end
 end)
 
