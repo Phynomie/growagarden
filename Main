@@ -884,15 +884,25 @@ end
 
 local trowelToggle = tab2:CreateToggle("Auto Trowel", function(enabled)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
-    if not backpack then return end
+    if not backpack then 
+        createColoredNotification("Backpack not found!", "Rarity: Common")
+        return 
+    end
     
     local currentTool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
     
     if enabled then
-        -- Search for Trowel in backpack
-        local trowel = backpack:FindFirstChild("Trowel")
-        if not trowel then
-            createColoredNotification("Trowel not found in backpack!", "Rarity: Common")
+        -- Search for any tool containing "Trowel" in backpack
+        local trowelTool
+        for _, item in ipairs(backpack:GetChildren()) do
+            if item:IsA("Tool") and string.find(string.lower(item.Name), "trowel") then
+                trowelTool = item
+                break
+            end
+        end
+        
+        if not trowelTool then
+            createColoredNotification("No trowel found in backpack!", "Rarity: Common")
             return
         end
         
@@ -902,16 +912,16 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel", function(enabled)
         end
         
         -- Equip the trowel
-        trowel.Parent = LocalPlayer.Character
-        createColoredNotification("Trowel equipped", "Rarity: Common")
+        trowelTool.Parent = LocalPlayer.Character
+        createColoredNotification(trowelTool.Name.." equipped", "Rarity: Common")
     else
-        -- If holding the trowel, put it back
-        if currentTool and currentTool.Name == "Trowel" then
+        -- If holding a tool that contains "Trowel", put it back
+        if currentTool and string.find(string.lower(currentTool.Name), "trowel") then
             currentTool.Parent = backpack
-            createColoredNotification("Trowel unequipped", "Rarity: Common")
+            createColoredNotification(currentTool.Name.." unequipped", "Rarity: Common")
         end
         
-        -- Don't automatically re-equip previous tool - let player decide
+        -- Don't automatically re-equip previous tool
     end
 end)
 
