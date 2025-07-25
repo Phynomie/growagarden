@@ -994,7 +994,8 @@ local function legitAutoPick()
         end
         
         local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if not humanoid then 
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not humanoid or not hrp then 
             task.wait(1)
             continue 
         end
@@ -1015,64 +1016,52 @@ local function legitAutoPick()
         local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
         if plantsPhysical then
             for _, plant in pairs(plantsPhysical:GetChildren()) do
-                -- Recursive function to scan all fruit parts
-                local function scanFruitModel(model)
-                    if model:GetAttribute(selectedMutation) then
-                        -- Find the proximity prompt at any level
-                        local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
-                        if not prompt then
-                            -- Deep search for prompts in all descendants
-                            for _, descendant in pairs(model:GetDescendants()) do
-                                if descendant:IsA("ProximityPrompt") then
-                                    prompt = descendant
-                                    break
-                                end
-                            end
-                        end
-                        
-                        -- If prompt found, check distance
-                        if prompt and prompt.Enabled then
-                            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - model.Position).Magnitude
-                            if distance < closestDistance then
-                                closestDistance = distance
-                                closestFruit = model
-                                closestPrompt = prompt
-                            end
+                -- Check if plant has the selected mutation
+                if plant:GetAttribute(selectedMutation) then
+                    local prompt = plant:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt and prompt.Enabled then
+                        local distance = (hrp.Position - plant.Position).Magnitude
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestFruit = plant
+                            closestPrompt = prompt
                         end
                     end
                 end
 
-                -- Check both Fruits folder and direct children
+                -- Check fruits folder if it exists
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
                     for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                        scanFruitModel(fruit)
-                        for _, subPart in pairs(fruit:GetDescendants()) do
-                            if subPart:IsA("Model") or subPart:IsA("BasePart") then
-                                scanFruitModel(subPart)
+                        if fruit:GetAttribute(selectedMutation) then
+                            local prompt = fruit:FindFirstChildOfClass("ProximityPrompt")
+                            if prompt and prompt.Enabled then
+                                local distance = (hrp.Position - fruit.Position).Magnitude
+                                if distance < closestDistance then
+                                    closestDistance = distance
+                                    closestFruit = fruit
+                                    closestPrompt = prompt
+                                end
                             end
                         end
                     end
-                else
-                    scanFruitModel(plant)
                 end
             end
         end
 
         if closestFruit and closestPrompt then
             -- Move to fruit (3 studs away)
-            local targetPos = closestFruit.Position + (LocalPlayer.Character.HumanoidRootPart.Position - closestFruit.Position).Unit * 3
+            local targetPos = closestFruit.Position + (hrp.Position - closestFruit.Position).Unit * 3
             humanoid:MoveTo(targetPos)
             
             -- Wait until close or timeout after 5 seconds
             local startTime = os.time()
-            while (LocalPlayer.Character.HumanoidRootPart.Position - targetPos).Magnitude > 4 and 
+            while (hrp.Position - targetPos).Magnitude > 4 and 
                   (os.time() - startTime) < 5 do
                 task.wait(0.1)
             end
 
             -- Face the fruit
-            local hrp = LocalPlayer.Character.HumanoidRootPart
             hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(closestFruit.Position.X, hrp.Position.Y, closestFruit.Position.Z))
             
             -- Small random delay (0.2-0.5s)
