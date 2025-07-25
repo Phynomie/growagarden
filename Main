@@ -358,139 +358,131 @@ end)
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
         print("[Weight Calculator] Enabling...")
-
+        
         -- Create the tool
         local weightTool = Instance.new("Tool")
         weightTool.Name = "Weight Calculator"
         weightTool.RequiresHandle = false
         weightTool.CanBeDropped = false
-
+        
         local toolTip = Instance.new("StringValue")
         toolTip.Name = "ToolTip"
         toolTip.Value = "Touch/Click fruits to check weight"
         toolTip.Parent = weightTool
-
+        
         weightTool.Parent = LocalPlayer.Backpack
         print("[Weight Calculator] Tool created in backpack")
 
         -- Main function to check weight
         local function checkWeight(target)
-            print("[Weight Calculator] Checking weight for:", target:GetFullName())
+    print("[Weight Calculator] Checking weight for:", target:GetFullName())
 
-            local plant = target:FindFirstAncestorWhichIsA("Model")
-            while plant do
-                if plant:HasTag("Harvestable") then
-                    break
-                end
-                plant = plant:FindFirstAncestorWhichIsA("Model")
-            end
-
-            if plant then
-                print("[Weight Calculator] Found harvestable plant:", plant:GetFullName())
-
-                local weight = plant:FindFirstChild("Weight") or
-                               (plant:FindFirstChild("Fruits") and plant.Fruits:FindFirstChildWhichIsA("BasePart"):FindFirstChild("Weight"))
-
-                if weight and weight:IsA("NumberValue") then
-                    local weightKg = weight.Value
-                    print("[Weight Calculator] Found weight:", weightKg)
-
-                    -- Define base value per plant (this is the 'value' part of the formula)
-                    local baseValues = {
-                        -- The calculated 'value' from our previous steps (~22222.22)
-                        ["Boneblossom"] = 22222.22222000308,
-                        -- Add more plants here as needed with their corresponding base values
-                    }
-
-                    -- Define rarity multipliers for the (Rainbow/Gold) part
-                    local rarityMultipliers = {
-                        ["Gold"] = 1, -- Assuming 'Gold' is 1 as implied by calculation
-                        ["Rainbow"] = 50, -- From your original input
-                    }
-
-                    local name = plant.Name
-                    local rarity = plant:FindFirstChild("Rarity") and plant.Rarity.Value or "Common"
-
-                    local base = baseValues[name] or 100000 -- fallback if not defined
-                    local rarityMultiplier = rarityMultipliers[rarity] or 1
-
-                    -- These values are constant based on your original input
-                    local sumOfModifiers = 1566
-                    local numModifiers = 32
-
-                    -- Calculate the 'multiplier' part of the formula: (rarityMultiplier * (1 + sumOfModifiers - numModifiers))
-                    -- This replaces your previous 'multiplier' variable that was just rarityMultiplier * (1 + sumOfModifiers - numModifiers)
-                    -- And the (Rainbow/Gold) part is now handled by rarityMultiplier directly.
-                    local combinedModifierPart = rarityMultiplier * (1 + sumOfModifiers - numModifiers)
-
-                    -- Final calculation using the exact formula: value * weight^2 * ((rainbow/gold)*(1+sum-number))
-                    local totalValue = base * (weightKg ^ 2) * combinedModifierPart
-
-
-                    -- Format function
-                    local function formatBillions(num)
-                        if num >= 1e12 then
-                            return string.format("$%.0f (%.3f Trillion)", num, num / 1e12)
-                        elseif num >= 1e9 then
-                            return string.format("$%.0f (%.3f Billion)", num, num / 1e9)
-                        elseif num >= 1e6 then
-                            return string.format("$%.0f (%.3f Million)", num, num / 1e6)
-                        else
-                            return string.format("$%.0f", num)
-                        end
-                    end
-
-                    local formattedValue = formatBillions(totalValue)
-
-                    createColoredNotification(string.format("%s\nWeight: %.3f kg\nEstimated Value: %s", name, weightKg, formattedValue), "Rarity: " .. rarity)
-
-                    -- Highlight
-                    local highlight = Instance.new("Highlight")
-                    highlight.Name = "WeightHighlight"
-                    highlight.FillColor = Color3.new(1, 0.5, 0)
-                    highlight.FillTransparency = 0.7
-                    highlight.OutlineColor = Color3.new(1, 1, 1)
-                    highlight.OutlineTransparency = 0
-                    highlight.Adornee = plant
-                    highlight.Parent = workspace
-
-                    task.delay(2, function()
-                        highlight:Destroy()
-                    end)
-                else
-                    print("[Weight Calculator] No weight value found on plant")
-                end
-            else
-                print("[Weight Calculator] No harvestable plant found in ancestry")
-            end
+    local plant = target:FindFirstAncestorWhichIsA("Model")
+    while plant do
+        if plant:HasTag("Harvestable") then
+            break
         end
+        plant = plant:FindFirstAncestorWhichIsA("Model")
+    end
+
+    if plant then
+        print("[Weight Calculator] Found harvestable plant:", plant:GetFullName())
+
+        local weight = plant:FindFirstChild("Weight") or
+                       (plant:FindFirstChild("Fruits") and plant.Fruits:FindFirstChildWhichIsA("BasePart"):FindFirstChild("Weight"))
+
+        if weight and weight:IsA("NumberValue") then
+            local weightKg = weight.Value
+            print("[Weight Calculator] Found weight:", weightKg)
+
+            -- Define base value per plant (you can customize these)
+            local baseValues = {
+                ["Boneblossom"] = 200000,
+                -- Add more plants here as needed
+            }
+
+            -- Define rarity multipliers
+            local rarityMultipliers = {
+                ["Gold"] = 20,
+                ["Rainbow"] = 50,
+            }
+
+            local name = plant.Name
+            local rarity = plant:FindFirstChild("Rarity") and plant.Rarity.Value or "Common"
+
+            local base = baseValues[name] or 100000 -- fallback if not defined
+            local rarityMultiplier = rarityMultipliers[rarity] or 1
+
+            local sumOfModifiers = 1566
+            local numModifiers = 32
+
+            -- Final multiplier
+            local multiplier = rarityMultiplier * (1 + sumOfModifiers - numModifiers)
+            local totalValue = base * (weightKg ^ 1.534) * multiplier
+
+            -- Format function
+            local function formatBillions(num)
+                if num >= 1e12 then
+                    return string.format("$%.0f (%.3f Trillion)", num, num / 1e12)
+                elseif num >= 1e9 then
+                    return string.format("$%.0f (%.3f Billion)", num, num / 1e9)
+                elseif num >= 1e6 then
+                    return string.format("$%.0f (%.3f Million)", num, num / 1e6)
+                else
+                    return string.format("$%.0f", num)
+                end
+            end
+
+            local formattedValue = formatBillions(totalValue)
+
+            createColoredNotification(string.format("%s\nWeight: %.3f kg\nEstimated Value: %s", name, weightKg, formattedValue), "Rarity: " .. rarity)
+
+            -- Highlight
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "WeightHighlight"
+            highlight.FillColor = Color3.new(1, 0.5, 0)
+            highlight.FillTransparency = 0.7
+            highlight.OutlineColor = Color3.new(1, 1, 1)
+            highlight.OutlineTransparency = 0
+            highlight.Adornee = plant
+            highlight.Parent = workspace
+
+            task.delay(2, function()
+                highlight:Destroy()
+            end)
+        else
+            print("[Weight Calculator] No weight value found on plant")
+        end
+    else
+        print("[Weight Calculator] No harvestable plant found in ancestry")
+    end
+end
         -- Mobile touch detection
         if UserInputService.TouchEnabled then
             print("[Weight Calculator] Mobile device detected - setting up touch input")
-
+            
             local touchConnection
             touchConnection = UserInputService.TouchStarted:Connect(function(touch, gameProcessed)
                 if not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
                     print("[Weight Calculator] Tool not equipped - ignoring touch")
                     return
                 end
-
+                
                 print(string.format("[Weight Calculator] Touch detected at (%d, %d)", touch.Position.X, touch.Position.Y))
-
+                
                 local camera = workspace.CurrentCamera
                 local ray = camera:ViewportPointToRay(touch.Position.X, touch.Position.Y)
-
+                
                 local raycastParams = RaycastParams.new()
                 raycastParams.FilterDescendantsInstances = {workspace.Farm}
                 raycastParams.FilterType = Enum.RaycastFilterType.Include
-
+                
                 local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
                 if raycastResult and raycastResult.Instance then
                     print("[Weight Calculator] Touch hit:", raycastResult.Instance:GetFullName())
                     checkWeight(raycastResult.Instance)
                 else
                     print("[Weight Calculator] Touch didn't hit anything")
-                C
                 end
             end)
             cleanupInstances.connections["WeightTouch"] = touchConnection
@@ -504,18 +496,18 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                 print("[Weight Calculator] Tool not equipped - ignoring click")
                 return
             end
-
+            
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 print("[Weight Calculator] Mouse click detected")
-
+                
                 local mousePos = UserInputService:GetMouseLocation()
                 local camera = workspace.CurrentCamera
                 local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-
+                
                 local raycastParams = RaycastParams.new()
                 raycastParams.FilterDescendantsInstances = {workspace.Farm}
                 raycastParams.FilterType = Enum.RaycastFilterType.Include
-
+                
                 local raycastResult = workspace:Raycast(ray.Origin, ray.Direction * 1000, raycastParams)
                 if raycastResult and raycastResult.Instance then
                     print("[Weight Calculator] Click hit:", raycastResult.Instance:GetFullName())
@@ -541,7 +533,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
         createColoredNotification("Weight Calculator enabled\nEquip the tool from your backpack", "Rarity: Common")
     else
         print("[Weight Calculator] Disabling...")
-
+        
         -- Cleanup connections
         for name, conn in pairs(cleanupInstances.connections) do
             if name:find("Weight") then
