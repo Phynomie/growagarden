@@ -882,6 +882,39 @@ local function scanForMutations()
     return mutationList
 end
 
+local trowelToggle = tab2:CreateToggle("Auto Trowel", function(enabled)
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return end
+    
+    local currentTool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+    
+    if enabled then
+        -- Search for Trowel in backpack
+        local trowel = backpack:FindFirstChild("Trowel")
+        if not trowel then
+            createColoredNotification("Trowel not found in backpack!", "Rarity: Common")
+            return
+        end
+        
+        -- If holding a tool, put it in backpack
+        if currentTool then
+            currentTool.Parent = backpack
+        end
+        
+        -- Equip the trowel
+        trowel.Parent = LocalPlayer.Character
+        createColoredNotification("Trowel equipped", "Rarity: Common")
+    else
+        -- If holding the trowel, put it back
+        if currentTool and currentTool.Name == "Trowel" then
+            currentTool.Parent = backpack
+            createColoredNotification("Trowel unequipped", "Rarity: Common")
+        end
+        
+        -- Don't automatically re-equip previous tool - let player decide
+    end
+end)
+
 -- Create the mutation dropdown with filtered mutations
 local mutationDropdown = tab2:CreateDDO("Select Mutation", {}, function(selected)
     selectedMutation = selected
