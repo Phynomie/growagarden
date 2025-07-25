@@ -983,6 +983,131 @@ tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
     end
 end)
 
+local legitAutoPickEnabled = false
+local legitAutoPickLoop = nil
+
+local function legitAutoPick()
+    while legitAutoPickEnabled and selectedMutation do
+        if not LocalPlayer.Character then 
+            task.wait(1)
+            continue 
+        end
+        
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then 
+            task.wait(1)
+            continue 
+        end
+
+        -- Find closest fruit with selected mutation
+        local closestFruit = nil
+        local closestDistance = math.huge
+        local closestPrompt = nil
+        
+        if not playerFarm then
+            playerFarm = findPlayerFarm()
+            if not playerFarm then 
+                task.wait(1)
+                continue
+            end
+        end
+
+        local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+        if plantsPhysical then
+            for _, plant in pairs(plantsPhysical:GetChildren()) do
+                -- Recursive function to scan all fruit parts
+                local function scanFruitModel(model)
+                    if model:GetAttribute(selectedMutation) then
+                        -- Find the proximity prompt at any level
+                        local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
+                        if not prompt then
+                            -- Deep search for prompts in all descendants
+                            for _, descendant in pairs(model:GetDescendants()) do
+                                if descendant:IsA("ProximityPrompt") then
+                                    prompt = descendant
+                                    break
+                                end
+                            end
+                        end
+                        
+                        -- If prompt found, check distance
+                        if prompt and prompt.Enabled then
+                            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - model.Position).Magnitude
+                            if distance < closestDistance then
+                                closestDistance = distance
+                                closestFruit = model
+                                closestPrompt = prompt
+                            end
+                        end
+                    end
+                end
+
+                -- Check both Fruits folder and direct children
+                local fruitsFolder = plant:FindFirstChild("Fruits")
+                if fruitsFolder then
+                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                        scanFruitModel(fruit)
+                        for _, subPart in pairs(fruit:GetDescendants()) do
+                            if subPart:IsA("Model") or subPart:IsA("BasePart") then
+                                scanFruitModel(subPart)
+                            end
+                        end
+                    end
+                else
+                    scanFruitModel(plant)
+                end
+            end
+        end
+
+        if closestFruit and closestPrompt then
+            -- Move to fruit (3 studs away)
+            local targetPos = closestFruit.Position + (LocalPlayer.Character.HumanoidRootPart.Position - closestFruit.Position).Unit * 3
+            humanoid:MoveTo(targetPos)
+            
+            -- Wait until close or timeout after 5 seconds
+            local startTime = os.time()
+            while (LocalPlayer.Character.HumanoidRootPart.Position - targetPos).Magnitude > 4 and 
+                  (os.time() - startTime) < 5 do
+                task.wait(0.1)
+            end
+
+            -- Face the fruit
+            local hrp = LocalPlayer.Character.HumanoidRootPart
+            hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(closestFruit.Position.X, hrp.Position.Y, closestFruit.Position.Z))
+            
+            -- Small random delay (0.2-0.5s)
+            task.wait(math.random(2, 5)/10)
+            
+            -- Fire prompt
+            fireproximityprompt(closestPrompt)
+            
+            -- Random cooldown (0.5-2s)
+            task.wait(math.random(5, 20)/10)
+        else
+            -- No fruits found with selected mutation, wait longer
+            task.wait(2)
+        end
+    end
+end
+
+tab2:CreateToggle("Legit Auto-Pick (Selected Mutation)", function(state)
+    legitAutoPickEnabled = state
+    if state then
+        if not selectedMutation then
+            createColoredNotification("Please select a mutation first!", "Rarity: Common")
+            return
+        end
+        createColoredNotification("Legit Auto-Pick enabled for "..selectedMutation, "Rarity: Common")
+        legitAutoPickLoop = task.spawn(legitAutoPick)
+    else
+        if legitAutoPickLoop then
+            task.cancel(legitAutoPickLoop)
+            legitAutoPickLoop = nil
+        end
+        createColoredNotification("Legit Auto-Pick disabled", "Rarity: Common")
+    end
+end)
+
 tab3:CreateButton("Sprinkler Script", function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Phynomie/tg/refs/heads/main/script.lua"))()
 end)
