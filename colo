@@ -1,0 +1,154 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+local MY_PETS = {
+    ["Golden Dragon"] = "{25e4520b-cd5f-4347-a903-501b1f5370f4}",
+    ["Rainbow Unicorn"] = "{a1b2c3d4-e5f6-7890-1234-567890abcdef}",
+}
+
+local COLORS = {
+    Text = Color3.fromRGB(255, 255, 255),
+    Background = Color3.fromRGB(40, 40, 40),
+    Button = Color3.fromRGB(60, 60, 60),
+    ButtonHover = Color3.fromRGB(80, 80, 80)
+}
+
+local function notify(title, message)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = title,
+        Text = message,
+        Duration = 5
+    })
+end
+
+local function checkPetCooldown(petName, petId)
+    local success, cooldown = pcall(function()
+        return ReplicatedStorage.GameEvents.GetPetCooldown:InvokeServer(petId)
+    end)
+    
+    if not success then
+        notify("Error", "Failed to check "..petName)
+        return
+    end
+    
+    if cooldown and cooldown > 0 then
+        local minutes = math.floor(cooldown / 60)
+        local seconds = math.floor(cooldown % 60)
+        notify(petName.." Cooldown", string.format("%02d:%02d remaining", minutes, seconds))
+    else
+        notify(petName, "Ready to use!")
+    end
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PetCooldownChecker"
+screenGui.Parent = game.CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+frame.BackgroundColor3 = COLORS.Background
+frame.Parent = screenGui
+
+local title = Instance.new("TextLabel")
+title.Text = "Pet Cooldown Checker"
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundColor3 = COLORS.Button
+title.TextColor3 = COLORS.Text
+title.Font = Enum.Font.Gotham
+title.TextSize = 14
+title.Parent = frame
+
+local dropdown = Instance.new("TextButton")
+dropdown.Text = "Select Pet"
+dropdown.Size = UDim2.new(0.8, 0, 0, 30)
+dropdown.Position = UDim2.new(0.1, 0, 0.2, 0)
+dropdown.BackgroundColor3 = COLORS.Button
+dropdown.TextColor3 = COLORS.Text
+dropdown.Font = Enum.Font.Gotham
+dropdown.TextSize = 14
+dropdown.Parent = frame
+
+local checkButton = Instance.new("TextButton")
+checkButton.Text = "Check Cooldown"
+checkButton.Size = UDim2.new(0.8, 0, 0, 30)
+checkButton.Position = UDim2.new(0.1, 0, 0.5, 0)
+checkButton.BackgroundColor3 = COLORS.Button
+checkButton.TextColor3 = COLORS.Text
+checkButton.Font = Enum.Font.Gotham
+checkButton.TextSize = 14
+checkButton.Parent = frame
+
+local selectedPet = nil
+
+local function createDropdownOption(petName, index)
+    local button = Instance.new("TextButton")
+    button.Text = petName
+    button.Size = UDim2.new(0.8, 0, 0, 25)
+    button.Position = UDim2.new(0.1, 0, 0.2 + index * 0.1, 0)
+    button.BackgroundColor3 = COLORS.ButtonHover
+    button.TextColor3 = COLORS.Text
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 12
+    button.Parent = dropdown
+    
+    button.MouseButton1Click:Connect(function()
+        selectedPet = petName
+        dropdown.Text = petName
+        for _, child in ipairs(dropdown:GetChildren()) do
+            if child:IsA("TextButton") and child ~= dropdown then
+                child:Destroy()
+            end
+        end
+    end)
+end
+
+dropdown.MouseButton1Click:Connect(function()
+    for _, child in ipairs(dropdown:GetChildren()) do
+        if child:IsA("TextButton") and child ~= dropdown then
+            child:Destroy()
+        end
+    end
+    
+    local index = 0
+    for petName, _ in pairs(MY_PETS) do
+        createDropdownOption(petName, index)
+        index = index + 1
+    end
+end)
+
+checkButton.MouseButton1Click:Connect(function()
+    if selectedPet and MY_PETS[selectedPet] then
+        checkPetCooldown(selectedPet, MY_PETS[selectedPet])
+    else
+        notify("Error", "No pet selected")
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        for _, child in ipairs(dropdown:GetChildren()) do
+            if child:IsA("TextButton") and child ~= dropdown then
+                child:Destroy()
+            end
+        end
+    end
+end)
+
+local closeButton = Instance.new("TextButton")
+closeButton.Text = "X"
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -25, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+closeButton.TextColor3 = COLORS.Text
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 14
+closeButton.Parent = frame
+
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
+
+notify("Pet Cooldown Checker", "Script loaded successfully!")
