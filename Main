@@ -1000,10 +1000,8 @@ local function legitAutoPick()
             continue 
         end
 
-        -- Find closest fruit with selected mutation
-        local closestFruit = nil
-        local closestDistance = math.huge
-        local closestPrompt = nil
+        -- Find all fruits with the selected mutation
+        local fruitsToPick = {}
         
         if not playerFarm then
             playerFarm = findPlayerFarm()
@@ -1016,42 +1014,46 @@ local function legitAutoPick()
         local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
         if plantsPhysical then
             for _, plant in pairs(plantsPhysical:GetChildren()) do
-                -- Check if plant has the selected mutation
-                if plant:GetAttribute(selectedMutation) then
-                    local prompt = plant:FindFirstChildOfClass("ProximityPrompt")
-                    if prompt and prompt.Enabled then
-                        local distance = (hrp.Position - plant.Position).Magnitude
-                        if distance < closestDistance then
-                            closestDistance = distance
-                            closestFruit = plant
-                            closestPrompt = prompt
-                        end
-                    end
-                end
-
-                -- Check fruits folder if it exists
+                -- Check plant's Fruits folder
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
                     for _, fruit in pairs(fruitsFolder:GetChildren()) do
                         if fruit:GetAttribute(selectedMutation) then
                             local prompt = fruit:FindFirstChildOfClass("ProximityPrompt")
                             if prompt and prompt.Enabled then
-                                local distance = (hrp.Position - fruit.Position).Magnitude
-                                if distance < closestDistance then
-                                    closestDistance = distance
-                                    closestFruit = fruit
-                                    closestPrompt = prompt
-                                end
+                                table.insert(fruitsToPick, {
+                                    part = fruit,
+                                    prompt = prompt,
+                                    distance = (hrp.Position - fruit.Position).Magnitude
+                                })
                             end
                         end
+                    end
+                end
+                
+                -- Also check the plant itself if it has the mutation
+                if plant:GetAttribute(selectedMutation) then
+                    local prompt = plant:FindFirstChildOfClass("ProximityPrompt")
+                    if prompt and prompt.Enabled then
+                        table.insert(fruitsToPick, {
+                            part = plant,
+                            prompt = prompt,
+                            distance = (hrp.Position - plant.Position).Magnitude
+                        })
                     end
                 end
             end
         end
 
-        if closestFruit and closestPrompt then
+        -- Sort by distance (closest first)
+        table.sort(fruitsToPick, function(a, b) return a.distance < b.distance end)
+
+        -- Process the closest fruit
+        if #fruitsToPick > 0 then
+            local targetFruit = fruitsToPick[1]
+            
             -- Move to fruit (3 studs away)
-            local targetPos = closestFruit.Position + (hrp.Position - closestFruit.Position).Unit * 3
+            local targetPos = targetFruit.part.Position + (hrp.Position - targetFruit.part.Position).Unit * 3
             humanoid:MoveTo(targetPos)
             
             -- Wait until close or timeout after 5 seconds
@@ -1062,13 +1064,13 @@ local function legitAutoPick()
             end
 
             -- Face the fruit
-            hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(closestFruit.Position.X, hrp.Position.Y, closestFruit.Position.Z))
+            hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(targetFruit.part.Position.X, hrp.Position.Y, targetFruit.part.Position.Z))
             
             -- Small random delay (0.2-0.5s)
             task.wait(math.random(2, 5)/10)
             
             -- Fire prompt
-            fireproximityprompt(closestPrompt)
+            fireproximityprompt(targetFruit.prompt)
             
             -- Random cooldown (0.5-2s)
             task.wait(math.random(5, 20)/10)
