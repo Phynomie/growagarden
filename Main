@@ -882,7 +882,7 @@ local function scanForMutations()
     return mutationList
 end
 
-local trowelToggle = tab2:CreateToggle("Auto Trowel (Tri-Moon Method)", function(enabled)
+local trowelToggle = tab2:CreateToggle("Auto Trowel (Bone Blossom)", function(enabled)
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     if not backpack then 
         createColoredNotification("Backpack not found!", "Rarity: Common")
@@ -915,9 +915,9 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel (Tri-Moon Method)", function
         trowelTool.Parent = LocalPlayer.Character
         createColoredNotification(trowelTool.Name.." equipped", "Rarity: Common")
         
-        -- Function to find and use trowel on Bone Blossom plants
+        -- Function to simulate mouse click on Bone Blossom plants
         local function useTrowelOnBoneBlossom()
-            if not enabled then return end -- Stop if toggle is off
+            if not enabled then return end
             
             -- Find player's farm
             local farm = findPlayerFarm()
@@ -928,46 +928,30 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel (Tri-Moon Method)", function
             
             -- Look for Bone Blossom plants in Plants_Physical
             local plantsPhysical = farm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-            if plantsPhysical then
-                for _, plant in ipairs(plantsPhysical:GetChildren()) do
-                    if plant.Name == "Bone Blossom" then
-                        -- Find the main plant part (usually the stem)
-                        local mainPart = plant:FindFirstChild("Stem") or plant:FindFirstChildWhichIsA("BasePart")
-                        if mainPart then
-                            -- Teleport to plant (adjust distance as needed)
-                            local char = LocalPlayer.Character
-                            if char and char:FindFirstChild("HumanoidRootPart") then
-                                local hrp = char.HumanoidRootPart
-                                local originalPos = hrp.CFrame
-                                
-                                -- Position in front of the plant
-                                hrp.CFrame = mainPart.CFrame * CFrame.new(0, 0, -2) * CFrame.Angles(0, math.pi, 0)
-                                
-                                -- Simulate clicking the plant with trowel
-                                task.wait(0.2)
-                                
-                                -- Fire the remote to use trowel on the PLANT (not fruits)
-                                local args = {
-                                    "Pickup",  -- Action type
-                                    trowelTool,  -- Trowel tool
-                                    plant      -- The actual plant model
-                                }
-                                
-                                ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TrowelRemote"):InvokeServer(unpack(args))
-                                
-                                -- Return to original position
-                                task.wait(0.1)
-                                hrp.CFrame = originalPos
-                                
-                                createColoredNotification("Used trowel on Bone Blossom plant", "Rarity: Common")
-                                return true -- Success
-                            end
-                        end
-                    end
+            if not plantsPhysical then return end
+            
+            for _, plant in ipairs(plantsPhysical:GetChildren()) do
+                if plant.Name == "Bone Blossom" then
+                    -- Get the plant's position on screen
+                    local camera = workspace.CurrentCamera
+                    local plantPart = plant:FindFirstChild("Stem") or plant:FindFirstChildWhichIsA("BasePart")
+                    if not plantPart then continue end
+                    
+                    local screenPos, onScreen = camera:WorldToViewportPoint(plantPart.Position)
+                    if not onScreen then continue end
+                    
+                    -- Simulate mouse click at plant's position
+                    local mousePos = Vector2.new(screenPos.X, screenPos.Y)
+                    
+                    -- Call the original ProcessInput function with mouse position
+                    ProcessInput_upvr(mousePos)
+                    
+                    createColoredNotification("Used trowel on Bone Blossom", "Rarity: Common")
+                    return true
                 end
             end
             
-            createColoredNotification("No Bone Blossom plants found in your farm!", "Rarity: Common")
+            createColoredNotification("No Bone Blossom plants found!", "Rarity: Common")
             return false
         end
         
@@ -1000,6 +984,9 @@ local trowelToggle = tab2:CreateToggle("Auto Trowel (Tri-Moon Method)", function
             cleanupInstances.loops["AutoTrowelLoop"]:Disconnect()
             cleanupInstances.loops["AutoTrowelLoop"] = nil
         end
+        
+        -- Cancel any active trowel operation
+        Cancel_upvr()
     end
 end)
 
