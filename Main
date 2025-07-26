@@ -627,7 +627,7 @@ local function updatePetDisplay(petModel, display)
     end
 
     local success, cooldownData = pcall(function()
-        return COOLDOWN_REMOTE:InvokeServer(petUUID)
+        return COOLDOWN_REMOTE:InvokeServer(unpack({ petUUID }))
     end)
 
     if success and type(cooldownData) == "table" then
