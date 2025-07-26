@@ -1,24 +1,27 @@
--- Shovel Script (Client) - Works on any farm
+-- Shovel Script - Only works on your alt's farm
 local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
--- Get references to game elements
+-- Configuration
+local ALT_USERNAME = "YourAltUsernameHere" -- CHANGE THIS
+local PROTECTED_PLANTS = {"Carrot", "Sprinkler"}
+
+-- Get references
 local LocalPlayer = game.Players.LocalPlayer
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local Remove_Item = GameEvents:WaitForChild("Remove_Item")
 local DeleteObject = GameEvents:WaitForChild("DeleteObject")
 
--- Create Highlight effect
+-- Create highlight effect
 local Highlight = Instance.new("Highlight")
 Highlight.Name = "ShovelHighlight"
 Highlight.Parent = LocalPlayer.PlayerGui
 Highlight.FillColor = Color3.fromRGB(255, 50, 50)
 Highlight.FillTransparency = 1
 Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 
 -- UI Elements
 local ShovelPrompt = LocalPlayer.PlayerGui:WaitForChild("ShovelPrompt")
@@ -27,14 +30,41 @@ local FruitName = ConfirmFrame:WaitForChild("FruitName")
 
 local CurrentCamera = workspace.CurrentCamera
 
--- Configuration
-local PROTECTED_PLANTS = {"Carrot", "Sprinkler"}
-local BLACKLISTED_TAGS = {"NoShovel", "Protected"}
-
 local TargetData = {
     Instance = nil,
-    IsPlaceableObject = false
+    IsPlaceableObject = false,
+    IsAltFarm = false
 }
+
+-- Check if target is in alt's farm
+local function IsInAltFarm(instance)
+    -- Find the farm model
+    local farm = instance:FindFirstAncestorOfClass("Model")
+    if not farm then return false end
+    
+    -- Check if farm belongs to alt (simple name check)
+    if string.find(farm.Name, "rr2obly256sf") then
+        return true
+    end
+    
+    -- More robust check would go here if needed
+    return false
+end
+
+-- Modified CanShovel function
+local function CanShovel(target)
+    -- Check protected plants
+    for _, name in pairs(PROTECTED_PLANTS) do
+        if string.find(string.lower(target.Name), string.lower(name)) then
+            return false, false
+        end
+    end
+    
+    -- Check if in alt's farm
+    local isAltFarm = IsInAltFarm(target)
+    
+    return true, isAltFarm
+end
 
 -- Raycast function
 local function RaycastToPosition(mousePosition)
@@ -45,25 +75,6 @@ local function RaycastToPosition(mousePosition)
     return workspace:Raycast(ray.Origin, ray.Direction * 500, raycastParams)
 end
 
--- Check if target is shovelable
-local function CanShovel(target)
-    -- Check protected names
-    for _, name in pairs(PROTECTED_PLANTS) do
-        if string.find(string.lower(target.Name), string.lower(name)) then
-            return false
-        end
-    end
-    
-    -- Check tags
-    for _, tag in pairs(BLACKLISTED_TAGS) do
-        if CollectionService:HasTag(target, tag) then
-            return false
-        end
-    end
-    
-    return true
-end
-
 -- Highlight handling
 local function UpdateHighlight()
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Shovel [Destroy Plants]") then
@@ -72,7 +83,6 @@ local function UpdateHighlight()
     end
 
     local raycastResult = RaycastToPosition(UserInputService:GetMouseLocation())
-    
     if not raycastResult then
         Highlight.Adornee = nil
         return
@@ -84,9 +94,12 @@ local function UpdateHighlight()
         return
     end
 
-    if CanShovel(targetModel) then
+    local canShovel, isAltFarm = CanShovel(targetModel)
+    
+    if canShovel then
         if Highlight.Adornee ~= targetModel then
             Highlight.FillTransparency = 1
+            Highlight.FillColor = isAltFarm and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
             TweenService:Create(Highlight, TweenInfo.new(0.2), {
                 FillTransparency = 0.7
             }):Play()
@@ -107,17 +120,23 @@ local function HandleShovelInput(inputPosition)
     if not raycastResult then return end
 
     local targetModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
-    if not targetModel or not CanShovel(targetModel) then return end
+    if not targetModel then return end
+
+    local canShovel, isAltFarm = CanShovel(targetModel)
+    if not canShovel then return end
 
     FruitName.Text = targetModel.Name
     TargetData.Instance = targetModel
     TargetData.IsPlaceableObject = CollectionService:HasTag(targetModel, "PlaceableObject")
-    ShovelPrompt.Enabled = true
+    TargetData.IsAltFarm = isAltFarm
+    
+    -- Only show prompt for alt's farm
+    ShovelPrompt.Enabled = isAltFarm
 end
 
 -- UI Button Handlers
 ConfirmFrame.Confirm.MouseButton1Click:Connect(function()
-    if TargetData.Instance then
+    if TargetData.Instance and TargetData.IsAltFarm then
         if TargetData.IsPlaceableObject then
             DeleteObject:FireServer(TargetData.Instance)
         else
@@ -138,17 +157,11 @@ ConfirmFrame.ExitButton.MouseButton1Click:Connect(CancelShovel)
 
 -- Input Setup
 local function SetupInput()
-    if UserInputService.TouchEnabled then
-        UserInputService.TouchTapInWorld:Connect(function(_, position)
-            HandleShovelInput(position)
-        end)
-    else
-        UserInputService.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                HandleShovelInput(UserInputService:GetMouseLocation())
-            end
-        end)
-    end
+    UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            HandleShovelInput(UserInputService:GetMouseLocation())
+        end
+    end)
 end
 
 -- Initialize
