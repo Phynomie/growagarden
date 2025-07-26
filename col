@@ -1,114 +1,116 @@
 local cooldownRemote = game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("GetPetCooldown")
+local RunService = game:GetService("RunService")
 local MOON_NAP_TEXT = "Moon Nap"
-local UPDATE_INTERVAL = 1
-local lastUpdate = os.clock()
 
--- Stores all active pet displays [petName] = textLabel
+-- Stores all active pet displays {[petName] = {display = TextLabel, lastUpdate = time}}
 local activeDisplays = {}
+local petCache = {} -- Cache pet references to avoid frequent scans
 
--- Creates display if one doesn't exist, returns existing one if it does
-local function getOrCreateDisplay(pet)
-    local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
-    if not head then return nil end
-    
-    -- Check for existing display
-    local existing = head:FindFirstChild("PetCooldownDisplay")
-    if existing then
-        return existing.Frame.TextLabel
-    end
-    
-    -- Create new display
+-- Creates optimized display
+local function createDisplay(head)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
     billboard.Size = UDim2.new(6, 0, 2, 0)
     billboard.StudsOffset = Vector3.new(0, 3.5, 0)
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.Parent = head
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundTransparency = 1
-    frame.Parent = billboard
 
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Loading..."
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
     textLabel.TextSize = 18
     textLabel.TextStrokeTransparency = 0.5
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    textLabel.Parent = frame
-
+    textLabel.Parent = billboard
+    
     return textLabel
 end
 
--- Updates a single pet's display text
-local function updatePetDisplay(petName, display)
-    local success, cooldownData = pcall(function()
-        return cooldownRemote:InvokeServer(petName)
-    end)
+-- Batch update function
+local function updateDisplays()
+    local currentTime = os.clock()
+    
+    -- Process cached pets first
+    for petName, data in pairs(petCache) do
+        if not data.pet or not data.pet.Parent then
+            if activeDisplays[petName] then
+                activeDisplays[petName].display.Parent:Destroy()
+                activeDisplays[petName] = nil
+            end
+            petCache[petName] = nil
+        elseif currentTime - (activeDisplays[petName] and activeDisplays[petName].lastUpdate or 0) >= 1 then
+            -- Only update if it's been at least 1 second
+            local display = activeDisplays[petName] and activeDisplays[petName].display
+                          or createDisplay(data.pet:FindFirstChild("Head") or data.pet:FindFirstChildWhichIsA("BasePart"))
+            
+            if display then
+                -- Async cooldown check
+                task.spawn(function()
+                    local success, cooldownData = pcall(cooldownRemote.InvokeServer, cooldownRemote, petName)
+                    
+                    if success and type(cooldownData) == "table" then
+                        local timeLeft, hasAbility = 0, false
+                        for _, entry in ipairs(cooldownData) do
+                            if type(entry) == "table" and entry.Passive == MOON_NAP_TEXT then
+                                timeLeft = entry.Time or 0
+                                hasAbility = true
+                                break
+                            end
+                        end
 
-    if success and type(cooldownData) == "table" then
-        local timeLeft = 0
-        local hasAbility = false
-        
-        for _, entry in ipairs(cooldownData) do
-            if type(entry) == "table" and entry.Passive == MOON_NAP_TEXT then
-                timeLeft = entry.Time or 0
-                hasAbility = true
-                break
+                        display.Text = hasAbility and (timeLeft > 0 and string.format("%s: %ds", MOON_NAP_TEXT, timeLeft) 
+                                                      or string.format("%s: Ready!", MOON_NAP_TEXT))
+                                                or "No "..MOON_NAP_TEXT
+                        display.TextColor3 = hasAbility and (timeLeft > 0 and Color3.new(1, 0.5, 0.5) 
+                                                             or Color3.new(0.5, 1, 0.5))
+                                                    or Color3.new(0.8, 0.8, 0.8)
+                    else
+                        display.Text = "Error"
+                        display.TextColor3 = Color3.new(1, 0, 0)
+                    end
+                end)
+                
+                activeDisplays[petName] = {
+                    display = display,
+                    lastUpdate = currentTime
+                }
             end
         end
-
-        if hasAbility then
-            display.Text = timeLeft > 0 and string.format("%s: %ds", MOON_NAP_TEXT, timeLeft) 
-                                      or string.format("%s: Ready!", MOON_NAP_TEXT)
-            display.TextColor3 = timeLeft > 0 and Color3.new(1, 0.5, 0.5) 
-                                             or Color3.new(0.5, 1, 0.5)
-        else
-            display.Text = "No "..MOON_NAP_TEXT
-            display.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-        end
-    else
-        display.Text = "Error"
-        display.TextColor3 = Color3.new(1, 0, 0)
     end
 end
 
--- Main update loop
-while true do
-    local now = os.clock()
-    local delta = now - lastUpdate
-    
-    -- Only run updates if at least 1 second has passed
-    if delta >= UPDATE_INTERVAL then
-        lastUpdate = now
-    -- Find all current pets
-        for _, petMover in ipairs(workspace.PetsPhysical:GetChildren()) do
-            if petMover.Name == "PetMover" then
-                for _, pet in ipairs(petMover:GetChildren()) do
-                    if pet:IsA("Model") and pet.Name:match("^{.+}$") then
-                    -- Get or create display
-                        local display = activeDisplays[pet.Name] or getOrCreateDisplay(pet)
-                        if display then
-                            activeDisplays[pet.Name] = display
-                            updatePetDisplay(pet.Name, display)
-                        end
-                    end
+-- Initial pet scan (runs less frequently)
+local function refreshPetCache()
+    petCache = {}
+    for _, petMover in ipairs(workspace.PetsPhysical:GetChildren()) do
+        if petMover.Name == "PetMover" then
+            for _, pet in ipairs(petMover:GetChildren()) do
+                if pet:IsA("Model") and pet.Name:match("^{.+}$") then
+                    petCache[pet.Name] = {pet = pet}
                 end
             end
         end
-    
-    -- Clean up displays for pets that no longer exist
-        for petName, display in pairs(activeDisplays) do
-            if not workspace:FindFirstChild(petName, true) then
-                if display.Parent then display.Parent:Destroy() end
-                activeDisplays[petName] = nil
-            end
-        end
-        task.wait(0.1)
     end
+    return #petCache > 0
 end
+
+-- Main loop using Heartbeat for smooth updates
+local accumulator = 0
+RunService.Heartbeat:Connect(function(deltaTime)
+    accumulator += deltaTime
+    
+    -- Full refresh every 10 seconds
+    if accumulator >= 10 then
+        accumulator = 0
+        refreshPetCache()
+    end
+    
+    -- Update displays every frame (throttled internally)
+    updateDisplays()
+end)
+
+-- Initial setup
+refreshPetCache()
