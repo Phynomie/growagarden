@@ -1,0 +1,152 @@
+local cooldownRemote = game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("GetPetCooldown")
+local MOON_NAP_TEXT = "Moon Nap"
+local UPDATE_INTERVAL = 1  -- Update every second
+
+-- Table to store all active displays
+local activeDisplays = {}
+
+-- Function to create the display
+local function createCooldownDisplay(pet)
+    local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
+    if not head then return nil end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PetCooldownDisplay"
+    billboard.Size = UDim2.new(6, 0, 2, 0)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = head
+    billboard.LightInfluence = 0
+    billboard.MaxDistance = 100
+    billboard.Parent = head
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundTransparency = 1
+    frame.Parent = billboard
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Loading..."
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 18
+    textLabel.TextStrokeTransparency = 0.5
+    textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.Parent = frame
+
+    return textLabel
+end
+
+-- Function to update the display
+local function updateCooldownDisplay(display, petGuid)
+    local success, cooldownData = pcall(function()
+        return cooldownRemote:InvokeServer(petGuid)
+    end)
+
+    if success and type(cooldownData) == "table" then
+        local remainingTime = 0
+        local hasMoonNap = false
+        
+        -- Parse the cooldown data
+        if #cooldownData > 0 then
+            for _, entry in ipairs(cooldownData) do
+                if type(entry) == "table" and entry.Passive == MOON_NAP_TEXT then
+                    remainingTime = entry.Time or 0
+                    hasMoonNap = true
+                    break
+                end
+            end
+        end
+
+        -- Update the display
+        if hasMoonNap then
+            if remainingTime > 0 then
+                display.Text = string.format("%s: %ds", MOON_NAP_TEXT, remainingTime)
+                display.TextColor3 = Color3.new(1, 0.5, 0.5)  -- Red when on cooldown
+            else
+                display.Text = string.format("%s: Ready!", MOON_NAP_TEXT)
+                display.TextColor3 = Color3.new(0.5, 1, 0.5)  -- Green when ready
+            end
+        else
+            display.Text = "No "..MOON_NAP_TEXT
+            display.TextColor3 = Color3.new(0.8, 0.8, 0.8)  -- Gray when no cooldown
+        end
+    else
+        display.Text = "Error"
+        display.TextColor3 = Color3.new(1, 0, 0)  -- Red for error
+    end
+end
+
+-- Function to find all pet UUIDs
+local function findAllPetUUIDs()
+    local petsFolder = workspace:FindFirstChild("PetsPhysical")
+    if not petsFolder then
+        warn("PetsPhysical folder not found")
+        return {}
+    end
+
+    local petMovers = petsFolder:GetChildren()
+    local uuids = {}
+
+    for _, petMover in ipairs(petMovers) do
+        if petMover.Name == "PetMover" then
+            for _, pet in ipairs(petMover:GetChildren()) do
+                if pet:IsA("Model") and pet.Name:match("^{.+}$") then
+                    table.insert(uuids, pet.Name)
+                end
+            end
+        end
+    end
+
+    return uuids
+end
+
+-- Function to initialize displays for all pets
+local function initializeAllPetDisplays()
+    local petUUIDs = findAllPetUUIDs()
+    
+    for _, uuid in ipairs(petUUIDs) do
+        local pet = workspace:FindFirstChild(uuid, true)
+        if pet then
+            local display = createCooldownDisplay(pet)
+            if display then
+                activeDisplays[uuid] = {
+                    display = display,
+                    pet = pet
+                }
+            end
+        end
+    end
+end
+
+-- Function to update all displays
+local function updateAllDisplays()
+    for uuid, data in pairs(activeDisplays) do
+        if data.display and data.display.Parent then
+            updateCooldownDisplay(data.display, uuid)
+        else
+            activeDisplays[uuid] = nil  -- Clean up removed displays
+        end
+    end
+end
+
+-- Main function
+local function runCooldownTracker()
+    -- Initialize displays for all pets
+    initializeAllPetDisplays()
+    
+    -- Set up the update loop
+    while task.wait(UPDATE_INTERVAL) do
+        -- Check for new pets periodically
+        if math.random(1, 10) == 1 then  -- 10% chance to check for new pets each second
+            initializeAllPetDisplays()
+        end
+        
+        updateAllDisplays()
+    end
+end
+
+-- Start the cooldown tracker
+runCooldownTracker()
