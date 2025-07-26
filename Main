@@ -592,8 +592,8 @@ local function createPetDisplay(pet)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
-    billboard.Size = UDim2.new(6, 0, 2, 0)
-    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.Size = UDim2.new(8, 0, 3 + (#petAbilities * 1.5), 0) -- Dynamic size based on abilities
+    billboard.StudsOffset = Vector3.new(0, 4, 0) -- Slightly higher to fit multiple lines
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
     billboard.LightInfluence = 0
@@ -608,12 +608,13 @@ local function createPetDisplay(pet)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Loading..."
+    textLabel.Text = "Loading abilities..."
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 18
+    textLabel.TextSize = 16 -- Slightly smaller to fit more text
     textLabel.TextStrokeTransparency = 0.5
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top -- Align text to top
     textLabel.Parent = frame
 
     return textLabel
@@ -625,28 +626,41 @@ local function updatePetDisplay(petName, display)
     end)
 
     if success and type(cooldownData) == "table" then
-        local timeLeft = 0
-        local hasMoonNap = false
+        local activeAbilities = {}
         
+        -- Collect all ability cooldowns
         for _, entry in ipairs(cooldownData) do
-            if type(entry) == "table" and entry.Passive == "Moon Nap" then
-                timeLeft = entry.Time or 0
-                hasMoonNap = true
-                break
+            if type(entry) == "table" and entry.Passive then
+                local timeLeft = entry.Time or 0
+                local totalTime = entry.Cooldown or entry.MaxTime or 60
+                local status = timeLeft > 0 and string.format("%s: %d/%ds", entry.Passive, timeLeft, totalTime)
+                                      or string.format("%s: Ready!", entry.Passive)
+                local color = timeLeft > 0 and Color3.new(1, 0.5, 0.5) or Color3.new(0.5, 1, 0.5)
+                
+                table.insert(activeAbilities, {
+                    text = status,
+                    color = color
+                })
             end
         end
 
-        if hasMoonNap then
-            display.Text = timeLeft > 0 and string.format("Moon Nap: %ds", timeLeft) 
-                                      or "Moon Nap: Ready!"
-            display.TextColor3 = timeLeft > 0 and Color3.new(1, 0.5, 0.5) 
-                                             or Color3.new(0.5, 1, 0.5)
+        -- Update display with all abilities
+        if #activeAbilities > 0 then
+            local displayText = ""
+            for i, ability in ipairs(activeAbilities) do
+                displayText = displayText .. ability.text
+                if i < #activeAbilities then
+                    displayText = displayText .. "\n" -- New line between abilities
+                end
+            end
+            display.Text = displayText
+            display.TextColor3 = activeAbilities[1].color -- Use first ability's color
         else
-            display.Text = "No Moon Nap"
+            display.Text = "No active abilities"
             display.TextColor3 = Color3.new(0.8, 0.8, 0.8)
         end
     else
-        display.Text = "Error"
+        display.Text = "Error fetching data"
         display.TextColor3 = Color3.new(1, 0, 0)
     end
 end
@@ -693,7 +707,7 @@ local function scanAndUpdatePets()
     end
 end
 
-tab:CreateToggle("Show Pet Cooldowns (Moon Cat Only)", function(enabled)
+tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
     petCooldownEnabled = enabled
     
     if enabled then
@@ -706,7 +720,7 @@ tab:CreateToggle("Show Pet Cooldowns (Moon Cat Only)", function(enabled)
             task.wait(1) -- Wait 1 second between updates
         end)
         
-        createColoredNotification("Pet cooldowns enabled", "Rarity: Common")
+        createColoredNotification("All pet cooldowns enabled", "Rarity: Common")
     else
         -- Clean up
         if petCooldownConnection then
@@ -877,10 +891,14 @@ tab:CreateButton("Sell All Fruits", function()
 end)
 
 local autoBuyActive = false
-cleanupInstances.loops.buyLoop = nil
+local buyLoopThread = nil
+local lastBuyTime = 0
+local BUY_COOLDOWN = 60 -- 60 seconds cooldown
 
+-- Create the countdown GUI (only once)
 local countdownGui = Instance.new("ScreenGui")
 countdownGui.Name = "AutoBuyCountdown"
+countdownGui.ResetOnSpawn = false
 countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
@@ -928,50 +946,75 @@ progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBar
 
 local function stopBuyLoop()
-    if cleanupInstances.loops.buyLoop then
-        cleanupInstances.loops.buyLoop = nil
+    if buyLoopThread then
+        task.cancel(buyLoopThread)
+        buyLoopThread = nil
     end
     autoBuyActive = false
     frame.Visible = false
 end
 
+local function runBuyActions()
+    -- Run all buy functions
+    autoBuySeeds()
+    autoBuyGears()
+    autoBuyEggs()
+    autoBuyTM()
+    
+    -- Update last buy time
+    lastBuyTime = os.time()
+end
+
+local function updateCountdownDisplay(remaining)
+    timerText.Text = remaining.."s"
+    progressFill.Size = UDim2.new(remaining/BUY_COOLDOWN, 0, 1, 0)
+    
+    local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear)
+    local tween = TweenService:Create(progressFill, tweenInfo, {Size = UDim2.new((remaining-1)/BUY_COOLDOWN, 0, 1, 0)})
+    tween:Play()
+end
+
 local function startBuyLoop()
-    cleanupInstances.loops.buyLoop = coroutine.create(function()
+    -- Don't start if already running
+    if buyLoopThread then return end
+    
+    buyLoopThread = task.spawn(function()
+        frame.Visible = true
+        
         while autoBuyActive do
-            frame.Visible = true
+            local currentTime = os.time()
+            local timeSinceLastBuy = currentTime - lastBuyTime
+            local remainingCooldown = BUY_COOLDOWN - timeSinceLastBuy
             
-            autoBuySeeds()
-            autoBuyGears()
-            autoBuyEggs()
-            autoBuyTM()
+            if remainingCooldown <= 0 then
+                -- Cooldown finished, run buy actions
+                runBuyActions()
+                remainingCooldown = BUY_COOLDOWN
+            end
             
-            for i = 60, 1, -1 do
+            -- Update countdown
+            for i = remainingCooldown, 1, -1 do
                 if not autoBuyActive then break end
-                
-                timerText.Text = i.."s"
-                progressFill.Size = UDim2.new(i/60, 0, 1, 0)
-                
-                local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear)
-                local tween = TweenService:Create(progressFill, tweenInfo, {Size = UDim2.new((i-1)/60, 0, 1, 0)})
-                tween:Play()
-                
+                updateCountdownDisplay(i)
                 task.wait(1)
             end
         end
-        stopBuyLoop()
+        
+        -- Clean up when loop ends
+        frame.Visible = false
+        buyLoopThread = nil
     end)
-    coroutine.resume(cleanupInstances.loops.buyLoop)
 end
 
 tab2:CreateToggle("Auto Buy Seed/Gear/Egg/TM", function(a)
     autoBuyActive = a
     
     if a then
-        if not cleanupInstances.loops.buyLoop then
-            startBuyLoop()
-        end
+        startBuyLoop()
+        createColoredNotification("Auto-Buy enabled (60s cooldown)", "Rarity: Common")
     else
         stopBuyLoop()
+        createColoredNotification("Auto-Buy disabled", "Rarity: Common")
     end
 end)
 
