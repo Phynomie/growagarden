@@ -590,27 +590,27 @@ local function debugPrint(message)
 end
 
 -- Create a BillboardGui for a pet
-local function createPetDisplay(pet)
-    debugPrint("Creating display for pet: "..pet.Name)
+local function createPetDisplay(petModel)
+    debugPrint("Creating display for pet: "..petModel.Name)
     
     -- Find the head or main part
-    local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
+    local head = petModel:FindFirstChild("Head") or petModel:FindFirstChildWhichIsA("BasePart")
     if not head then
-        debugPrint("No head/part found for pet: "..pet.Name)
+        debugPrint("No head/part found for pet: "..petModel.Name)
         return nil
     end
     
-    debugPrint("Found head/part: "..head.Name.." for pet: "..pet.Name)
+    debugPrint("Found head/part: "..head.Name.." for pet: "..petModel.Name)
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
-    billboard.Size = UDim2.new(6, 0, 2, 0) -- Larger size
-    billboard.StudsOffset = Vector3.new(0, 3.5, 0) -- Higher above head
+    billboard.Size = UDim2.new(6, 0, 2, 0)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
-    billboard.LightInfluence = 0 -- Always visible
+    billboard.LightInfluence = 0
     billboard.MaxDistance = 100
-    billboard.Parent = head -- Parent to head instead of pet
+    billboard.Parent = head
 
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 1, 0)
@@ -623,39 +623,44 @@ local function createPetDisplay(pet)
     textLabel.Text = "Checking..."
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 18 -- Larger text
+    textLabel.TextSize = 18
     textLabel.TextStrokeTransparency = 0.5
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     textLabel.Parent = frame
 
-    debugPrint("Created display for pet: "..pet.Name)
+    debugPrint("Created display for pet: "..petModel.Name)
     return textLabel
 end
 
 -- Update cooldown display for a pet
-local function updatePetDisplay(pet, display)
+local function updatePetDisplay(petModel, display)
     -- Extract UUID from pet name
-    local petUUID = pet.Name:match("{(.-)}")
+    local petUUID = petModel.Name:match("{(.-)}")
     if not petUUID then
-        debugPrint("No UUID found in pet name: "..pet.Name)
+        debugPrint("No UUID found in pet name: "..petModel.Name)
         display.Text = "Invalid Pet ID"
         return
     end
 
-    debugPrint("Checking cooldown for pet: "..pet.Name.." ("..petUUID..")")
+    debugPrint("Checking cooldown for pet: "..petModel.Name.." ("..petUUID..")")
     
     local success, cooldownData = pcall(function()
         return COOLDOWN_REMOTE:InvokeServer(petUUID)
     end)
 
     if success and cooldownData and type(cooldownData) == "table" then
-        debugPrint("Received cooldown data for pet: "..pet.Name)
+        debugPrint("Received cooldown data for pet: "..petModel.Name)
+        
+        -- Check if this pet has Moon Map
+        local hasMoonMap = false
         for k,v in pairs(cooldownData) do
             debugPrint(k.." = "..tostring(v))
+            if tostring(k):find(MOON_MAP_TEXT) or tostring(v):find(MOON_MAP_TEXT) then
+                hasMoonMap = true
+            end
         end
 
-        -- Check if this pet has Moon Map
-        if cooldownData[MoonMapText] then
+        if hasMoonMap then
             local remaining = cooldownData.remaining or 0
             local total = cooldownData.cooldown or 60
             
@@ -671,7 +676,7 @@ local function updatePetDisplay(pet, display)
             display.TextColor3 = Color3.new(0.8, 0.8, 0.8) -- Gray when no moon map
         end
     else
-        debugPrint("Failed to get cooldown data for pet: "..pet.Name)
+        debugPrint("Failed to get cooldown data for pet: "..petModel.Name)
         if not success then
             debugPrint("Error: "..tostring(cooldownData))
         end
@@ -687,33 +692,36 @@ local function trackPets()
     while task.wait(1) do -- Update every second
         debugPrint("Scanning for pets...")
         
-        for _, petMover in ipairs(PETS_FOLDER:GetChildren()) do
-            if petMover:IsA("Model") then
-                debugPrint("Found PetMover: "..petMover.Name)
+        -- Get all PetMover instances
+        local petMovers = PETS_FOLDER:FindFirstChild("PetMover")
+        if not petMovers then
+            debugPrint("No PetMover folder found!")
+            task.wait(5)
+            continue
+        end
+
+        -- Get all pets (models with UUID names) under PetMover
+        for _, petModel in ipairs(petMovers:GetChildren()) do
+            if petModel:IsA("Model") and petModel.Name:match("^{.+}$") then -- UUID format
+                debugPrint("Found pet: "..petModel.Name)
                 
-                for _, pet in ipairs(petMover:GetChildren()) do
-                    if pet:IsA("Model") and pet.Name:match("^{.+}$") then -- UUID format
-                        debugPrint("Found pet: "..pet.Name)
-                        
-                        if not activePetDisplays[pet] then
-                            debugPrint("Creating new display for pet: "..pet.Name)
-                            activePetDisplays[pet] = createPetDisplay(pet)
-                        end
-                        
-                        if activePetDisplays[pet] then
-                            updatePetDisplay(pet, activePetDisplays[pet])
-                        end
-                    end
+                if not activePetDisplays[petModel] then
+                    debugPrint("Creating new display for pet: "..petModel.Name)
+                    activePetDisplays[petModel] = createPetDisplay(petModel)
+                end
+                
+                if activePetDisplays[petModel] then
+                    updatePetDisplay(petModel, activePetDisplays[petModel])
                 end
             end
         end
         
         -- Clean up displays for pets that no longer exist
-        for pet, display in pairs(activePetDisplays) do
-            if not pet:IsDescendantOf(PETS_FOLDER) then
-                debugPrint("Removing display for despawned pet: "..pet.Name)
+        for petModel, display in pairs(activePetDisplays) do
+            if not petModel:IsDescendantOf(petMovers) then
+                debugPrint("Removing display for despawned pet: "..petModel.Name)
                 display.Parent:Destroy()
-                activePetDisplays[pet] = nil
+                activePetDisplays[petModel] = nil
             end
         end
     end
@@ -739,8 +747,8 @@ tab:CreateToggle("Show Pet Cooldowns", function(enabled)
         end
         
         -- Clean up all displays
-        for pet, display in pairs(activePetDisplays) do
-            debugPrint("Removing display for pet: "..pet.Name)
+        for petModel, display in pairs(activePetDisplays) do
+            debugPrint("Removing display for pet: "..petModel.Name)
             display.Parent:Destroy()
         end
         activePetDisplays = {}
