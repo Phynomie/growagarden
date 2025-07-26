@@ -693,7 +693,7 @@ local function scanAndUpdatePets()
     end
 end
 
-tab:CreateToggle("Show Pet Cooldowns", function(enabled)
+tab:CreateToggle("Show Pet Cooldowns (Moon Cat Only)", function(enabled)
     petCooldownEnabled = enabled
     
     if enabled then
