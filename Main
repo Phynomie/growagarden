@@ -577,6 +577,124 @@ tab:CreateToggle("Weight Calculator", function(enabled)
     end
 end)
 
+local MOON_MAP_TEXT = "Moon Map"
+local PETS_FOLDER = workspace.PetsPhysical
+local COOLDOWN_REMOTE = ReplicatedStorage.GameEvents.GetPetCooldown
+
+-- Store all active pet displays
+local activePetDisplays = {}
+
+-- Create a BillboardGui for a pet
+local function createPetDisplay(pet)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "PetCooldownDisplay"
+    billboard.Size = UDim2.new(4, 0, 1.5, 0)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
+    billboard.Parent = pet
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundTransparency = 1
+    frame.Parent = billboard
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Checking..."
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 14
+    textLabel.Parent = frame
+
+    return textLabel
+end
+
+-- Update cooldown display for a pet
+local function updatePetDisplay(pet, display)
+    local args = {pet.Name:match("{(.-)}")} -- Extract UUID from pet name
+    local success, cooldownData = pcall(function()
+        return COOLDOWN_REMOTE:InvokeServer(unpack(args))
+    end)
+
+    if success and cooldownData and type(cooldownData) == "table" then
+        -- Check if this pet has Moon Map
+        if cooldownData[MoonMapText] then
+            local remaining = cooldownData.remaining or 0
+            local total = cooldownData.cooldown or 60
+            
+            if remaining > 0 then
+                display.Text = string.format("Time: %d Passive %s", remaining, MOON_MAP_TEXT)
+                display.TextColor3 = Color3.new(1, 0.5, 0.5) -- Reddish when on cooldown
+            else
+                display.Text = string.format("Time: 0 Passive %s (Ready!)", MOON_MAP_TEXT)
+                display.TextColor3 = Color3.new(0.5, 1, 0.5) -- Green when ready
+            end
+        else
+            display.Text = "No "..MOON_MAP_TEXT
+            display.TextColor3 = Color3.new(0.8, 0.8, 0.8) -- Gray when no moon map
+        end
+    else
+        display.Text = "Error"
+        display.TextColor3 = Color3.new(1, 0, 0)
+    end
+end
+
+-- Main tracking function
+local function trackPets()
+    while true do
+        for _, petMover in ipairs(PETS_FOLDER:GetChildren()) do
+            if petMover:IsA("Model") then
+                for _, pet in ipairs(petMover:GetChildren()) do
+                    if pet:IsA("Model") and pet.Name:match("^{.+}$") then -- UUID format
+                        if not activePetDisplays[pet] then
+                            activePetDisplays[pet] = createPetDisplay(pet)
+                        end
+                        
+                        updatePetDisplay(pet, activePetDisplays[pet])
+                    end
+                end
+            end
+        end
+        
+        -- Clean up displays for pets that no longer exist
+        for pet, display in pairs(activePetDisplays) do
+            if not pet:IsDescendantOf(PETS_FOLDER) then
+                display.Parent:Destroy()
+                activePetDisplays[pet] = nil
+            end
+        end
+        
+        task.wait(1) -- Update every second
+    end
+end
+
+-- Toggle button
+local trackingEnabled = false
+local trackingThread = nil
+
+tab:CreateToggle("Show Pet Cooldowns", function(enabled)
+    trackingEnabled = enabled
+    
+    if enabled then
+        if not trackingThread then
+            trackingThread = task.spawn(trackPets)
+        end
+    else
+        if trackingThread then
+            task.cancel(trackingThread)
+            trackingThread = nil
+        end
+        
+        -- Clean up all displays
+        for _, display in pairs(activePetDisplays) do
+            display.Parent:Destroy()
+        end
+        activePetDisplays = {}
+    end
+end)
+
 tab:CreateToggle("Anti-Kick", function(enabled)
     local namecallHook
     
@@ -1023,6 +1141,14 @@ library.OnDestroy = function()
     -- Clear tables
     cleanupInstances.connections = {}
     cleanupInstances.loops = {}
+
+    if trackingThread then
+        task.cancel(trackingThread)
+    end
+    
+    for _, display in pairs(activePetDisplays) do
+        display.Parent:Destroy()
+    end
     
     print("Cleanup complete!")
 end
