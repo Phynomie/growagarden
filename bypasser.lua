@@ -1,4 +1,4 @@
--- Shovel Script - Only works on your alt's farm
+-- Modified Shovel Script - Works only on alt farm
 local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -6,14 +6,25 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 -- Configuration
-local ALT_USERNAME = "YourAltUsernameHere" -- CHANGE THIS
+local ALT_USERNAME = "rr2obly256sf" -- Your alt username
 local PROTECTED_PLANTS = {"Carrot", "Sprinkler"}
+local VALUABLE_PLANTS = {"Carrot", "Strawberry", "Blueberry", "Orange Tulip", "Tomato", "Corn", "Daffodil", 
+    "Chocolate Carrot", "Red Lollipop", "Blue Lollipop", "Nightshade", "Glowshroom", "Mint", "Rose", 
+    "Foxglove", "Crocus", "Delphinium", "Manuka Flower", "Lavender", "Nectarshade", "Peace Lily", 
+    "Wild Carrot", "Pear", "Horsetail", "Monoblooma", "Dezen"}
 
 -- Get references
 local LocalPlayer = game.Players.LocalPlayer
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local Remove_Item = GameEvents:WaitForChild("Remove_Item")
 local DeleteObject = GameEvents:WaitForChild("DeleteObject")
+local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
+local Notification = require(ReplicatedStorage.Modules.Notification)
+
+-- UI Elements
+local ShovelPrompt = LocalPlayer.PlayerGui:WaitForChild("ShovelPrompt")
+local ConfirmFrame = ShovelPrompt:WaitForChild("ConfirmFrame")
+local FruitName = ConfirmFrame:WaitForChild("FruitName")
 
 -- Create highlight effect
 local Highlight = Instance.new("Highlight")
@@ -23,11 +34,6 @@ Highlight.FillColor = Color3.fromRGB(255, 50, 50)
 Highlight.FillTransparency = 1
 Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
 
--- UI Elements
-local ShovelPrompt = LocalPlayer.PlayerGui:WaitForChild("ShovelPrompt")
-local ConfirmFrame = ShovelPrompt:WaitForChild("ConfirmFrame")
-local FruitName = ConfirmFrame:WaitForChild("FruitName")
-
 local CurrentCamera = workspace.CurrentCamera
 
 local TargetData = {
@@ -36,46 +42,50 @@ local TargetData = {
     IsAltFarm = false
 }
 
--- Check if target is in alt's farm
+-- Check if target is in alt's farm (modified from original GetFarm check)
 local function IsInAltFarm(instance)
-    -- Find the farm model
-    local farm = instance:FindFirstAncestorOfClass("Model")
-    if not farm then return false end
+    -- First check if it's in our own farm (original behavior)
+    local myFarm = GetFarm(LocalPlayer)
+    if instance:IsDescendantOf(myFarm) then
+        return false -- This is our main account's farm
+    end
     
-    -- Check if farm belongs to alt (simple name check)
-    if string.find(farm.Name, "rr2obly256sf") then
+    -- Then check if it's in alt's farm by name
+    local farm = instance:FindFirstAncestorOfClass("Model")
+    if farm and string.find(farm.Name, ALT_USERNAME) then
         return true
     end
     
-    -- More robust check would go here if needed
     return false
 end
 
--- Modified CanShovel function
+-- Modified from original CheckIfCantShovel
 local function CanShovel(target)
-    -- Check protected plants
-    for _, name in pairs(PROTECTED_PLANTS) do
-        if string.find(string.lower(target.Name), string.lower(name)) then
+    local name = target.Name
+    
+    -- Check protected plants (original functionality)
+    for _, protected in pairs(PROTECTED_PLANTS) do
+        if string.find(string.lower(name), string.lower(protected)) then
             return false, false
         end
     end
     
-    -- Check if in alt's farm
+    -- Check if in alt's farm (our modification)
     local isAltFarm = IsInAltFarm(target)
     
     return true, isAltFarm
 end
 
--- Raycast function
+-- Raycast function (similar to original)
 local function RaycastToPosition(mousePosition)
     local ray = CurrentCamera:ViewportPointToRay(mousePosition.X, mousePosition.Y)
     local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {CollectionService:GetTagged("ShovelIgnore")}
     return workspace:Raycast(ray.Origin, ray.Direction * 500, raycastParams)
 end
 
--- Highlight handling
+-- Highlight handling (modified from original)
 local function UpdateHighlight()
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Shovel [Destroy Plants]") then
         Highlight.Adornee = nil
@@ -88,7 +98,7 @@ local function UpdateHighlight()
         return
     end
 
-    local targetModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
+    local targetModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
     if not targetModel then
         Highlight.Adornee = nil
         return
@@ -96,12 +106,12 @@ local function UpdateHighlight()
 
     local canShovel, isAltFarm = CanShovel(targetModel)
     
-    if canShovel then
+    -- Only highlight if it's shovelable and in alt farm
+    if canShovel and isAltFarm then
         if Highlight.Adornee ~= targetModel then
             Highlight.FillTransparency = 1
-            Highlight.FillColor = isAltFarm and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
-            TweenService:Create(Highlight, TweenInfo.new(0.2), {
-                FillTransparency = 0.7
+            TweenService:Create(Highlight, TweenInfo.new(0.25), {
+                FillTransparency = 0.65
             }):Play()
         end
         Highlight.Adornee = targetModel
@@ -110,7 +120,7 @@ local function UpdateHighlight()
     end
 end
 
--- Handle shovel input
+-- Handle shovel input (modified from original handleShovelInput)
 local function HandleShovelInput(inputPosition)
     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Shovel [Destroy Plants]") then
         return
@@ -119,22 +129,29 @@ local function HandleShovelInput(inputPosition)
     local raycastResult = RaycastToPosition(inputPosition)
     if not raycastResult then return end
 
-    local targetModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
+    local targetModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
     if not targetModel then return end
 
     local canShovel, isAltFarm = CanShovel(targetModel)
-    if not canShovel then return end
+    if not canShovel then
+        Notification:CreateNotification(`You cannot shovel {targetModel.Name}!`)
+        return
+    end
+    
+    -- Only proceed if it's in alt farm
+    if not isAltFarm then
+        Notification:CreateNotification("You can only shovel plants in your alt farm!")
+        return
+    end
 
     FruitName.Text = targetModel.Name
     TargetData.Instance = targetModel
     TargetData.IsPlaceableObject = CollectionService:HasTag(targetModel, "PlaceableObject")
     TargetData.IsAltFarm = isAltFarm
-    
-    -- Only show prompt for alt's farm
-    ShovelPrompt.Enabled = isAltFarm
+    ShovelPrompt.Enabled = true
 end
 
--- UI Button Handlers
+-- UI Button Handlers (same as original)
 ConfirmFrame.Confirm.MouseButton1Click:Connect(function()
     if TargetData.Instance and TargetData.IsAltFarm then
         if TargetData.IsPlaceableObject then
@@ -155,15 +172,27 @@ end
 ConfirmFrame.Cancel.MouseButton1Click:Connect(CancelShovel)
 ConfirmFrame.ExitButton.MouseButton1Click:Connect(CancelShovel)
 
--- Input Setup
+-- Input Setup (similar to original)
+local inputConnection
 local function SetupInput()
-    UserInputService.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            HandleShovelInput(UserInputService:GetMouseLocation())
-        end
-    end)
+    if inputConnection then
+        inputConnection:Disconnect()
+    end
+    
+    if UserInputService:GetLastInputType() == Enum.UserInputType.Touch then
+        inputConnection = UserInputService.TouchTapInWorld:Connect(function(_, position)
+            HandleShovelInput(position)
+        end)
+    else
+        inputConnection = UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                HandleShovelInput(UserInputService:GetMouseLocation())
+            end
+        end)
+    end
 end
 
 -- Initialize
 RunService.RenderStepped:Connect(UpdateHighlight)
+UserInputService.LastInputTypeChanged:Connect(SetupInput)
 SetupInput()
