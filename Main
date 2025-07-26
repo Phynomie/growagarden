@@ -577,18 +577,19 @@ tab:CreateToggle("Weight Calculator", function(enabled)
     end
 end)
 
-local MOON_NAP_TEXT = "Moon Nap"
-local PETS_FOLDER = workspace.PetsPhysical
-local COOLDOWN_REMOTE = ReplicatedStorage.GameEvents.GetPetCooldown
+local petCooldownEnabled = false
+local petCooldownDisplays = {}
+local petCooldownConnection = nil
 
--- Store all active pet displays
-local activePetDisplays = {}
-
--- Create a BillboardGui for a pet
-local function createPetDisplay(petModel)
-    local head = petModel:FindFirstChild("Head") or petModel:FindFirstChildWhichIsA("BasePart")
+local function createPetDisplay(pet)
+    local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
     if not head then return nil end
-
+    
+    -- Check if display already exists
+    if head:FindFirstChild("PetCooldownDisplay") then
+        return head.PetCooldownDisplay.Frame.TextLabel
+    end
+    
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
     billboard.Size = UDim2.new(6, 0, 2, 0)
@@ -607,7 +608,7 @@ local function createPetDisplay(petModel)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Checking..."
+    textLabel.Text = "Loading..."
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
     textLabel.TextSize = 18
@@ -618,53 +619,30 @@ local function createPetDisplay(petModel)
     return textLabel
 end
 
--- Update cooldown display for a pet
-local function updatePetDisplay(petModel, display)
-    local petUUID = petModel.Name:match("{(.-)}")
-    if not petUUID then
-        display.Text = "Invalid Pet ID"
-        return
-    end
-
+local function updatePetDisplay(petName, display)
     local success, cooldownData = pcall(function()
-        return COOLDOWN_REMOTE:InvokeServer(unpack({ petUUID }))
+        return game:GetService("ReplicatedStorage").GameEvents.GetPetCooldown:InvokeServer(petName)
     end)
 
     if success and type(cooldownData) == "table" then
-        -- Debug output to match your screenshot format
-        print("\nCooldown data for "..petModel.Name..":")
-        print("Raw data:", cooldownData)
-            for i, v in ipairs(cooldownData) do print(i, v) end
-        local json = game:GetService("HttpService"):JSONEncode(cooldownData)
-        print(json)
-
-        -- Parse Moon Nap data
+        local timeLeft = 0
         local hasMoonNap = false
-        local remaining = 0
-        local total = 60 -- Default cooldown time
-
-        if #cooldownData > 0 then
-            for _, entry in ipairs(cooldownData) do
-                if type(entry) == "table" and entry.Passive == MOON_NAP_TEXT then
-                    hasMoonNap = true
-                    remaining = entry.Time or 0
-                    -- Some games might have Cooldown instead of hardcoded 60
-                    total = entry.Cooldown or entry.MaxTime or 60
-                    break
-                end
+        
+        for _, entry in ipairs(cooldownData) do
+            if type(entry) == "table" and entry.Passive == "Moon Nap" then
+                timeLeft = entry.Time or 0
+                hasMoonNap = true
+                break
             end
         end
 
         if hasMoonNap then
-            if remaining > 0 then
-                display.Text = string.format("%s: %d/%ds", MOON_NAP_TEXT, remaining, total)
-                display.TextColor3 = Color3.new(1, 0.5, 0.5)
-            else
-                display.Text = string.format("%s: Ready!", MOON_NAP_TEXT)
-                display.TextColor3 = Color3.new(0.5, 1, 0.5)
-            end
+            display.Text = timeLeft > 0 and string.format("Moon Nap: %ds", timeLeft) 
+                                      or "Moon Nap: Ready!"
+            display.TextColor3 = timeLeft > 0 and Color3.new(1, 0.5, 0.5) 
+                                             or Color3.new(0.5, 1, 0.5)
         else
-            display.Text = "No "..MOON_NAP_TEXT
+            display.Text = "No Moon Nap"
             display.TextColor3 = Color3.new(0.8, 0.8, 0.8)
         end
     else
@@ -673,64 +651,79 @@ local function updatePetDisplay(petModel, display)
     end
 end
 
--- Main tracking function
-local function trackPets()
-    while task.wait(1) do
-        local petMover = PETS_FOLDER:FindFirstChild("PetMover")
-        if not petMover then
-            task.wait(5)
-            continue
-        end
-
-        local currentPets = {}
-        
-        for _, petModel in ipairs(petMover:GetChildren()) do
-            if petModel:IsA("Model") and petModel.Name:match("^{.+}$") then
-                currentPets[petModel] = true
-                
-                if not activePetDisplays[petModel] then
-                    activePetDisplays[petModel] = createPetDisplay(petModel)
-                end
-                
-                if activePetDisplays[petModel] then
-                    updatePetDisplay(petModel, activePetDisplays[petModel])
+local function scanAndUpdatePets()
+    -- Find all current pets
+    local currentPets = {}
+    for _, petMover in ipairs(workspace.PetsPhysical:GetChildren()) do
+        if petMover.Name == "PetMover" then
+            for _, pet in ipairs(petMover:GetChildren()) do
+                if pet:IsA("Model") and pet.Name:match("^{.+}$") then
+                    currentPets[pet.Name] = pet
+                    
+                    -- Get or create display
+                    if petCooldownDisplays[pet.Name] == nil then
+                        local display = createPetDisplay(pet)
+                        if display then
+                            petCooldownDisplays[pet.Name] = {
+                                display = display,
+                                pet = pet
+                            }
+                        end
+                    end
                 end
             end
         end
-        
-        for petModel in pairs(activePetDisplays) do
-            if not currentPets[petModel] then
-                if activePetDisplays[petModel] and activePetDisplays[petModel].Parent then
-                    activePetDisplays[petModel].Parent:Destroy()
-                end
-                activePetDisplays[petModel] = nil
+    end
+    
+    -- Clean up displays for pets that no longer exist
+    for petName, data in pairs(petCooldownDisplays) do
+        if not currentPets[petName] then
+            if data.display and data.display.Parent then
+                data.display.Parent:Destroy()
             end
+            petCooldownDisplays[petName] = nil
+        end
+    end
+    
+    -- Update all active displays
+    for petName, data in pairs(petCooldownDisplays) do
+        if data.display and data.display.Parent then
+            updatePetDisplay(petName, data.display)
         end
     end
 end
 
--- Toggle button
-local trackingEnabled = false
-local trackingThread = nil
-
 tab:CreateToggle("Show Pet Cooldowns", function(enabled)
-    trackingEnabled = enabled
+    petCooldownEnabled = enabled
     
-    if enabled and not trackingThread then
-        trackingThread = task.spawn(trackPets)
-    elseif not enabled and trackingThread then
-        task.cancel(trackingThread)
-        trackingThread = nil
+    if enabled then
+        -- Initial scan
+        scanAndUpdatePets()
         
-        for _, display in pairs(activePetDisplays) do
-            if display and display.Parent then
-                display.Parent:Destroy()
+        -- Set up recurring updates (every second)
+        petCooldownConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            scanAndUpdatePets()
+            task.wait(1) -- Wait 1 second between updates
+        end)
+        
+        createColoredNotification("Pet cooldowns enabled", "Rarity: Common")
+    else
+        -- Clean up
+        if petCooldownConnection then
+            petCooldownConnection:Disconnect()
+            petCooldownConnection = nil
+        end
+        
+        for _, data in pairs(petCooldownDisplays) do
+            if data.display and data.display.Parent then
+                data.display.Parent:Destroy()
             end
         end
-        activePetDisplays = {}
+        petCooldownDisplays = {}
+        
+        createColoredNotification("Pet cooldowns disabled", "Rarity: Common")
     end
 end)
-
 
 tab:CreateToggle("Anti-Kick", function(enabled)
     local namecallHook
@@ -1179,13 +1172,17 @@ library.OnDestroy = function()
     cleanupInstances.connections = {}
     cleanupInstances.loops = {}
 
-    if trackingThread then
-        task.cancel(trackingThread)
+    if petCooldownConnection then
+        petCooldownConnection:Disconnect()
+        petCooldownConnection = nil
     end
     
-    for _, display in pairs(activePetDisplays) do
-        display.Parent:Destroy()
+    for _, data in pairs(petCooldownDisplays) do
+        if data.display and data.display.Parent then
+            data.display.Parent:Destroy()
+        end
     end
+    petCooldownDisplays = {}
     
     print("Cleanup complete!")
 end
