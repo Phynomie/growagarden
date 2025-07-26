@@ -775,15 +775,6 @@ tab:CreateToggle("Anti-Afk", function(enabled)
             })
         end
         
-        -- Create a new simulated activity loop
-        local antiAfkLoop = game:GetService("RunService").Heartbeat:Connect(function()
-            game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-            game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-        end)
-        
-        -- Store the loop in cleanup
-        cleanupInstances.connections["AntiAfkLoop"] = antiAfkLoop
-        
     else
         sendNotification("❌ Anti-AFK", "Anti AFK has been disabled.", 5)
         
@@ -793,12 +784,7 @@ tab:CreateToggle("Anti-Afk", function(enabled)
                 connectionData.connection.Enabled = connectionData.enabled
             end
         end
-        
-        -- Disconnect the activity loop
-        if cleanupInstances.connections["AntiAfkLoop"] then
-            cleanupInstances.connections["AntiAfkLoop"]:Disconnect()
-            cleanupInstances.connections["AntiAfkLoop"] = nil
-        end
+    
     end
 end)
 
