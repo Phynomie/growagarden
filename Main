@@ -592,8 +592,8 @@ local function createPetDisplay(pet)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
-    billboard.Size = UDim2.new(8, 0, 3 + (#petAbilities * 1.5), 0) -- Dynamic size based on abilities
-    billboard.StudsOffset = Vector3.new(0, 4, 0) -- Slightly higher to fit multiple lines
+    billboard.Size = UDim2.new(10, 0, 4, 0) -- Fixed size that can accommodate multiple abilities
+    billboard.StudsOffset = Vector3.new(0, 4.5, 0) -- Higher to fit multiple lines
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
     billboard.LightInfluence = 0
@@ -611,10 +611,11 @@ local function createPetDisplay(pet)
     textLabel.Text = "Loading abilities..."
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 16 -- Slightly smaller to fit more text
+    textLabel.TextSize = 14 -- Smaller to fit more text
     textLabel.TextStrokeTransparency = 0.5
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     textLabel.TextYAlignment = Enum.TextYAlignment.Top -- Align text to top
+    textLabel.TextWrapped = true -- Allow text to wrap if needed
     textLabel.Parent = frame
 
     return textLabel
@@ -654,7 +655,8 @@ local function updatePetDisplay(petName, display)
                 end
             end
             display.Text = displayText
-            display.TextColor3 = activeAbilities[1].color -- Use first ability's color
+            -- For multiple abilities, we'll use white text for better visibility
+            display.TextColor3 = #activeAbilities > 1 and Color3.new(1, 1, 1) or activeAbilities[1].color
         else
             display.Text = "No active abilities"
             display.TextColor3 = Color3.new(0.8, 0.8, 0.8)
