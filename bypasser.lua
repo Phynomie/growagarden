@@ -1,118 +1,122 @@
--- Decompiled with modifications to work on any farm
+-- Shovel Script (Client) - Works on any farm
 local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local Highlight = Instance.new("Highlight")
-Highlight.Parent = game:GetService("CoreGui") -- Or parent to player's PlayerGui
-Highlight.FillTransparency = 1
-Highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
-Highlight.Adornee = nil
-
-
+-- Get references to game elements
+local LocalPlayer = game.Players.LocalPlayer
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local Remove_Item = GameEvents:WaitForChild("Remove_Item")
-local LocalPlayer = game.Players.LocalPlayer
+local DeleteObject = GameEvents:WaitForChild("DeleteObject")
+
+-- Create Highlight effect
+local Highlight = Instance.new("Highlight")
+Highlight.Name = "ShovelHighlight"
+Highlight.Parent = LocalPlayer.PlayerGui
+Highlight.FillColor = Color3.fromRGB(255, 50, 50)
+Highlight.FillTransparency = 1
+Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+
+-- UI Elements
 local ShovelPrompt = LocalPlayer.PlayerGui:WaitForChild("ShovelPrompt")
 local ConfirmFrame = ShovelPrompt:WaitForChild("ConfirmFrame")
+local FruitName = ConfirmFrame:WaitForChild("FruitName")
+
+local CurrentCamera = workspace.CurrentCamera
+
+-- Configuration
+local PROTECTED_PLANTS = {"Carrot", "Sprinkler"}
+local BLACKLISTED_TAGS = {"NoShovel", "Protected"}
 
 local TargetData = {
     Instance = nil,
     IsPlaceableObject = false
 }
 
-local ProtectedPlants = {"Carrot"}
-local ValuablePlants = {"Carrot", "Strawberry", "Blueberry", "Orange Tulip", "Tomato", "Corn", "Daffodil", "Chocolate Carrot", 
-    "Red Lollipop", "Blue Lollipop", "Nightshade", "Glowshroom", "Mint", "Rose", "Foxglove", "Crocus", "Delphinium", 
-    "Manuka Flower", "Lavender", "Nectarshade", "Peace Lily", "Wild Carrot", "Pear", "Horsetail", "Monoblooma", "Dezen"}
-
-local function CheckIfValuable(plantName)
-    for _, v in ValuablePlants do
-        if string.find(string.lower(plantName), string.lower(v)) then
-            return false
-        end
-    end
-    return true
-end
-
-local function CheckIfProtected(plantName)
-    for _, v in ProtectedPlants do
-        if string.find(string.lower(plantName), string.lower(v)) then
-            return true
-        end
-    end
-    return false
-end
-
-local CurrentCamera = workspace.CurrentCamera
-local Highlight = script.Highlight
-local TweenService = game:GetService("TweenService")
-
+-- Raycast function
 local function RaycastToPosition(mousePosition)
     local ray = CurrentCamera:ViewportPointToRay(mousePosition.X, mousePosition.Y)
     local raycastParams = RaycastParams.new()
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.FilterDescendantsInstances = {CollectionService:GetTagged("ShovelIgnore")}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
     return workspace:Raycast(ray.Origin, ray.Direction * 500, raycastParams)
 end
 
--- Highlight target objects
-RunService.RenderStepped:Connect(function()
-    if LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Shovel [Destroy Plants]") then
-        local raycastResult = RaycastToPosition(UserInputService:GetMouseLocation())
-        
-        if not raycastResult then
-            Highlight.Adornee = nil
-        else
-            local targetModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
-            if targetModel and (CollectionService:HasTag(targetModel, "Growable") or CollectionService:HasTag(targetModel, "PlaceableObject")) then
-                if Highlight.Adornee ~= targetModel then
-                    Highlight.FillTransparency = 1
-                    TweenService:Create(Highlight, TweenInfo.new(0.25), {
-                        FillTransparency = 0.65
-                    }):Play()
-                end
-                Highlight.Adornee = targetModel
-                return
-            end
-            Highlight.Adornee = nil
+-- Check if target is shovelable
+local function CanShovel(target)
+    -- Check protected names
+    for _, name in pairs(PROTECTED_PLANTS) do
+        if string.find(string.lower(target.Name), string.lower(name)) then
+            return false
         end
+    end
+    
+    -- Check tags
+    for _, tag in pairs(BLACKLISTED_TAGS) do
+        if CollectionService:HasTag(target, tag) then
+            return false
+        end
+    end
+    
+    return true
+end
+
+-- Highlight handling
+local function UpdateHighlight()
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Shovel [Destroy Plants]") then
+        Highlight.Adornee = nil
+        return
+    end
+
+    local raycastResult = RaycastToPosition(UserInputService:GetMouseLocation())
+    
+    if not raycastResult then
+        Highlight.Adornee = nil
+        return
+    end
+
+    local targetModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
+    if not targetModel then
+        Highlight.Adornee = nil
+        return
+    end
+
+    if CanShovel(targetModel) then
+        if Highlight.Adornee ~= targetModel then
+            Highlight.FillTransparency = 1
+            TweenService:Create(Highlight, TweenInfo.new(0.2), {
+                FillTransparency = 0.7
+            }):Play()
+        end
+        Highlight.Adornee = targetModel
     else
         Highlight.Adornee = nil
     end
-end)
+end
 
-local Notification = require(ReplicatedStorage.Modules.Notification)
-local FruitName = ConfirmFrame:WaitForChild("FruitName")
-local DeleteObject = GameEvents:WaitForChild("DeleteObject")
-
-local function handleShovelInput(inputPosition, isTap)
-    if isTap then return end
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Shovel [Destroy Plants]") then return end
-    
-    local raycastResult = RaycastToPosition(inputPosition)
-    if not raycastResult then return end
-    
-    local targetModel = raycastResult.Instance:FindFirstAncestorWhichIsA("Model")
-    if not targetModel then return end
-    
-    -- REMOVED THE FARM OWNERSHIP CHECK HERE
-    local plantName = targetModel.Name
-    if CheckIfProtected(plantName) then
-        Notification:CreateNotification(`You cannot shovel {plantName}!`)
+-- Handle shovel input
+local function HandleShovelInput(inputPosition)
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Shovel [Destroy Plants]") then
         return
     end
-    
-    FruitName.Text = plantName
+
+    local raycastResult = RaycastToPosition(inputPosition)
+    if not raycastResult then return end
+
+    local targetModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
+    if not targetModel or not CanShovel(targetModel) then return end
+
+    FruitName.Text = targetModel.Name
     TargetData.Instance = targetModel
-    TargetData.IsPlaceableObject = true
+    TargetData.IsPlaceableObject = CollectionService:HasTag(targetModel, "PlaceableObject")
     ShovelPrompt.Enabled = true
 end
 
--- Confirm button actions
-ConfirmFrame:WaitForChild("Confirm").MouseButton1Click:Connect(function()
+-- UI Button Handlers
+ConfirmFrame.Confirm.MouseButton1Click:Connect(function()
     if TargetData.Instance then
         if TargetData.IsPlaceableObject then
             DeleteObject:FireServer(TargetData.Instance)
@@ -120,36 +124,33 @@ ConfirmFrame:WaitForChild("Confirm").MouseButton1Click:Connect(function()
             Remove_Item:FireServer(TargetData.Instance)
         end
     end
-    TargetData.Instance = nil
-    TargetData.IsPlaceableObject = false
     ShovelPrompt.Enabled = false
+    TargetData.Instance = nil
 end)
 
--- Cancel/exit buttons
-local function cancelShovel()
-    TargetData.Instance = nil
-    TargetData.IsPlaceableObject = false
+local function CancelShovel()
     ShovelPrompt.Enabled = false
+    TargetData.Instance = nil
 end
 
-ConfirmFrame:WaitForChild("Cancel").MouseButton1Click:Connect(cancelShovel)
-ConfirmFrame:WaitForChild("ExitButton").MouseButton1Click:Connect(cancelShovel)
+ConfirmFrame.Cancel.MouseButton1Click:Connect(CancelShovel)
+ConfirmFrame.ExitButton.MouseButton1Click:Connect(CancelShovel)
 
--- Input handling
-local inputConnection
-local function updateInput()
-    if inputConnection then
-        inputConnection:Disconnect()
-    end
-    
-    if UserInputService:GetLastInputType() == Enum.UserInputType.Touch then
-        inputConnection = UserInputService.TouchTapInWorld:Connect(handleShovelInput)
+-- Input Setup
+local function SetupInput()
+    if UserInputService.TouchEnabled then
+        UserInputService.TouchTapInWorld:Connect(function(_, position)
+            HandleShovelInput(position)
+        end)
     else
-        inputConnection = LocalPlayer:GetMouse().Button1Down:Connect(function()
-            handleShovelInput(UserInputService:GetMouseLocation(), false)
+        UserInputService.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                HandleShovelInput(UserInputService:GetMouseLocation())
+            end
         end)
     end
 end
 
-UserInputService.LastInputTypeChanged:Connect(updateInput)
-task.spawn(updateInput)
+-- Initialize
+RunService.RenderStepped:Connect(UpdateHighlight)
+SetupInput()
