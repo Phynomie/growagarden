@@ -5,10 +5,21 @@ local UPDATE_INTERVAL = 1  -- Update every second
 -- Table to store all active displays
 local activeDisplays = {}
 
--- Function to create the display
+-- Function to create the display (only if one doesn't already exist)
 local function createCooldownDisplay(pet)
+    -- Check if this pet already has a display
+    if activeDisplays[pet.Name] and activeDisplays[pet.Name].display and activeDisplays[pet.Name].display.Parent then
+        return activeDisplays[pet.Name].display
+    end
+
     local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
     if not head then return nil end
+
+    -- Check if there's already a display on this head
+    local existingDisplay = head:FindFirstChild("PetCooldownDisplay")
+    if existingDisplay then
+        return existingDisplay:FindFirstChildOfClass("TextLabel")
+    end
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
@@ -110,12 +121,15 @@ local function initializeAllPetDisplays()
     for _, uuid in ipairs(petUUIDs) do
         local pet = workspace:FindFirstChild(uuid, true)
         if pet then
-            local display = createCooldownDisplay(pet)
-            if display then
-                activeDisplays[uuid] = {
-                    display = display,
-                    pet = pet
-                }
+            -- Only create display if one doesn't exist
+            if not activeDisplays[uuid] or not activeDisplays[uuid].display or not activeDisplays[uuid].display.Parent then
+                local display = createCooldownDisplay(pet)
+                if display then
+                    activeDisplays[uuid] = {
+                        display = display,
+                        pet = pet
+                    }
+                end
             end
         end
     end
@@ -139,8 +153,8 @@ local function runCooldownTracker()
     
     -- Set up the update loop
     while task.wait(UPDATE_INTERVAL) do
-        -- Check for new pets periodically
-        if math.random(1, 10) == 1 then  -- 10% chance to check for new pets each second
+        -- Check for new pets less frequently (every 10 seconds)
+        if os.time() % 10 == 0 then
             initializeAllPetDisplays()
         end
         
