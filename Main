@@ -633,6 +633,8 @@ local function updatePetDisplay(petModel, display)
     if success and type(cooldownData) == "table" then
         -- Debug output to match your screenshot format
         print("\nCooldown data for "..petModel.Name..":")
+        print("Raw data:", cooldownData)
+            for i, v in ipairs(cooldownData) do print(i, v) end
         local json = game:GetService("HttpService"):JSONEncode(cooldownData)
         print(json)
 
