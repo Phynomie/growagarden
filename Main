@@ -577,7 +577,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
     end
 end)
 
-local MOON_MAP_TEXT = "Moon Nap"
+local MOON_NAP_TEXT = "Moon Nap"
 local PETS_FOLDER = workspace.PetsPhysical
 local COOLDOWN_REMOTE = ReplicatedStorage.GameEvents.GetPetCooldown
 
@@ -636,43 +636,35 @@ local function updatePetDisplay(petModel, display)
     if success and cooldownData and type(cooldownData) == "table" then
         -- Debug print the entire cooldown table
         print("\nCooldown data for "..petModel.Name..":")
-        for k,v in pairs(cooldownData) do
-            print(k.." = "..tostring(v))
-        end
+        print(game:GetService("HttpService"):JSONEncode(cooldownData))
 
-        -- Check for Moon Map ability
-        local hasMoonMap = false
+        -- Check for Moon Nap in the expected format [{"Time":23, "Passive":"Moon Nap"}]
+        local hasMoonNap = false
         local remaining = 0
         local total = 60
         
-        -- First check if Moon Map is a direct key
-        if cooldownData[MOON_MAP_TEXT] then
-            hasMoonMap = true
-            remaining = cooldownData.remaining or 0
-            total = cooldownData.cooldown or 60
-        else
-            -- Check all values for Moon Map references
-            for k,v in pairs(cooldownData) do
-                if tostring(v):find(MOON_MAP_TEXT) then
-                    hasMoonMap = true
-                    remaining = cooldownData.remaining or 0
-                    total = cooldownData.cooldown or 60
+        if type(cooldownData) == "table" then
+            for _, entry in ipairs(cooldownData) do
+                if type(entry) == "table" and entry.Passive == MOON_NAP_TEXT then
+                    hasMoonNap = true
+                    remaining = entry.Time or 0
+                    total = entry.Cooldown or 60  -- Assuming there's a Cooldown field
                     break
                 end
             end
         end
 
-        if hasMoonMap then
+        if hasMoonNap then
             if remaining > 0 then
-                display.Text = string.format("%s: %d/%ds", MOON_MAP_TEXT, remaining, total)
+                display.Text = string.format("%s: %d/%ds", MOON_NAP_TEXT, remaining, total)
                 display.TextColor3 = Color3.new(1, 0.5, 0.5) -- Reddish when on cooldown
             else
-                display.Text = string.format("%s: Ready!", MOON_MAP_TEXT)
+                display.Text = string.format("%s: Ready!", MOON_NAP_TEXT)
                 display.TextColor3 = Color3.new(0.5, 1, 0.5) -- Green when ready
             end
         else
-            display.Text = "No "..MOON_MAP_TEXT
-            display.TextColor3 = Color3.new(0.8, 0.8, 0.8) -- Gray when no moon map
+            display.Text = "No "..MOON_NAP_TEXT
+            display.TextColor3 = Color3.new(0.8, 0.8, 0.8) -- Gray when no moon nap
         end
     else
         display.Text = "Error"
