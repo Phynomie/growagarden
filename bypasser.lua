@@ -3,6 +3,15 @@ local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local Highlight = Instance.new("Highlight")
+Highlight.Parent = game:GetService("CoreGui") -- Or parent to player's PlayerGui
+Highlight.FillTransparency = 1
+Highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
+Highlight.Adornee = nil
+
+
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local Remove_Item = GameEvents:WaitForChild("Remove_Item")
 local LocalPlayer = game.Players.LocalPlayer
@@ -33,9 +42,6 @@ local function CheckIfProtected(plantName)
         if string.find(string.lower(plantName), string.lower(v)) then
             return true
         end
-    end
-    if string.find(string.lower(plantName), "sprinkler") then
-        return true
     end
     return false
 end
@@ -73,8 +79,9 @@ RunService.RenderStepped:Connect(function()
             end
             Highlight.Adornee = nil
         end
+    else
+        Highlight.Adornee = nil
     end
-    Highlight.Adornee = nil
 end)
 
 local Notification = require(ReplicatedStorage.Modules.Notification)
