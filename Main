@@ -598,6 +598,7 @@ local function createPetDisplay(pet)
     billboard.Adornee = head
     billboard.LightInfluence = 0
     billboard.MaxDistance = 100
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.Parent = head
 
     local frame = Instance.new("Frame")
@@ -612,11 +613,18 @@ local function createPetDisplay(pet)
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
     textLabel.TextSize = 14 -- Smaller to fit more text
-    textLabel.TextStrokeTransparency = 0.5
+    textLabel.TextStrokeTransparency = 0.3
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     textLabel.TextYAlignment = Enum.TextYAlignment.Top -- Align text to top
     textLabel.TextWrapped = true -- Allow text to wrap if needed
     textLabel.Parent = frame
+
+    if UserInputService.TouchEnabled then
+        -- Mobile-specific adjustments
+        billboard.Size = UDim2.new(20, 0, 8, 0)
+        billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+        textLabel.TextSize = 20
+    end
 
     return textLabel
 end
@@ -713,16 +721,20 @@ tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
     petCooldownEnabled = enabled
     
     if enabled then
+        -- Mobile notification
+        if UserInputService.TouchEnabled then
+            createColoredNotification("Mobile mode activated\nCooldowns may appear larger", "Rarity: Common")
+        end
+        
         -- Initial scan
         scanAndUpdatePets()
         
-        -- Set up recurring updates (every second)
+        -- Set up recurring updates with mobile interval
+        local updateInterval = UserInputService.TouchEnabled and 2 or 1
         petCooldownConnection = game:GetService("RunService").Heartbeat:Connect(function()
             scanAndUpdatePets()
-            task.wait(1) -- Wait 1 second between updates
+            task.wait(updateInterval)
         end)
-        
-        createColoredNotification("All pet cooldowns enabled", "Rarity: Common")
     else
         -- Clean up
         if petCooldownConnection then
@@ -736,8 +748,6 @@ tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
             end
         end
         petCooldownDisplays = {}
-        
-        createColoredNotification("Pet cooldowns disabled", "Rarity: Common")
     end
 end)
 
