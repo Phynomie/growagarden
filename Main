@@ -592,8 +592,8 @@ local function createPetDisplay(pet)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
-    billboard.Size = UDim2.new(6, 0, 2, 0)
-    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.Size = UDim2.new(10, 0, 4, 0) -- Fixed size that can accommodate multiple abilities
+    billboard.StudsOffset = Vector3.new(0, 4.5, 0) -- Higher to fit multiple lines
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
     billboard.LightInfluence = 0
@@ -608,12 +608,14 @@ local function createPetDisplay(pet)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Loading..."
+    textLabel.Text = "Loading abilities..."
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 18
+    textLabel.TextSize = 14 -- Smaller to fit more text
     textLabel.TextStrokeTransparency = 0.5
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top -- Align text to top
+    textLabel.TextWrapped = true -- Allow text to wrap if needed
     textLabel.Parent = frame
 
     return textLabel
@@ -625,28 +627,42 @@ local function updatePetDisplay(petName, display)
     end)
 
     if success and type(cooldownData) == "table" then
-        local timeLeft = 0
-        local hasMoonNap = false
+        local activeAbilities = {}
         
+        -- Collect all ability cooldowns
         for _, entry in ipairs(cooldownData) do
-            if type(entry) == "table" and entry.Passive == "Moon Nap" then
-                timeLeft = entry.Time or 0
-                hasMoonNap = true
-                break
+            if type(entry) == "table" and entry.Passive then
+                local timeLeft = entry.Time or 0
+                local totalTime = entry.Cooldown or entry.MaxTime or 60
+                local status = timeLeft > 0 and string.format("%s: %d/%ds", entry.Passive, timeLeft, totalTime)
+                                      or string.format("%s: Ready!", entry.Passive)
+                local color = timeLeft > 0 and Color3.new(1, 0.5, 0.5) or Color3.new(0.5, 1, 0.5)
+                
+                table.insert(activeAbilities, {
+                    text = status,
+                    color = color
+                })
             end
         end
 
-        if hasMoonNap then
-            display.Text = timeLeft > 0 and string.format("Moon Nap: %ds", timeLeft) 
-                                      or "Moon Nap: Ready!"
-            display.TextColor3 = timeLeft > 0 and Color3.new(1, 0.5, 0.5) 
-                                             or Color3.new(0.5, 1, 0.5)
+        -- Update display with all abilities
+        if #activeAbilities > 0 then
+            local displayText = ""
+            for i, ability in ipairs(activeAbilities) do
+                displayText = displayText .. ability.text
+                if i < #activeAbilities then
+                    displayText = displayText .. "\n" -- New line between abilities
+                end
+            end
+            display.Text = displayText
+            -- For multiple abilities, we'll use white text for better visibility
+            display.TextColor3 = #activeAbilities > 1 and Color3.new(1, 1, 1) or activeAbilities[1].color
         else
-            display.Text = "No Moon Nap"
+            display.Text = "No active abilities"
             display.TextColor3 = Color3.new(0.8, 0.8, 0.8)
         end
     else
-        display.Text = "Error"
+        display.Text = "Error fetching data"
         display.TextColor3 = Color3.new(1, 0, 0)
     end
 end
@@ -693,7 +709,7 @@ local function scanAndUpdatePets()
     end
 end
 
-tab:CreateToggle("Show Moon Cat Cooldown", function(enabled)
+tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
     petCooldownEnabled = enabled
     
     if enabled then
@@ -706,7 +722,7 @@ tab:CreateToggle("Show Moon Cat Cooldown", function(enabled)
             task.wait(1) -- Wait 1 second between updates
         end)
         
-        createColoredNotification("Pet cooldowns enabled", "Rarity: Common")
+        createColoredNotification("All pet cooldowns enabled", "Rarity: Common")
     else
         -- Clean up
         if petCooldownConnection then
