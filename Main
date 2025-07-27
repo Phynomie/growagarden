@@ -634,8 +634,8 @@ local function updatePetDisplay(petName, display)
             if type(entry) == "table" and entry.Passive then
                 local timeLeft = entry.Time or 0
                 local totalTime = entry.Cooldown or entry.MaxTime or 60
-                local status = timeLeft > 0 and string.format("%s: %d/%ds", entry.Passive, timeLeft, totalTime)
-                                      or string.format("%s: Ready!", entry.Passive)
+                local status = timeLeft > 0 and string.format("%s: %ds", entry.Passive, timeLeft)
+                          or string.format("%s: Ready!", entry.Passive)
                 local color = timeLeft > 0 and Color3.new(1, 0.5, 0.5) or Color3.new(0.5, 1, 0.5)
                 
                 table.insert(activeAbilities, {
