@@ -1071,8 +1071,9 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
             local isStaff = fruitName:find("Staff")
             local isCrate = fruitName:find("Crate")
             local isRadar = fruitName:find("Radar")
+            local isSpray = fruitName:find("Spray")
     
-            if isStaff or isCrate or isRadar then
+            if isStaff or isCrate or isRadar or isSpray then
                 continue
             end
 
