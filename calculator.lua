@@ -1,5 +1,3 @@
-
-
 -- Services you'll need in Roblox
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
@@ -7,15 +5,60 @@ local LocalPlayer = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 
 -- --- CONFIGURATION ---
--- These are the *constant* modifiers you've provided previously for Rainbow mutation
--- and the sum of all 32 modifiers.
+-- Updated list of modifiers for Rainbow mutation
+local MODIFIERS = {
+    "Shocked",
+    "Frozen",
+    "Choc",
+    "Moonlit",
+    "Bloodlit",
+    "Celestial",
+    "Disco",
+    "Zombified",
+    "Plasma",
+    "Voidtouched",
+    "Pollinated",
+    "Honeyglazed",
+    "Heavenly",
+    "Cooked",
+    "Molten",
+    "Meteoric",
+    "Alienlike",
+    "Paradisal",
+    "Galactic",
+    "Aurora",
+    "Cloudtouched",
+    "Fried",
+    "Ceramic",
+    "Ancientamber",
+    "Sandy",
+    "Tempestous",
+    "Friendbound",
+    "Infected",
+    "Tranquil",
+    "Toxic",
+    "Radioactive",
+    "Corrupt",
+    "Subzero",
+    "Blitzshock",
+    "Jackpot",
+    "Touchdown",
+    "Static",
+    "Harmonisedfoxfire",
+    "Harmonisedchakra",
+    "Boneblossom"
+}
+
+-- Constants
 local RAINBOW_MULTIPLIER = 50
-local SUM_OF_MODIFIERS = 1566
-local NUMBER_OF_MODIFIERS = 32
+local NUMBER_OF_MODIFIERS = #MODIFIERS
+local SUM_OF_MODIFIERS = NUMBER_OF_MODIFIERS  -- Since each modifier adds +1
 
 -- Calculate the combined modifier part once, as it's constant
 local COMBINED_MODIFIER_PART = RAINBOW_MULTIPLIER * (1 + SUM_OF_MODIFIERS - NUMBER_OF_MODIFIERS)
 print("[BaseValueCalculator] Initialized Combined Modifier Part:", COMBINED_MODIFIER_PART)
+print("[BaseValueCalculator] Number of Modifiers:", NUMBER_OF_MODIFIERS)
+print("[BaseValueCalculator] Sum of Modifiers:", SUM_OF_MODIFIERS)
 
 -- --- UI CREATION AND NOTIFICATION ---
 
@@ -136,8 +179,8 @@ task.spawn(function()
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "CalculatorFrame"
-    mainFrame.Size = UDim2.new(0, 250, 0, 180) -- Fixed size for clarity
-    mainFrame.Position = UDim2.new(0.5, -125, 0.2, 0) -- Centered top part of screen
+    mainFrame.Size = UDim2.new(0, 300, 0, 220) -- Slightly larger to accommodate more info
+    mainFrame.Position = UDim2.new(0.5, -150, 0.2, 0) -- Centered top part of screen
     mainFrame.AnchorPoint = Vector2.new(0, 0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     mainFrame.BackgroundTransparency = 0.1
@@ -156,7 +199,7 @@ task.spawn(function()
     titleBar.Position = UDim2.new(0, 0, 0, 0)
     titleBar.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     titleBar.BackgroundTransparency = 0.2
-    titleBar.Text = "Base Value Calculator"
+    titleBar.Text = "Base Value Calculator (Updated)"
     titleBar.Font = Enum.Font.SourceSansBold
     titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleBar.TextScaled = true
@@ -181,15 +224,15 @@ task.spawn(function()
     weightInput.Name = "WeightInput"
     weightInput.Size = UDim2.new(0.9, 0, 0, 30)
     weightInput.Position = UDim2.new(0.05, 0, 0, 65)
-    weightInput.PlaceholderText = "e.g., 51.397"
-    weightInput.Text = "51.397" -- Default value
+    weightInput.PlaceholderText = "e.g., 147"
+    weightInput.Text = "147" -- Default value from example
     weightInput.Font = Enum.Font.SourceSans
     weightInput.TextColor3 = Color3.fromRGB(255, 255, 255)
     weightInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     weightInput.BackgroundTransparency = 0.2
     weightInput.Parent = mainFrame
     weightInput.ClearTextOnFocus = false -- Don't clear on click
-    weightInput.TextScaled = true -- <<-- ADDED THIS LINE
+    weightInput.TextScaled = true
 
     local valueLabel = Instance.new("TextLabel")
     valueLabel.Name = "ValueLabel"
@@ -207,15 +250,15 @@ task.spawn(function()
     valueInput.Name = "ValueInput"
     valueInput.Size = UDim2.new(0.9, 0, 0, 30)
     valueInput.Position = UDim2.new(0.05, 0, 0, 125)
-    valueInput.PlaceholderText = "e.g., 4505483577122"
-    valueInput.Text = "4505483577122" -- Default value
+    valueInput.PlaceholderText = "e.g., 45643009995436"
+    valueInput.Text = "45643009995436" -- Default value from example
     valueInput.Font = Enum.Font.SourceSans
     valueInput.TextColor3 = Color3.fromRGB(255, 255, 255)
     valueInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     valueInput.BackgroundTransparency = 0.2
     valueInput.Parent = mainFrame
     valueInput.ClearTextOnFocus = false -- Don't clear on click
-    valueInput.TextScaled = true -- <<-- ADDED THIS LINE
+    valueInput.TextScaled = true
 
     local calculateButton = Instance.new("TextButton")
     calculateButton.Name = "CalculateButton"
@@ -227,6 +270,18 @@ task.spawn(function()
     calculateButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
     calculateButton.BackgroundTransparency = 0.1
     calculateButton.Parent = mainFrame
+
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Name = "InfoLabel"
+    infoLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    infoLabel.Position = UDim2.new(0.05, 0, 0, 195)
+    infoLabel.Text = "Using "..NUMBER_OF_MODIFIERS.." modifiers"
+    infoLabel.Font = Enum.Font.SourceSans
+    infoLabel.TextColor3 = Color3.fromRGB(150, 150, 255)
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.TextXAlignment = Enum.TextXAlignment.Center
+    infoLabel.TextScaled = true
+    infoLabel.Parent = mainFrame
 
     -- Button click logic
     calculateButton.MouseButton1Click:Connect(function()
@@ -262,8 +317,8 @@ task.spawn(function()
         print(string.format("[BaseValueCalculator] Calculated Base Value: %.15f", calculatedBaseValue))
         createNotification(
             "Calculated Base Value!",
-            string.format("For %.3fkg, sold for $%.0f:\nBase Value: %.15f",
-                          plantWeight, plantSoldValue, calculatedBaseValue)
+            string.format("For %.3fkg plant with %d modifiers, sold for $%.0f:\nBase Value: %.15f",
+                          plantWeight, NUMBER_OF_MODIFIERS, plantSoldValue, calculatedBaseValue)
         )
     end)
 
