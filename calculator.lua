@@ -292,7 +292,10 @@ task.spawn(function()
     mutationScrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     mutationScrollFrame.BackgroundTransparency = 0.8
     mutationScrollFrame.BorderSizePixel = 0
-    mutationScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Will be updated by UILayout
+    mutationScrollFrame.CanvasSize = UDim2.new(
+        0, 0, -- X scale and offset
+        0, gmMutationsFrame.AbsoluteContentSize.Y + mmMutationsFrame.AbsoluteContentSize.Y + separator.Size.Y.Offset + uiPadding.PaddingTop.Offset + uiPadding.PaddingBottom.Offset + uiListLayout.Padding.Offset * (table.getn(gmMutationNames) + table.getn(mmMutationNames) + 2) + 50 -- Y scale and offset, added some buffer
+    )
     mutationScrollFrame.ScrollBarThickness = 6
     mutationScrollFrame.Parent = mainFrame
 
