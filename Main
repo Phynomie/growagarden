@@ -1038,6 +1038,7 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
         
         isRunning = true
         sendNotification("✅ Starting fruit submission...")
+        sendNotification("This Automation will skip favorited fruits")
         
         -- Store original position
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -1056,6 +1057,9 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
         getFruits()
         for _, fruit in pairs(fruits) do
             if not isRunning then break end
+            if fruit:GetAttribute("d") == true then
+                continue
+            end
             
             local isTranquil = fruit.Name:find("Tranquil")
             local isCorrupt = fruit.Name:find("Corrupt")
