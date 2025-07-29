@@ -356,14 +356,311 @@ tab:CreateToggle("Anti Collect Fruits", function(a)
 end)
 
 local baseValues = {
-    ["Bone Blossom"] = 22222, 
-    ["Elephant Ears"] = 237.600000000049107,
+    ["Bone Blossom"] = 22222.222220000145171, 
+    ["Elephant Ears"] = 240.456747404844293,
+    ["Carrot"] = 275,
+    ["Strawberry"] = 165,
+    ["Blueberry"] = 500,
+    ["Tomato"] = 120,
+    ["Cauliflower"] = 1.6,
+    ["Watermelon"] = 61.250,
+    ["Rafflesia"] = 54.649,
+    ["Green apple"] = 33.359,
+    ["Avocado"] = 7.24,
+    ["Banana"] = 893.3,
+    ["Pineapple"] = 222.5,
+    ["Kiwi"] = 110,
+    ["Bell Pepper"] = 85.6,
+    ["Prickly Pear"] = 143,
+    ["Loquat"] = 189.7,
+    ["Feijoa"] = 130,
+    ["Pitcher Plant"] = 222.222,
+    ["Orange Tulip"] = 30000,
+    ["Corn"] = 10,
+    ["Daffodil"] = 25000,
+    ["Pumpkin"] = 0.64,
+    ["Apple"] = 0.30,
+    ["Bamboo"] = 250,
+    ["Coconut"] = 2.04,
+    ["Cactus"] = 69.4,
+    ["Dragon Fruit"] = 33,
+    ["Mango"] = 29,
+    ["Grape"] = 872,
+    ["Mushroom"] = 241.6,
+    ["Pepper"] = 320,
+    ["Cacao"] = 187.5,
+    ["Beanstalk"] = 280,
+    ["Ember Lily"] = 385.6,
+    ["Sugar Apple"] = 592.6,
+    ["Burning Bud"] = 486,
+    ["Giant Pinecone"] = 2875,
+    ["Elder Strawberry"] = 2811,
+    ["Papaya"] = 111.1,
+    ["Passion Fruit"] = 395,
+    ["Soul Fruit"] = 12.4,
+    ["Cursed Fruit"] = 28.6,
+    ["Raspberry"] = 177.5,
+    ["Peach"] = 75,
+    ["Chocolate Carrot"] = 145096,
+    ["Red Lolipop"] = 3125,
+    ["Candy Sunflower"] = 35413,
+    ["Candy Blossom"] = 11111.11111,
+    ["Easter Egg"] = 277.824,
+    ["Cranberry"] = 2000,
+    ["Durian"] = 109.7,
+    ["EggPlant"] = 300,
+    ["Lotus"] = 42.5,
+    ["Venus Fly Trap"] = 212.5,
+    ["Nightshade"] = 13850,
+    ["Mint"] = 5230,
+    ["Glowshroom"] = 532.5,
+    ["Moon Melon"] = 281.2,
+    ["Starfruit"] = 1666.6,
+    ["Moonflower"] = 2381,
+    ["Blood Banana"] = 2670,
+    ["Moonglow"] = 408.5,
+    ["Moon Blossom"] = 7407.4,
+    ["Celestiberry"] = 2500,
+    ["Moon Mango"] = 222.2,
+    ["Hive"] = 969,
+    ["Nectarine"] = 4440,
+    ["Rose"] = 5000,
+    ["Foxglove"] = 5000,
+    ["Purple Dahlia"] = 522,
+    ["Pink Lily"] = 1806.5,
+    ["Lilac"] = 3899,
+    ["Sunflower"] = 588,
+    ["Lavender"] = 361008,
+    ["Nectarshade"] = 78500,
+    ["Manuka"] = 270000,
+    ["Dandelion"] = 3130,
+    ["Lumira"] = 2362.5,
+    ["Honeysuckle"] = 1562.1,
+    ["Bee Balm"] = 18033,
+    ["Nectar Thorn"] = 906.3,
+    ["Suncoil"] = 800,
+    ["Crocus"] = 333333,
+    ["Succulent"] = 1000,
+    ["Violet Corn"] = 5555.5,
+    ["Bendboo"] = 478.5,
+    ["Cocovine"] = 340,
+    ["Dragon Pepper"] = 2470,
+    ["Wild Carrot"] = 275000,
+    ["Pear"] = 2217.5,
+    ["Cantaloupe"] = 1124,
+    ["Parasol Flower"] = 5555.55,
+    ["Rosy Delight"] = 690,
+    ["Peace Lily"] = 66666,
+    ["Delphinium"] = 266666,
+    ["Travelers Fruit"] = 370,
+    ["Lily Of The Valley"] = 606,
+    ["Aloe Vora"] = 2085.25,
+    ["Guanabana"] = 4406.2,
+    ["Liberty Lily"] = 710,
+    ["Firework Flower"] = 377.5,
+    ["Stonebite"] = 35175,
+    ["Paradise Petal"] = 3305,
+    ["Horned Dinoshroom"] = 2760,
+    ["Boneboo"] = 1412,
+    ["Firefly Fern"] = 2880,
+    ["Fossilight"] = 5505,
+    ["Horsetail"] = 3333.33333,
+    ["Amber Spine"] = 1527.5,
+    ["Grand Volcania"] = 1440,
+    ["Lingonberry"] = 139000,
+    ["Monoblooma"] = 88250,
+    ["Spiked Mango"] = 300,
+    ["Taro Flower"] = 1089.333,
+    ["Soft Sunshine"] = 11250,
+    ["Serenity"] = 560000,
+    ["Zenflare"] = 12771,
+    ["Zen Rocks"] = 463,
+    ["Hinomai"] = 800,
+    ["Maple Apple"] = 6343,
+    ["Dezen"] = 7325,
+    ["Lucky Bamboo"] = 2600,
+    ["Tranquil Bloom"] = 5841,
+    ["Enkaku"] = 2475,
+    ["Fruitball"] = 972
 }
 
 local rarityMultipliers = {
     ["Gold"] = 20,   
     ["Rainbow"] = 50
 }
+
+local fruitInfoEnabled = false
+local fruitInfoFrame = nil
+
+local function createFruitInfoUI()
+    if fruitInfoFrame then fruitInfoFrame:Destroy() end
+    
+    -- Create the main frame
+    fruitInfoFrame = Instance.new("Frame")
+    fruitInfoFrame.Name = "FruitInfoFrame"
+    fruitInfoFrame.Size = UDim2.new(0, 250, 0, 150)
+    fruitInfoFrame.Position = UDim2.new(0.5, -125, 0.7, 0) -- Centered near bottom
+    fruitInfoFrame.AnchorPoint = Vector2.new(0.5, 0)
+    fruitInfoFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    fruitInfoFrame.BackgroundTransparency = 0.3
+    fruitInfoFrame.BorderSizePixel = 0
+    fruitInfoFrame.Visible = false
+    fruitInfoFrame.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    
+    -- Add corner rounding
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, 8)
+    uiCorner.Parent = fruitInfoFrame
+    
+    -- Title
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, 0, 0, 25)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    title.BackgroundTransparency = 0.5
+    title.Text = "Fruit Information"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 14
+    title.Parent = fruitInfoFrame
+    
+    -- Fruit name
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, -10, 0, 20)
+    nameLabel.Position = UDim2.new(0, 5, 0, 30)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "Fruit: None"
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.Font = Enum.Font.Gotham
+    nameLabel.TextSize = 12
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = fruitInfoFrame
+    
+    -- Mutations list
+    local mutationsLabel = Instance.new("TextLabel")
+    mutationsLabel.Name = "MutationsLabel"
+    mutationsLabel.Size = UDim2.new(1, -10, 0, 50)
+    mutationsLabel.Position = UDim2.new(0, 5, 0, 55)
+    mutationsLabel.BackgroundTransparency = 1
+    mutationsLabel.Text = "Mutations: None"
+    mutationsLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    mutationsLabel.Font = Enum.Font.Gotham
+    mutationsLabel.TextSize = 12
+    mutationsLabel.TextXAlignment = Enum.TextXAlignment.Left
+    mutationsLabel.TextYAlignment = Enum.TextYAlignment.Top
+    mutationsLabel.TextWrapped = true
+    mutationsLabel.Parent = fruitInfoFrame
+    
+    -- Current price
+    local priceLabel = Instance.new("TextLabel")
+    priceLabel.Name = "PriceLabel"
+    priceLabel.Size = UDim2.new(1, -10, 0, 20)
+    priceLabel.Position = UDim2.new(0, 5, 0, 110)
+    priceLabel.BackgroundTransparency = 1
+    priceLabel.Text = "Price: $0"
+    priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    priceLabel.Font = Enum.Font.GothamBold
+    priceLabel.TextSize = 14
+    priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    priceLabel.Parent = fruitInfoFrame
+    
+    return fruitInfoFrame
+end
+
+local function updateFruitInfo()
+    if not fruitInfoEnabled or not fruitInfoFrame then return end
+    
+    local character = game.Players.LocalPlayer.Character
+    if not character then return end
+    
+    -- Find equipped fruit (tool)
+    local equippedFruit = nil
+    for _, item in pairs(character:GetChildren()) do
+        if item:IsA("Tool") then
+            equippedFruit = item
+            break
+        end
+    end
+    
+    if not equippedFruit then
+        fruitInfoFrame.Visible = false
+        return
+    end
+    
+    -- Update UI with fruit info
+    fruitInfoFrame.Visible = true
+    fruitInfoFrame.NameLabel.Text = "Fruit: "..equippedFruit.Name
+    
+    -- Get mutations (ignore attribute "d")
+    local mutations = {}
+    for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
+        if attrName ~= "d" and attrValue == true then
+            table.insert(mutations, attrName)
+        end
+    end
+    
+    if #mutations > 0 then
+        fruitInfoFrame.MutationsLabel.Text = "Mutations: "..table.concat(mutations, ", ")
+    else
+        fruitInfoFrame.MutationsLabel.Text = "Mutations: None"
+    end
+    
+    -- Calculate current price (simplified version)
+    local baseValue = baseValues[equippedFruit.Name] or 100 -- Default base value
+    local weight = equippedFruit:GetAttribute("Weight") or 1
+    local rarityMultiplier = 1
+    
+    -- Check for rarity attributes
+    if equippedFruit:GetAttribute("Rainbow") then
+        rarityMultiplier = 50
+    elseif equippedFruit:GetAttribute("Gold") then
+        rarityMultiplier = 20
+    end
+    
+    -- Simplified price calculation (adjust as needed)
+    local price = baseValue * (weight ^ 2) * rarityMultiplier
+    
+    -- Format price
+    local formattedPrice
+    if price >= 1e12 then
+        formattedPrice = string.format("$%.2fT", price/1e12)
+    elseif price >= 1e9 then
+        formattedPrice = string.format("$%.2fB", price/1e9)
+    elseif price >= 1e6 then
+        formattedPrice = string.format("$%.2fM", price/1e6)
+    else
+        formattedPrice = string.format("$%.0f", price)
+    end
+    
+    fruitInfoFrame.PriceLabel.Text = "Price: "..formattedPrice
+end
+
+-- Create the toggle button
+tab:CreateToggle("Show Fruit Info", function(state)
+    fruitInfoEnabled = state
+    
+    if state then
+        -- Create UI if it doesn't exist
+        if not fruitInfoFrame then
+            createFruitInfoUI()
+        end
+        
+        -- Set up update loop
+        task.spawn(function()
+            while fruitInfoEnabled do
+                updateFruitInfo()
+                task.wait(0.5) -- Update twice per second
+            end
+            
+            -- Hide frame when disabled
+            if fruitInfoFrame then
+                fruitInfoFrame.Visible = false
+            end
+        end)
+    end
+end)
 
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
