@@ -355,6 +355,16 @@ tab:CreateToggle("Anti Collect Fruits", function(a)
     end
 end)
 
+local baseValues = {
+    ["Bone Blossom"] = 22222, 
+    ["Elephant Ears"] = 237.600000000049107,
+}
+
+local rarityMultipliers = {
+    ["Gold"] = 20,   
+    ["Rainbow"] = 50
+}
+
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
         print("[Weight Calculator] Enabling...")
@@ -397,20 +407,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
 
                     -- Define base value per plant (this is the 'value' part of the formula)
                     -- These values are crucial to get the Trillion-level results you expect.
-                    local baseValues = {
-                        ["Bone Blossom"] = 22222, -- Confirmed for both 51.396kg and 51.397kg examples
-                        ["Elephant Ears"] = 237.600000000049107,                  -- Derived from your 150kg -> 1.084T example
-                        -- Add more plants here as needed with their corresponding base values
-                        -- If a plant name isn't found here, it will default to '100000'
-                    }
-
-                    -- Define rarity multipliers. Gold is set to 20 as per your previous message.
-                    -- We explicitly use the Rainbow multiplier for 'max mutation' value.
-                    local rarityMultipliers = {
-                        ["Gold"] = 20,   
-                        ["Rainbow"] = 50, 
-                        -- Add other rarities if needed for future flexibility, but not used for max mutation
-                    }
 
                     local name = plant.Name
                     -- The actual rarity of the plant is not used for the calculation, but kept for display.
