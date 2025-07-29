@@ -1066,11 +1066,6 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
         for _, fruit in pairs(fruits) do
             if not isRunning then break end
     
-            -- Get fruit properties once
-            if fruit:GetAttribute("d") == true then
-                continue
-            end
-    
            -- Skip specific item types
             local fruitName = fruit.Name
             local isStaff = fruitName:find("Staff")
@@ -1104,7 +1099,7 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
             if shouldSubmit then
                 if fruit.Parent ~= nil and not fruit:GetAttribute("d") then
                     submitFruit(fruit)
-                    task.wait(2.5)
+                    task.wait(1.5)
         
                     -- Refresh levels AFTER submission instead of calculating
                     TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
