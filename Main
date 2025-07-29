@@ -1057,8 +1057,8 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
         end
         
         isRunning = true
-        sendNotification("✅ Starting fruit submission...")
-        sendNotification("This Automation will skip favorited fruits")
+        createColoredNotification("✅ Starting fruit submission...")
+        createColoredNotification("This Automation will skip favorited fruits")
         
         -- Store original position
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -1077,7 +1077,7 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
         local validCorruptLevel = type(CorruptLevel) == "number" and CorruptLevel >= 0 and CorruptLevel <= 5
 
         if not (validTranquilLevel and validCorruptLevel) then
-            sendNotification("❌ Invalid level values detected!")
+            createColoredNotification("❌ Invalid level values detected!")
             return
         end
         
@@ -1089,7 +1089,7 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
            -- Skip specific item types
             local fruitName = fruit.Name
             if shouldSkipItem(fruit.Name) then
-                 sendNotification("⏭ Skipping: "..fruit.Name)
+                 createColoredNotification("⏭ Skipping: "..fruit.Name)
                  continue
              end
 
@@ -1129,7 +1129,7 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
                         CorruptLevel = 0 -- Default to 0 if invalid
                     end
                     
-                    sendNotification(string.format("Updated Levels: 🌿%d/5 ☠%d/5", TranquilLevel, CorruptLevel))
+                    createColoredNotification(string.format("Updated Levels: 🌿%d/5 ☠%d/5", TranquilLevel, CorruptLevel))
                 end
             end
         end
@@ -1146,12 +1146,12 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
             savedTool = nil
         end
         
-        sendNotification("✅ Fruit submission completed!")
+        createColoredNotification("✅ Fruit submission completed!")
         isRunning = false
     else
         -- Toggle OFF logic
         isRunning = false
-        sendNotification("🔴 Stopped fruit submission.")
+        createColoredNotification("🔴 Stopped fruit submission.")
         
         -- Restore tool if we were interrupted mid-process
         if savedTool and savedTool.Parent == LocalPlayer.Backpack then
