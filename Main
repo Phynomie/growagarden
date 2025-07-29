@@ -499,12 +499,13 @@ local function createFruitInfoUI()
     fruitInfoFrame = Instance.new("Frame")
     fruitInfoFrame.Name = "FruitInfoFrame"
     fruitInfoFrame.Size = UDim2.new(0, 250, 0, 150)
-    fruitInfoFrame.Position = UDim2.new(0.5, -125, 0.7, 0) -- Centered near bottom
-    fruitInfoFrame.AnchorPoint = Vector2.new(0.5, 0)
+    fruitInfoFrame.Position = UDim2.new(0.085, 0, 0.7, -160) -- Positioned above the auto-buy frame
+    fruitInfoFrame.AnchorPoint = Vector2.new(0, 0)
     fruitInfoFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     fruitInfoFrame.BackgroundTransparency = 0.3
     fruitInfoFrame.BorderSizePixel = 0
     fruitInfoFrame.Visible = false
+    fruitInfoFrame.ZIndex = 10 -- Higher than auto-buy frame (which should be <10)
     fruitInfoFrame.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
     
     -- Add corner rounding
@@ -523,6 +524,7 @@ local function createFruitInfoUI()
     title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.Font = Enum.Font.GothamBold
     title.TextSize = 14
+    title.ZIndex = 11 -- Higher than frame
     title.Parent = fruitInfoFrame
     
     -- Fruit name
@@ -536,6 +538,7 @@ local function createFruitInfoUI()
     nameLabel.Font = Enum.Font.Gotham
     nameLabel.TextSize = 12
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.ZIndex = 11
     nameLabel.Parent = fruitInfoFrame
     
     -- Mutations list
@@ -551,6 +554,7 @@ local function createFruitInfoUI()
     mutationsLabel.TextXAlignment = Enum.TextXAlignment.Left
     mutationsLabel.TextYAlignment = Enum.TextYAlignment.Top
     mutationsLabel.TextWrapped = true
+    mutationsLabel.ZIndex = 11
     mutationsLabel.Parent = fruitInfoFrame
     
     -- Current price
@@ -564,6 +568,7 @@ local function createFruitInfoUI()
     priceLabel.Font = Enum.Font.GothamBold
     priceLabel.TextSize = 14
     priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+    priceLabel.ZIndex = 11
     priceLabel.Parent = fruitInfoFrame
     
     return fruitInfoFrame
@@ -607,7 +612,7 @@ local function updateFruitInfo()
         fruitInfoFrame.MutationsLabel.Text = "Mutations: None"
     end
     
-    -- Calculate current price (simplified version)
+    -- Calculate current price
     local baseValue = baseValues[equippedFruit.Name] or 100 -- Default base value
     local weight = equippedFruit:GetAttribute("Weight") or 1
     local rarityMultiplier = 1
@@ -619,7 +624,7 @@ local function updateFruitInfo()
         rarityMultiplier = 20
     end
     
-    -- Simplified price calculation (adjust as needed)
+    -- Price calculation
     local price = baseValue * (weight ^ 2) * rarityMultiplier
     
     -- Format price
@@ -638,13 +643,15 @@ local function updateFruitInfo()
 end
 
 -- Create the toggle button
-tab:CreateToggle("Show Fruit Info", function(state)
+tab3:CreateToggle("Show Fruit Info", function(state)
     fruitInfoEnabled = state
     
     if state then
         -- Create UI if it doesn't exist
         if not fruitInfoFrame then
             createFruitInfoUI()
+        else
+            fruitInfoFrame.Visible = true
         end
         
         -- Set up update loop
@@ -659,6 +666,8 @@ tab:CreateToggle("Show Fruit Info", function(state)
                 fruitInfoFrame.Visible = false
             end
         end)
+    elseif fruitInfoFrame then
+        fruitInfoFrame.Visible = false
     end
 end)
 
