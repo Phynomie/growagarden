@@ -990,168 +990,109 @@ end)
 local fruits = {}
 local playerPosition = nil
 local isRunning = false
-local isRunningNPC = false
 local savedTool = nil
 
--- Shared functions
 local function getFruits()
     fruits = {}
+    -- Check both backpack and equipped fruits
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            local nameLower = item.Name:lower()
-            local isTranquil = nameLower:find("tranquil")
-            local isCorrupt = nameLower:find("corrupt")
-            if isTranquil or isCorrupt then
+        if item:IsA("Tool") and (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
+            table.insert(fruits, item)
+        end
+    end
+    -- Check equipped tool
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") and (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
                 table.insert(fruits, item)
             end
         end
     end
-    return #fruits > 0
 end
 
-local function handleToolPreservation()
-    if LocalPlayer.Character then
-        for _, item in ipairs(LocalPlayer.Character:GetChildren()) do
-            if item:IsA("Tool") then
-                savedTool = item
-                item.Parent = LocalPlayer.Backpack
-                return true
-            end
-        end
-    end
-    return false
-end
-
-local function restoreTool()
-    if savedTool and savedTool.Parent == LocalPlayer.Backpack then
-        task.wait(0.5) -- Stability delay
-        savedTool.Parent = LocalPlayer.Character
-        savedTool = nil
-        return true
-    end
-    return false
-end
-
-local function safeTeleport(position)
-    if not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) then
-        return false
-    end
+local function submitFruit(fruit)
+    -- Equip the fruit first
+    fruit.Parent = LocalPlayer.Character
+    task.wait(0.2) -- Give time to equip
     
-    playerPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
-    LocalPlayer.Character.HumanoidRootPart.CFrame = position
-    return true
+    -- Submit to Kitsune
+    local args = {"SubmitToFox"}
+    game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
+    
+    -- Small delay before next action
+    task.wait(0.5)
 end
 
 tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)    
     if toggleState then
+        -- Store currently equipped tool (if not a fruit)
+        if LocalPlayer.Character then
+            for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                if item:IsA("Tool") and not (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
+                    savedTool = item
+                    item.Parent = LocalPlayer.Backpack
+                    break
+                end
+            end
+        end
+        
         isRunning = true
-        handleToolPreservation()
+        sendNotification("✅ Starting fruit submission...")
         
-        while isRunning do
-            if not getFruits() then
-                sendNotification("❌ No Tranquil/Corrupt fruits found!")
-                tab2:SetToggle(false)
-                break
-            end
-            
-            sendNotification("✅ Starting Kitsune submission...")
-            task.wait(1)
-
-            if not safeTeleport(CFrame.new(-101.82, 3.0, -13.08)) then
-                sendNotification("❌ Teleport failed!")
-                break
-            end
-
-            local success, TranquilLevel, CorruptLevel = pcall(function()
-                local tranquilText = workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text
-                local corruptText = workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text
-                return tonumber(tranquilText), tonumber(corruptText)
-            end)
-            
-            if not success or not TranquilLevel or not CorruptLevel then
-                sendNotification("❌ Failed to get levels!")
-                break
-            end
-            
-            for _, fruit in ipairs(fruits) do
-                if not isRunning then break end
-                
-                local nameLower = fruit.Name:lower()
-                local isTranquil = nameLower:find("tranquil")
-                local isCorrupt = nameLower:find("corrupt")
-                
-                if isTranquil and isCorrupt and CorruptLevel ~= 5 and TranquilLevel ~= 5 then
-                    submitFruit()
-                elseif isTranquil and TranquilLevel ~= 5 then
-                    submitFruit()
-                elseif isCorrupt and CorruptLevel ~= 5 then
-                    submitFruit()
-                end
-                
-                task.wait(2.5)
-            end
-            
-            safeTeleport(playerPosition)
-            restoreTool()
-            fruits = {}
-            task.wait(1)
+        -- Store original position
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            playerPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
         end
-    else
+        
+        -- Teleport to Kitsune
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-101.82, 3.0, -13.08)
+        task.wait(1) -- Wait for teleport
+        
+        -- Get current levels
+        local TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
+        local CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
+        
+        -- Process fruits
+        getFruits()
+        for _, fruit in pairs(fruits) do
+            if not isRunning then break end
+            
+            local isTranquil = fruit.Name:find("Tranquil")
+            local isCorrupt = fruit.Name:find("Corrupt")
+            
+            -- Check if should submit based on levels
+            if (isTranquil and isCorrupt and CorruptLevel ~= 5 and TranquilLevel ~= 5) or
+               (isTranquil and TranquilLevel ~= 5) or
+               (isCorrupt and CorruptLevel ~= 5) then
+                submitFruit(fruit)
+                task.wait(2.5) -- Cooldown between submissions
+            end
+        end
+        
+        -- Return to original position
+        if playerPosition then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = playerPosition
+        end
+        
+        -- Restore original tool if it still exists
+        if savedTool and savedTool.Parent == LocalPlayer.Backpack then
+            task.wait(0.5)
+            savedTool.Parent = LocalPlayer.Character
+            savedTool = nil
+        end
+        
+        sendNotification("✅ Fruit submission completed!")
         isRunning = false
-        sendNotification("🔴 Stopped Kitsune submission.")
-        restoreTool()
-    end
-end)
-
--- Tranquil NPC Submission (Tranquil only)
-tab2:CreateToggle("Auto Give Fruits to Tranquil NPC", function(toggleState)    
-    if toggleState then
-        isRunningNPC = true
-        handleToolPreservation()
-        
-        while isRunningNPC do
-            if not getFruits() then
-                sendNotification("❌ No Tranquil fruits found!")
-                tab2:SetToggle(false)
-                break
-            end
-            
-            local tranquilFruits = {}
-            for _, fruit in ipairs(fruits) do
-                if fruit.Name:lower():find("tranquil") then
-                    table.insert(tranquilFruits, fruit)
-                end
-            end
-            
-            if #tranquilFruits == 0 then
-                sendNotification("❌ No Tranquil fruits found!")
-                tab2:SetToggle(false)
-                break
-            end
-            
-            sendNotification("✅ Starting Tranquil NPC submission...")
-            task.wait(1)
-
-            if not safeTeleport(CFrame.new(-71.545723, 4.3999157, -13.7891569)) then
-                sendNotification("❌ Teleport failed!")
-                break
-            end
-
-            for _, fruit in ipairs(tranquilFruits) do
-                if not isRunningNPC then break end
-                submitAllFruits()
-                task.wait(3.5) 
-            end
-            
-            safeTeleport(playerPosition)
-            restoreTool()
-            fruits = {}
-            task.wait(1)
-        end
     else
-        isRunningNPC = false
-        sendNotification("🔴 Stopped Tranquil NPC submission.")
-        restoreTool()
+        -- Toggle OFF logic
+        isRunning = false
+        sendNotification("🔴 Stopped fruit submission.")
+        
+        -- Restore tool if we were interrupted mid-process
+        if savedTool and savedTool.Parent == LocalPlayer.Backpack then
+            savedTool.Parent = LocalPlayer.Character
+            savedTool = nil
+        end
     end
 end)
 
