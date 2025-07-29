@@ -5,13 +5,6 @@ local LocalPlayer = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 
 -- --- CONFIGURATION ---
--- These are the *constant* modifiers you've provided previously for Rainbow mutation
--- and the sum of all 32 modifiers. These are now outdated and replaced by the comprehensive list below.
--- local RAINBOW_MULTIPLIER = 50
--- local SUM_OF_MODIFIERS = 1566
--- local NUMBER_OF_MODIFIERS = 32
--- local COMBINED_MODIFIER_PART = RAINBOW_MULTIPLIER * (1 + SUM_OF_MODIFIERS - NUMBER_OF_MODIFIERS)
-
 -- New and comprehensive mutation multipliers based on your provided list
 local MUTATION_MULTIPLIERS = {
     -- "Main Multiplier" mutations (Gm) - only one of these should typically be selected
@@ -21,8 +14,6 @@ local MUTATION_MULTIPLIERS = {
     -- "Additional" mutations (Mm) - these contribute to the summed part of the formula
     ["Shocked"] = 100,
     ["Frozen"] = 10,
-    ["Wet"] = 2,
-    ["Chilled"] = 2,
     ["Choc"] = 2,
     ["Moonlit"] = 2,
     ["Bloodlit"] = 4,
@@ -33,58 +24,40 @@ local MUTATION_MULTIPLIERS = {
     ["Voidtouched"] = 135,
     ["Pollinated"] = 3,
     ["Honeyglazed"] = 5,
-    ["Dawnbound"] = 150,
     ["Heavenly"] = 5,
     ["Cooked"] = 10,
-    ["Burnt"] = 4,
     ["Molten"] = 25,
     ["Meteoric"] = 125,
-    ["Windstruck"] = 2,
     ["Alienlike"] = 100,
-    ["Sundried"] = 85,
-    ["Verdant"] = 4,
     ["Paradisal"] = 100,
-    ["Twisted"] = 5,
     ["Galactic"] = 120,
     ["Aurora"] = 90,
     ["Cloudtouched"] = 5,
-    ["Drenched"] = 5,
     ["Fried"] = 8,
-    ["Amber"] = 10,
-    ["Oldamber"] = 20,
+    ["Ceramic"] = 30,
     ["Ancientamber"] = 50,
     ["Sandy"] = 3,
-    ["Clay"] = 5,
-    ["Ceramic"] = 30,
-    ["Friendbound"] = 70,
     ["Tempestous"] = 12,
+    ["Friendbound"] = 70,
     ["Infected"] = 75,
     ["Tranquil"] = 20,
-    ["Corrupt"] = 20,
-    ["Chakra"] = 15,
-    ["Harmonisedchakra"] = 35,
-    ["Foxfire"] = 90,
-    ["Harmonisedfoxfire"] = 190,
     ["Toxic"] = 12,
     ["Radioactive"] = 80,
-    ["Jackpot"] = 15,
+    ["Corrupt"] = 20,
     ["Subzero"] = 40,
     ["Blitzshock"] = 50,
+    ["Jackpot"] = 15,
     ["Touchdown"] = 105,
     ["Static"] = 8,
+    ["Harmonisedfoxfire"] = 190,
+    ["Harmonisedchakra"] = 35,
 }
-
--- Default values for G (Growth Factor) and M (Minimum Value)
--- These are often specific to each plant type in Grow a Garden.
--- We're using common approximate values for a general calculator.
-local DEFAULT_G_VALUE = 64
-local DEFAULT_M_VALUE = 18
 
 print("[BaseValueCalculator] Initialized with updated mutation multipliers and formula structure.")
 
 -- --- UI CREATION AND NOTIFICATION ---
 
--- Notification UI elements (re-used from your previous script)
+-- Notification UI elements
 local notificationFrame
 local titleLabel
 local messageLabel
@@ -102,21 +75,21 @@ local function createNotification(title, message)
         end
 
         local notificationGui = Instance.new("ScreenGui")
-        notificationGui.Name = "BaseValueCalculatorNotificationGui" -- Unique name
+        notificationGui.Name = "BaseValueCalculatorNotificationGui"
         notificationGui.Parent = playerGui
         notificationGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
         notificationFrame = Instance.new("Frame")
         notificationFrame.Name = "NotificationFrame"
-        notificationFrame.Size = UDim2.new(0.3, 0, 0.1, 0) -- 30% width, 10% height of screen
-        notificationFrame.Position = UDim2.new(0.5, 0, 0.9, 0) -- Centered near bottom
+        notificationFrame.Size = UDim2.new(0.3, 0, 0.1, 0)
+        notificationFrame.Position = UDim2.new(0.5, 0, 0.9, 0)
         notificationFrame.AnchorPoint = Vector2.new(0.5, 0.5)
         notificationFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         notificationFrame.BackgroundTransparency = 0.1
         notificationFrame.BorderColor3 = Color3.fromRGB(20, 20, 20)
         notificationFrame.BorderSizePixel = 2
         notificationFrame.Parent = notificationGui
-        notificationFrame.Visible = false -- Start invisible
+        notificationFrame.Visible = false
 
         titleLabel = Instance.new("TextLabel")
         titleLabel.Name = "TitleLabel"
@@ -130,7 +103,7 @@ local function createNotification(title, message)
         titleLabel.TextXAlignment = Enum.TextXAlignment.Center
         titleLabel.TextYAlignment = Enum.TextYAlignment.Center
         titleLabel.Parent = notificationFrame
-        titleLabel.ZIndex = 2 -- Ensure labels are above frame
+        titleLabel.ZIndex = 2
 
         messageLabel = Instance.new("TextLabel")
         messageLabel.Name = "MessageLabel"
@@ -145,9 +118,8 @@ local function createNotification(title, message)
         messageLabel.TextXAlignment = Enum.TextXAlignment.Center
         messageLabel.TextYAlignment = Enum.TextYAlignment.Center
         messageLabel.Parent = notificationFrame
-        messageLabel.ZIndex = 2 -- Ensure labels are above frame
+        messageLabel.ZIndex = 2
 
-        -- Add a UI Corner for a smoother look
         local uiCorner = Instance.new("UICorner")
         uiCorner.CornerRadius = UDim.new(0, 8)
         uiCorner.Parent = notificationFrame
@@ -158,14 +130,13 @@ local function createNotification(title, message)
     messageLabel.Text = message
     notificationFrame.Visible = true
 
-    -- Tween the notification in (slide up slightly)
-    local initialPos = UDim2.new(0.5, 0, 0.9, 0) -- Always show at the bottom center
-    notificationFrame.Position = initialPos + UDim2.new(0, 0, 0.05, 0) -- Start slightly lower to slide up
+    -- Tween the notification in
+    local initialPos = UDim2.new(0.5, 0, 0.9, 0)
+    notificationFrame.Position = initialPos + UDim2.new(0, 0, 0.05, 0)
     notificationFrame.BackgroundTransparency = 1
     titleLabel.TextTransparency = 1
     messageLabel.TextTransparency = 1
 
-    -- Fade in and slide up
     TweenService:Create(notificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         Position = initialPos,
         BackgroundTransparency = 0.1
@@ -173,16 +144,15 @@ local function createNotification(title, message)
     TweenService:Create(titleLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
     TweenService:Create(messageLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 
-    task.delay(4, function() -- Display for 4 seconds
-        -- Fade out and slide down
+    task.delay(4, function()
         TweenService:Create(notificationFrame, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Position = initialPos + UDim2.new(0, 0, 0.05, 0), -- Slide back down
+            Position = initialPos + UDim2.new(0, 0, 0.05, 0),
             BackgroundTransparency = 1
         }):Play()
         TweenService:Create(titleLabel, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
         TweenService:Create(messageLabel, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1}):Play()
 
-        task.delay(0.7, function() -- Wait for fade out to complete before making invisible
+        task.delay(0.7, function()
             notificationFrame.Visible = false
         end)
     end)
@@ -199,18 +169,18 @@ task.spawn(function()
     local calculatorGui = Instance.new("ScreenGui")
     calculatorGui.Name = "BaseValueCalculatorUI"
     calculatorGui.Parent = playerGui
-    calculatorGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- Important for layering
+    calculatorGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "CalculatorFrame"
-    mainFrame.Size = UDim2.new(0, 280, 0, 500) -- Increased size to accommodate mutation checkboxes
-    mainFrame.Position = UDim2.new(0.5, -140, 0.2, 0) -- Centered top part of screen
+    mainFrame.Size = UDim2.new(0, 300, 0, 500)
+    mainFrame.Position = UDim2.new(0.5, -150, 0.2, 0)
     mainFrame.AnchorPoint = Vector2.new(0, 0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     mainFrame.BackgroundTransparency = 0.1
     mainFrame.BorderColor3 = Color3.fromRGB(30, 30, 30)
     mainFrame.BorderSizePixel = 2
-    mainFrame.Draggable = true -- Make it draggable
+    mainFrame.Draggable = true
     mainFrame.Parent = calculatorGui
 
     local uiCorner = Instance.new("UICorner")
@@ -223,7 +193,7 @@ task.spawn(function()
     titleBar.Position = UDim2.new(0, 0, 0, 0)
     titleBar.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
     titleBar.BackgroundTransparency = 0.2
-    titleBar.Text = "Base Value Calculator (Grow a Garden)"
+    titleBar.Text = "Base Value Calculator (Updated)"
     titleBar.Font = Enum.Font.SourceSansBold
     titleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
     titleBar.TextScaled = true
@@ -249,7 +219,7 @@ task.spawn(function()
     weightInput.Size = UDim2.new(0.9, 0, 0, 30)
     weightInput.Position = UDim2.new(0.05, 0, 0, 65)
     weightInput.PlaceholderText = "e.g., 147"
-    weightInput.Text = "147" -- Default value
+    weightInput.Text = "147"
     weightInput.Font = Enum.Font.SourceSans
     weightInput.TextColor3 = Color3.fromRGB(255, 255, 255)
     weightInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -275,7 +245,7 @@ task.spawn(function()
     valueInput.Size = UDim2.new(0.9, 0, 0, 30)
     valueInput.Position = UDim2.new(0.05, 0, 0, 125)
     valueInput.PlaceholderText = "e.g., 45643009995436"
-    valueInput.Text = "45643009995436" -- Default value
+    valueInput.Text = "45643009995436"
     valueInput.Font = Enum.Font.SourceSans
     valueInput.TextColor3 = Color3.fromRGB(255, 255, 255)
     valueInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -284,32 +254,25 @@ task.spawn(function()
     valueInput.ClearTextOnFocus = false
     valueInput.TextScaled = true
 
-    -- Container for mutation checkboxes
+    -- Container for mutation checkboxes with proper scrolling
     local mutationScrollFrame = Instance.new("ScrollingFrame")
     mutationScrollFrame.Name = "MutationScrollFrame"
-    mutationScrollFrame.Size = UDim2.new(0.9, 0, 0.5, 0) -- Adjusted size to fit in new frame
-    mutationScrollFrame.Position = UDim2.new(0.05, 0, 0, 160) -- Position below value input
-    mutationScrollFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    mutationScrollFrame.Size = UDim2.new(0.9, 0, 0, 250) -- Fixed height with scrolling
+    mutationScrollFrame.Position = UDim2.new(0.05, 0, 0, 160)
+    mutationScrollFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     mutationScrollFrame.BackgroundTransparency = 0.8
     mutationScrollFrame.BorderSizePixel = 0
-    mutationScrollFrame.CanvasSize = UDim2.new(
-        0, 0, -- X scale and offset
-        0, gmMutationsFrame.AbsoluteContentSize.Y + mmMutationsFrame.AbsoluteContentSize.Y + separator.Size.Y.Offset + uiPadding.PaddingTop.Offset + uiPadding.PaddingBottom.Offset + uiListLayout.Padding.Offset * (table.getn(gmMutationNames) + table.getn(mmMutationNames) + 2) + 50 -- Y scale and offset, added some buffer
-    )
-    mutationScrollFrame.ScrollBarThickness = 6
+    mutationScrollFrame.ScrollBarThickness = 8
     mutationScrollFrame.Parent = mainFrame
 
     local uiListLayout = Instance.new("UIListLayout")
     uiListLayout.Name = "MutationListLayout"
     uiListLayout.FillDirection = Enum.FillDirection.Vertical
-    uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    uiListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
     uiListLayout.Padding = UDim.new(0, 5)
     uiListLayout.Parent = mutationScrollFrame
 
     local uiPadding = Instance.new("UIPadding")
     uiPadding.PaddingTop = UDim.new(0, 5)
-    uiPadding.PaddingBottom = UDim.new(0, 5)
     uiPadding.PaddingLeft = UDim.new(0, 5)
     uiPadding.PaddingRight = UDim.new(0, 5)
     uiPadding.Parent = mutationScrollFrame
@@ -321,7 +284,7 @@ task.spawn(function()
     local function createMutationCheckbox(mutationName, parentFrame, isGmMutation)
         local checkboxFrame = Instance.new("Frame")
         checkboxFrame.Name = mutationName .. "CheckboxFrame"
-        checkboxFrame.Size = UDim2.new(1, 0, 0, 25)
+        checkboxFrame.Size = UDim2.new(1, -10, 0, 25) -- Account for padding
         checkboxFrame.BackgroundTransparency = 1
         checkboxFrame.Parent = parentFrame
 
@@ -353,7 +316,6 @@ task.spawn(function()
             -- Handle exclusive selection for Gm mutations (Rainbow/Gold)
             if isGmMutation then
                 for gmName, cbData in pairs(mutationCheckboxes) do
-                    -- Check if it's a GM mutation and not the current one being toggled
                     if (gmName == "Rainbow" or gmName == "Gold") and gmName ~= mutationName then
                         cbData.isChecked = false
                         cbData.button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
@@ -368,7 +330,12 @@ task.spawn(function()
             mutationCheckboxes[mutationName].isChecked = isChecked
         end)
 
-        mutationCheckboxes[mutationName] = {frame = checkboxFrame, button = checkboxButton, label = checkboxLabel, isChecked = false}
+        mutationCheckboxes[mutationName] = {
+            frame = checkboxFrame, 
+            button = checkboxButton, 
+            label = checkboxLabel, 
+            isChecked = false
+        }
 
         return checkboxFrame
     end
@@ -377,96 +344,59 @@ task.spawn(function()
     local gmMutationNames = {"Rainbow", "Gold"}
     local mmMutationNames = {}
     for name, _ in pairs(MUTATION_MULTIPLIERS) do
-        local isGm = false
-        for _, gmName in ipairs(gmMutationNames) do
-            if name == gmName then
-                isGm = true
-                break
-            end
-        end
-        if not isGm then
+        if name ~= "Rainbow" and name ~= "Gold" then
             table.insert(mmMutationNames, name)
         end
     end
-    table.sort(mmMutationNames) -- Sort alphabetically for better UI
+    table.sort(mmMutationNames)
 
     -- Group for Main Multiplier Mutations (Rainbow/Gold)
-    local gmMutationsFrame = Instance.new("Frame")
-    gmMutationsFrame.Name = "GmMutationsGroup"
-    gmMutationsFrame.Size = UDim2.new(1, 0, 0, 20) -- Will adjust height with content
-    gmMutationsFrame.BackgroundTransparency = 1
-    gmMutationsFrame.Parent = mutationScrollFrame
-
-    local gmListLayout = Instance.new("UIListLayout")
-    gmListLayout.FillDirection = Enum.FillDirection.Vertical
-    gmListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    gmListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    gmListLayout.Padding = UDim.new(0, 5)
-    gmListLayout.Parent = gmMutationsFrame
-
     local gmLabel = Instance.new("TextLabel")
     gmLabel.Name = "GmLabel"
-    gmLabel.Size = UDim2.new(1, 0, 0, 20)
+    gmLabel.Size = UDim2.new(1, -10, 0, 20)
     gmLabel.Text = "Main Multiplier (select one):"
-    gmLabel.TextXAlignment = Enum.TextXAlignment.Left
-    gmLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- Yellow for emphasis
+    gmLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
     gmLabel.BackgroundTransparency = 1
     gmLabel.Font = Enum.Font.SourceSansBold
-    gmLabel.TextScaled = true
-    gmLabel.Parent = gmMutationsFrame
+    gmLabel.TextXAlignment = Enum.TextXAlignment.Left
+    gmLabel.Parent = mutationScrollFrame
 
     for _, name in ipairs(gmMutationNames) do
-        createMutationCheckbox(name, gmMutationsFrame, true)
+        createMutationCheckbox(name, mutationScrollFrame, true)
     end
-    gmMutationsFrame.Size = UDim2.new(1, 0, 0, gmListLayout.AbsoluteContentSize.Y) -- Adjust height after adding children
 
     -- Separator
     local separator = Instance.new("Frame")
     separator.Name = "Separator"
-    separator.Size = UDim2.new(1, 0, 0, 2)
+    separator.Size = UDim2.new(1, -10, 0, 2)
     separator.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     separator.BackgroundTransparency = 0.5
     separator.Parent = mutationScrollFrame
 
     -- Group for Additional Mutations
-    local mmMutationsFrame = Instance.new("Frame")
-    mmMutationsFrame.Name = "MmMutationsGroup"
-    mmMutationsFrame.Size = UDim2.new(1, 0, 0, 20) -- Will adjust height with content
-    mmMutationsFrame.BackgroundTransparency = 1
-    mmMutationsFrame.Parent = mutationScrollFrame
-
-    local mmListLayout = Instance.new("UIListLayout")
-    mmListLayout.FillDirection = Enum.FillDirection.Vertical
-    mmListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    mmListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-    mmListLayout.Padding = UDim.new(0, 5)
-    mmListLayout.Parent = mmMutationsFrame
-
     local mmLabel = Instance.new("TextLabel")
     mmLabel.Name = "MmLabel"
-    mmLabel.Size = UDim2.new(1, 0, 0, 20)
-    mmLabel.Text = "Additional Mutations (select all that apply):"
-    mmLabel.TextXAlignment = Enum.TextXAlignment.Left
-    mmLabel.TextColor3 = Color3.fromRGB(150, 255, 255) -- Cyan for emphasis
+    mmLabel.Size = UDim2.new(1, -10, 0, 20)
+    mmLabel.Text = "Additional Mutations:"
+    mmLabel.TextColor3 = Color3.fromRGB(150, 255, 255)
     mmLabel.BackgroundTransparency = 1
     mmLabel.Font = Enum.Font.SourceSansBold
-    mmLabel.TextScaled = true
-    mmLabel.Parent = mmMutationsFrame
+    mmLabel.TextXAlignment = Enum.TextXAlignment.Left
+    mmLabel.Parent = mutationScrollFrame
 
     for _, name in ipairs(mmMutationNames) do
-        createMutationCheckbox(name, mmMutationsFrame, false)
+        createMutationCheckbox(name, mutationScrollFrame, false)
     end
-    mmMutationsFrame.Size = UDim2.new(1, 0, 0, mmListLayout.AbsoluteContentSize.Y) -- Adjust height after adding children
 
-    -- Update CanvasSize after all elements are added
-    -- This ensures the scroll frame can scroll to all checkboxes
-    mutationScrollFrame.CanvasSize = UDim2.new(0, 0, 0, gmMutationsFrame.AbsoluteContentSize.Y + mmMutationsFrame.AbsoluteContentSize.Y + separator.Size.Y.Offset + uiPadding.PaddingTop.Offset + uiPadding.PaddingBottom.Offset + 10) -- Add some buffer
-
+    -- Update CanvasSize when layout changes
+    uiListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        mutationScrollFrame.CanvasSize = UDim2.new(0, 0, 0, uiListLayout.AbsoluteContentSize.Y + 10)
+    end)
 
     local calculateButton = Instance.new("TextButton")
     calculateButton.Name = "CalculateButton"
     calculateButton.Size = UDim2.new(0.8, 0, 0, 30)
-    calculateButton.Position = UDim2.new(0.1, 0, 1, -40) -- Position at bottom, offset from total height
+    calculateButton.Position = UDim2.new(0.1, 0, 1, -40)
     calculateButton.Text = "Calculate Base Value"
     calculateButton.Font = Enum.Font.SourceSansBold
     calculateButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -483,9 +413,6 @@ task.spawn(function()
             createNotification("Input Error", "Please enter valid numbers for both weight and value.")
             return
         end
-
-        print(string.format("[BaseValueCalculator] Received Weight: %.5f kg", plantWeight))
-        print(string.format("[BaseValueCalculator] Received Sold Value: %.0f", plantSoldValue))
 
         if plantWeight <= 0 then
             createNotification("Calculation Error", "Weight must be greater than zero.")
@@ -508,53 +435,44 @@ task.spawn(function()
             createNotification("Input Error", "Please select only ONE main multiplier mutation (Rainbow/Gold).")
             return
         elseif selectedGmCount == 0 then
-            createNotification("Input Warning", "No main multiplier (Rainbow/Gold) selected. Using 1x multiplier.")
+            createNotification("Input Warning", "No main multiplier selected. Using 1x multiplier.")
         end
 
         -- Calculate Mm (Mutation Multiplier)
         local sumOfMmMultipliers = 0
         local numberOfMmMultipliers = 0
         for name, isChecked in pairs(selectedMutations) do
-            if isChecked and not (name == "Rainbow" or name == "Gold") then -- Exclude Gm mutations from Mm sum
+            if isChecked and not (name == "Rainbow" or name == "Gold") then
                 sumOfMmMultipliers = sumOfMmMultipliers + MUTATION_MULTIPLIERS[name]
                 numberOfMmMultipliers = numberOfMmMultipliers + 1
             end
         end
         
         local mmFactor = 1 + sumOfMmMultipliers - numberOfMmMultipliers
-        if mmFactor < 1 then mmFactor = 1 end -- Ensure MmFactor is at least 1
-
-        print(string.format("[BaseValueCalculator] Selected Gm: %s (%dx)", gmChosenName, gmMultiplier))
-        print(string.format("[BaseValueCalculator] Sum of other (Mm) multipliers: %d", sumOfMmMultipliers))
-        print(string.format("[BaseValueCalculator] Number of other (Mm) multipliers: %d", numberOfMmMultipliers))
-        print(string.format("[BaseValueCalculator] Calculated Mm_Factor (1 + Sum - Number): %d", mmFactor))
+        if mmFactor < 1 then mmFactor = 1 end
 
         local totalMultiplier = gmMultiplier * mmFactor
         if totalMultiplier == 0 then
-            createNotification("Calculation Error", "Total multiplier became zero. Check selected mutations and inputs.")
+            createNotification("Calculation Error", "Total multiplier became zero. Check selected mutations.")
             return
         end
 
-        -- --- Reversing Formula 2 to find Base Value ---
-        -- Formula 2: value = base_value * weight^2 * (Gm * (1 + Sum_of_Mm_Multipliers - Number_of_Mm_Multipliers))
-        -- Rearranged: base_value = value / (weight^2 * Gm * Mm_Factor)
-
         local denominator = (plantWeight ^ 2) * totalMultiplier
         if denominator == 0 then
-            createNotification("Calculation Error", "Denominator became zero during calculation. Cannot divide.")
+            createNotification("Calculation Error", "Denominator became zero during calculation.")
             return
         end
 
         local calculatedBaseValue = plantSoldValue / denominator
 
-        print(string.format("[BaseValueCalculator] Calculated Base Value: %.15f", calculatedBaseValue))
         createNotification(
             "Calculated Base Value!",
-            string.format("For %.3fkg, sold for $%.0f:\nBase Value: %.15f",
-                          plantWeight, plantSoldValue, calculatedBaseValue)
+            string.format("For %.3fkg (%s + %d modifiers), sold for $%.0f:\nBase Value: %.15f",
+                          plantWeight, gmChosenName, numberOfMmMultipliers, 
+                          plantSoldValue, calculatedBaseValue)
         )
     end)
 
-    -- Initial notification that the UI is ready
-    createNotification("Base Value Calculator UI", "Window open! Enter values and select mutations.")
+    -- Initial notification
+    createNotification("Base Value Calculator", "Window open! Select mutations and enter values.")
 end)
