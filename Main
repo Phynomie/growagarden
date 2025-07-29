@@ -1067,7 +1067,20 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
             if not isRunning then break end
     
             -- Get fruit properties once
+            if fruit:GetAttribute("d") == true then
+                continue
+            end
+    
+           -- Skip specific item types
             local fruitName = fruit.Name
+            local isStaff = fruitName:find("Staff")
+            local isCrate = fruitName:find("Crate")
+            local isRadar = fruitName:find("Radar")
+    
+            if isStaff or isCrate or isRadar then
+                continue
+            end
+
             local isTranquil = fruitName:find("Tranquil")
             local isCorrupt = fruitName:find("Corrupt")
     
