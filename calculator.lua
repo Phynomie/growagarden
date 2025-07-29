@@ -45,8 +45,7 @@ local MODIFIERS = {
     "Touchdown",
     "Static",
     "Harmonisedfoxfire",
-    "Harmonisedchakra",
-    "Boneblossom"
+    "Harmonisedchakra"
 }
 
 -- Constants
