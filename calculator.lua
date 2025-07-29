@@ -471,6 +471,16 @@ task.spawn(function()
                           plantWeight, gmChosenName, numberOfMmMultipliers, 
                           plantSoldValue, calculatedBaseValue)
         )
+
+        print("=== Base Value Calculation Results ===")
+        print(string.format("Plant Weight: %.3f kg", plantWeight))
+        print(string.format("Main Multiplier: %s (%dx)", gmChosenName, gmMultiplier))
+        print(string.format("Additional Modifiers: %d", numberOfMmMultipliers))
+        print(string.format("Sum of Additional Modifiers: %d", sumOfMmMultipliers))
+        print(string.format("Total Multiplier: %d", totalMultiplier))
+        print(string.format("Sold Value: $%.0f", plantSoldValue))
+        print(string.format("Calculated Base Value: %.15f", calculatedBaseValue))
+        print("=====================================")
     end)
 
     -- Initial notification
