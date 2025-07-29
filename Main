@@ -1089,14 +1089,23 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
     
             -- Submit if conditions met
             if shouldSubmit then
-                -- Additional safety check
                 if fruit.Parent ~= nil and not fruit:GetAttribute("d") then
                     submitFruit(fruit)
-                    task.wait(2.5) -- Cooldown
-            
-                    -- Update levels after submission (if your game does this)
-                    TranquilLevel = isTranquil and (TranquilLevel + 1) or TranquilLevel
-                    CorruptLevel = isCorrupt and (CorruptLevel + 1) or CorruptLevel
+                    task.wait(2.5)
+        
+                    -- Refresh levels AFTER submission instead of calculating
+                    TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
+                    CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
+        
+                    -- Force validate levels (in case they reset)
+                    if not (type(TranquilLevel) == "number" and TranquilLevel >= 0 and TranquilLevel <= 5) then
+                        TranquilLevel = 0 -- Default to 0 if invalid
+                    end
+                    if not (type(CorruptLevel) == "number" and CorruptLevel >= 0 and CorruptLevel <= 5) then
+                        CorruptLevel = 0 -- Default to 0 if invalid
+                    end
+                    
+                    sendNotification(string.format("Updated Levels: 🌿%d/5 ☠%d/5", TranquilLevel, CorruptLevel))
                 end
             end
         end
