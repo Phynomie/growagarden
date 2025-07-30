@@ -1456,9 +1456,10 @@ end)
 
 local fruits = {}
 local playerPosition = nil
-local isRunning = false
+local isRunning = false -- This flag can be used to prevent both automations from running simultaneously
 local savedTool = nil
 
+-- Global helper functions (defined once at the top)
 local function getFruits()
     fruits = {}
     print("getFruits() called: Scanning backpack and character for fruits.")
@@ -1481,8 +1482,9 @@ local function getFruits()
     print("Total fruits found: " .. #fruits)
 end
 
+-- This submitFruit is specifically for Kitsune's "SubmitToFox" logic
 local function submitFruit(fruit)
-    print("Attempting to submit fruit: " .. fruit.Name)
+    print("Attempting to submit fruit to Kitsune: " .. fruit.Name)
     -- Equip the fruit first
     fruit.Parent = LocalPlayer.Character
     task.wait(0.2) -- Give time to equip
@@ -1495,19 +1497,20 @@ local function submitFruit(fruit)
 
     -- Small delay before next action
     task.wait(0.5)
-    print("Submit fruit delay complete.")
+    print("Kitsune submit fruit delay complete.")
 end
 
+-- shouldSkipItem function, which includes the skipPatterns table
 local function shouldSkipItem(itemName)
     local lowerName = itemName:lower()
 
-    -- Skip list (case-insensitive)
+    -- Skip list (case-insensitive) - THIS IS THE IMPORTANT PART
     local skipPatterns = {
-        "staff",          -- Catches all staff variants
-        "crate",          -- Catches all crates
+        "staff",           -- Catches all staff variants
+        "crate",           -- Catches all crates
         "radar",
-        "spray x%d %[",   -- Mutation sprays (x1/x2 with brackets)
-        "corrupted zen",  -- Specific crate type
+        "spray x%d %[",    -- Mutation sprays (x1/x2 with brackets)
+        "corrupted zen",   -- Specific crate type
         "corrupted kodama" -- Catches "Shiny Corrupted Kodama" and similar
     }
 
@@ -1520,9 +1523,18 @@ local function shouldSkipItem(itemName)
     return false
 end
 
+-- ====================================================================================================
+-- Kitsune NPC Automation Toggle
+-- ====================================================================================================
 tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
     if toggleState then
-        print("Toggle ON: Starting automation.")
+        print("Toggle ON: Starting Kitsune automation.")
+        -- Prevent simultaneous execution if another automation is running
+        if isRunning then
+            createColoredNotification("🚫 Another automation is already running. Please turn it off first.", "Rarity: Common")
+            return
+        end
+
         -- Store currently equipped tool (if not a fruit)
         if LocalPlayer.Character then
             for _, item in pairs(LocalPlayer.Character:GetChildren()) do
@@ -1535,8 +1547,8 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
             end
         end
 
-        isRunning = true
-        createColoredNotification("✅ Starting fruit submission...", "Rarity: Common")
+        isRunning = true -- Set flag to true as this automation starts
+        createColoredNotification("✅ Starting Kitsune fruit submission...", "Rarity: Common")
         createColoredNotification("This Automation will skip favorited fruits", "Rarity: Common")
 
         -- Store original position
@@ -1589,8 +1601,8 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
         -- Process fruits
         getFruits() -- Initial population of fruits table
         if #fruits == 0 then
-            createColoredNotification("No fruits found to submit.", "Rarity: Common")
-            print("No fruits found initially. Stopping automation.")
+            createColoredNotification("No fruits found to submit for Kitsune.", "Rarity: Common")
+            print("No fruits found initially for Kitsune. Stopping automation.")
             isRunning = false -- No fruits, so stop
         end
 
@@ -1599,116 +1611,252 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
             local fruitsSubmittedInThisPass = 0 -- Track if any fruits were submitted in this iteration
 
             -- Re-get fruits at the start of each major pass to ensure list is fresh
-            -- This is safer than just removing from the list if items can be added/removed elsewhere
             getFruits()
 
             if #fruits == 0 then
-                print("No more fruits in inventory after re-scan. Stopping loop.")
+                print("No more fruits in inventory after re-scan. Stopping Kitsune loop.")
                 break -- No fruits left, break out of while loop
             end
 
             -- Iterate backwards for safe removal
             for i = #fruits, 1, -1 do
-                if not isRunning then break end -- Stop if toggle turned off
+                if not isRunning then break end -- Stop if toggle turned off or max levels reached externally
 
                 local fruit = fruits[i]
                 -- Double-check if fruit still exists and is valid
                 if not fruit or not fruit.Parent then
-                    print("Fruit no longer exists or has no parent: Removing from list (index " .. i .. ")")
+                    print("Kitsune: Fruit no longer exists or has no parent: Removing from list (index " .. i .. ")")
                     table.remove(fruits, i)
                     continue
                 end
 
                 local fruitName = fruit.Name
-                if shouldSkipItem(fruit.Name) then
-                    createColoredNotification("⏭ Skipping: "..fruit.Name, "Rarity: Common")
-                    -- Optional: remove from `fruits` list if you want to effectively "clear" skipped items for future runs
-                    -- table.remove(fruits, i)
+                if shouldSkipItem(fruit.Name) then -- Uses the global shouldSkipItem
+                    createColoredNotification("⏭ Skipping Kitsune: "..fruit.Name, "Rarity: Common")
+                    -- table.remove(fruits, i) -- Optional: remove skipped items from the list
                     continue
                 end
 
                 local isTranquil = fruitName:find("Tranquil")
                 local isCorrupt = fruitName:find("Corrupt")
 
-                print(string.format("Checking fruit: %s (Tranquil: %s, Corrupt: %s). Current Levels: 🌿%d/5 ☠%d/5",
+                print(string.format("Kitsune: Checking fruit: %s (Tranquil: %s, Corrupt: %s). Current Levels: 🌿%d/5 ☠%d/5",
                                     fruitName, tostring(isTranquil), tostring(isCorrupt), TranquilLevel, CorruptLevel))
 
                 local shouldSubmit = false
 
-                -- *** REVISED LOGIC HERE ***
-                -- Submit if it's a Tranquil fruit AND TranquilLevel is not max
+                -- REVISED LOGIC FOR KITSUNE
                 if isTranquil and TranquilLevel < 5 then
                     shouldSubmit = true
                 end
-                -- Submit if it's a Corrupt fruit AND CorruptLevel is not max
                 if isCorrupt and CorruptLevel < 5 then
                     shouldSubmit = true
                 end
-                -- Note: If a fruit is both Tranquil and Corrupt, and both levels are < 5, it will be true.
-                -- If one level is maxed but the other isn't, and it's a dual fruit, it will still be true
-                -- as long as one side can be filled.
 
-                print(string.format("Decision for %s: shouldSubmit = %s", fruitName, tostring(shouldSubmit)))
+                print(string.format("Kitsune: Decision for %s: shouldSubmit = %s", fruitName, tostring(shouldSubmit)))
 
                 if shouldSubmit then
                     -- Check for 'd' attribute (favorited/do not submit)
                     if not fruit:GetAttribute("d") then
-                        submitFruit(fruit)
+                        submitFruit(fruit) -- Uses the Kitsune-specific submitFruit
                         fruitsSubmittedInThisPass = fruitsSubmittedInThisPass + 1
-                        table.remove(fruits, i) -- Remove the fruit from our list after attempting submission (it should be consumed by the game)
+                        table.remove(fruits, i) -- Remove the fruit from our list after attempting submission
                         task.wait(1.5) -- Short delay after submission
 
                         -- Re-read levels *immediately* after a successful submission
                         TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
                         CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
 
-                        -- Force validate levels (in case they reset or are invalid)
+                        -- Force validate levels
                         if not (type(TranquilLevel) == "number" and TranquilLevel >= 0 and TranquilLevel <= 5) then
-                            TranquilLevel = 0 -- Default to 0 if invalid
-                            print("WARNING: TranquilLevel became invalid or unreadable, resetting to 0.")
+                            TranquilLevel = 0
+                            print("Kitsune WARNING: TranquilLevel became invalid, resetting to 0.")
                         end
                         if not (type(CorruptLevel) == "number" and CorruptLevel >= 0 and CorruptLevel <= 5) then
-                            CorruptLevel = 0 -- Default to 0 if invalid
-                            print("WARNING: CorruptLevel became invalid or unreadable, resetting to 0.")
+                            CorruptLevel = 0
+                            print("Kitsune WARNING: CorruptLevel became invalid, resetting to 0.")
                         end
 
-                        createColoredNotification(string.format("Updated Levels: 🌿%d/5 ☠%d/5", TranquilLevel, CorruptLevel), "Rarity: Common")
-                        print(string.format("Levels after submitting %s: Tranquil=%d, Corrupt=%d", fruitName, TranquilLevel, CorruptLevel))
+                        createColoredNotification(string.format("Updated Kitsune Levels: 🌿%d/5 ☠%d/5", TranquilLevel, CorruptLevel), "Rarity: Common")
+                        print(string.format("Kitsune: Levels after submitting %s: Tranquil=%d, Corrupt=%d", fruitName, TranquilLevel, CorruptLevel))
 
-                        -- If both levels are maxed out, break the inner loop and the outer while loop
+                        -- If both levels are maxed out, break
                         if TranquilLevel == 5 and CorruptLevel == 5 then
-                            createColoredNotification("Zen levels are maxed out! Stopping submission.", "Rarity: Common")
-                            isRunning = false -- Signal to stop the outer while loop
-                            break -- Break from current for loop
+                            createColoredNotification("Kitsune Zen levels are maxed out! Stopping submission.", "Rarity: Common")
+                            isRunning = false
+                            break
                         end
                     else
-                        print("Skipping " .. fruitName .. " because it has a 'd' attribute (favorited/do not submit).")
-                        -- Optional: table.remove(fruits, i) if you want to remove favored items from your internal list
+                        print("Kitsune: Skipping " .. fruitName .. " because it has a 'd' attribute.")
                     end
                 else
-                    print("Fruit " .. fruitName .. " not submitted because conditions not met (relevant level already 5).")
+                    print("Kitsune: Fruit " .. fruitName .. " not submitted because conditions not met.")
                 end
-            end -- End of for loop through fruits
+            end -- End of Kitsune for loop
 
             if isRunning and fruitsSubmittedInThisPass == 0 and (#fruits > 0) then
-                -- If we iterated through all remaining fruits and didn't submit any,
-                -- and levels are not maxed, it means no current fruit fits the submission criteria.
-                -- This can happen if only Tranquil fruits are left and TranquilLevel is 5, etc.
-                print("No suitable fruits found to submit in this pass, or all levels are maxed. Stopping automation.")
+                print("Kitsune: No suitable fruits found to submit in this pass. Stopping automation.")
                 isRunning = false
             end
-            
-            -- Small wait between passes to avoid hammering the system/server
-            if isRunning then
-                task.wait(1) 
-            end
 
-        end -- End of while loop
+            if isRunning then task.wait(1) end -- Small wait between passes
+
+        end -- End of Kitsune while loop
 
         -- Return to original position
         if playerPosition then
             LocalPlayer.Character.HumanoidRootPart.CFrame = playerPosition
-            print("Returned to original position.")
+            print("Kitsune: Returned to original position.")
+        end
+
+        -- Restore original tool
+        if savedTool and savedTool.Parent == LocalPlayer.Backpack then
+            task.wait(0.5)
+            savedTool.Parent = LocalPlayer.Character
+            savedTool = nil
+            print("Kitsune: Restored original tool.")
+        end
+
+        if not isRunning then
+            createColoredNotification("✅ Kitsune fruit submission finished or stopped.", "Rarity: Common")
+        else
+            createColoredNotification("✅ Kitsune fruit submission completed!", "Rarity: Common")
+        end
+        isRunning = false -- Ensure flag is false on completion/stop
+        print("Kitsune automation finished.")
+
+    else
+        -- Toggle OFF logic
+        if isRunning then -- Only if it was running
+             isRunning = false -- Signal to stop
+             createColoredNotification("🔴 Stopped Kitsune fruit submission.", "Rarity: Common")
+             -- Restore tool if we were interrupted mid-process
+             if savedTool and savedTool.Parent == LocalPlayer.Backpack then
+                 savedTool.Parent = LocalPlayer.Character
+                 savedTool = nil
+                 print("Kitsune: Restored tool after manual stop.")
+             end
+             print("Kitsune: Toggle OFF: Automation stopped.")
+        end
+    end
+end)
+
+-- ====================================================================================================
+-- Tranquil NPC Automation Toggle
+-- ====================================================================================================
+tab2:CreateToggle("Auto Give Fruits to Tranquil NPC", function(toggleState)
+    if toggleState then
+        print("Toggle ON: Starting Tranquil NPC automation.")
+        -- Prevent simultaneous execution if another automation is running
+        if isRunning then
+            createColoredNotification("🚫 Another automation is already running. Please turn it off first.", "Rarity: Common")
+            return
+        end
+
+        -- Store currently equipped tool (if not a fruit)
+        if LocalPlayer.Character then
+            for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                if item:IsA("Tool") and not (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
+                    savedTool = item
+                    item.Parent = LocalPlayer.Backpack
+                    print("Saved equipped tool: " .. item.Name)
+                    break
+                end
+            end
+        end
+
+        isRunning = true -- Set flag to true as this automation starts
+        createColoredNotification("✅ Starting Tranquil fruit submission...", "Rarity: Common")
+
+        -- Store original position
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            playerPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
+            print("Player position saved.")
+        else
+            createColoredNotification("❌ Character or HumanoidRootPart not found. Cannot save position!", "Rarity: Common")
+            isRunning = false
+            return
+        end
+
+        -- Teleport to Tranquil NPC
+        local tranquilNpcPosition = CFrame.new(-73.59021, 4.3999157, -12.1218204)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = tranquilNpcPosition
+            print("Teleporting to Tranquil NPC.")
+            task.wait(1) -- Wait for teleport
+            print("Teleport wait complete.")
+        else
+            createColoredNotification("❌ Character or HumanoidRootPart not found for teleport! Stopping.", "Rarity: Common")
+            isRunning = false
+            return
+        end
+
+        -- Main loop for submitting Tranquil fruits
+        local submittedFruitCount = 0
+
+        -- Loop indefinitely until no more tranquil fruits or toggle off
+        while isRunning do
+            local currentTranquilFruits = {}
+            -- Re-scan for Tranquil fruits specifically in backpack
+            -- Ensure it's only Tranquil, not dual
+            for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+                if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                    table.insert(currentTranquilFruits, item)
+                end
+            end
+            -- Check equipped tool for Tranquil fruit (and make sure it's not dual)
+            if LocalPlayer.Character then
+                for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                    if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                        table.insert(currentTranquilFruits, item)
+                    end
+                end
+            end
+            print("Tranquil NPC: Found " .. #currentTranquilFruits .. " potential Tranquil fruits.")
+
+            -- Filter out any fruits that match the skip patterns or are favorited
+            local submitableTranquilFruits = {}
+            for _, fruit in ipairs(currentTranquilFruits) do
+                if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") then -- Uses the global shouldSkipItem
+                    table.insert(submitableTranquilFruits, fruit)
+                else
+                    createColoredNotification("⏭ Skipping Tranquil: "..fruit.Name, "Rarity: Common")
+                    print("Tranquil NPC: Skipping " .. fruit.Name .. " (either skip pattern or 'd' attribute).")
+                end
+            end
+            print("Tranquil NPC: Found " .. #submitableTranquilFruits .. " submitable Tranquil fruits.")
+
+
+            if #submitableTranquilFruits == 0 then
+                createColoredNotification("No more suitable Tranquil fruits found to submit.", "Rarity: Common")
+                print("Tranquil NPC: No suitable Tranquil fruits left. Stopping submission loop.")
+                break -- Exit the while loop
+            end
+
+            -- Equip and submit the first available tranquil fruit
+            local fruitToSubmit = submitableTranquilFruits[1]
+            print("Tranquil NPC: Attempting to submit fruit: " .. fruitToSubmit.Name)
+
+            -- Equip the fruit
+            fruitToSubmit.Parent = LocalPlayer.Character
+            task.wait(0.2) -- Give time to equip
+            print("Tranquil NPC: Fruit equipped: " .. fruitToSubmit.Name)
+
+            -- Fire the RemoteEvent to submit all plants (which should consume the equipped one)
+            local args = {"SubmitAllPlants"}
+            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("ZenQuestRemoteEvent"):FireServer(unpack(args))
+            print("Tranquil NPC: Fired RemoteEvent: ZenQuestRemoteEvent with args 'SubmitAllPlants'")
+
+            submittedFruitCount = submittedFruitCount + 1
+            createColoredNotification(string.format("Submitted Tranquil fruit #%d", submittedFruitCount), "Rarity: Common")
+
+            task.wait(1.0) -- Small delay after submission to allow server to process and inventory to update
+        end -- End of Tranquil NPC while loop
+
+        -- Automation finished, return to original position
+        if playerPosition then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = playerPosition
+            print("Tranquil NPC: Returned to original position.")
         end
 
         -- Restore original tool if it still exists
@@ -1716,30 +1864,26 @@ tab2:CreateToggle("Auto Give Fruits to Kitsune", function(toggleState)
             task.wait(0.5)
             savedTool.Parent = LocalPlayer.Character
             savedTool = nil
-            print("Restored original tool.")
+            print("Tranquil NPC: Restored original tool.")
         end
 
-        if not isRunning then
-            -- This means it was stopped either by max levels or no more suitable fruits
-            createColoredNotification("✅ Fruit submission finished or stopped.", "Rarity: Common")
-        else
-            createColoredNotification("✅ Fruit submission completed!", "Rarity: Common") -- Should ideally not hit this unless loop ran out of fruits naturally
-        end
-        isRunning = false
-        print("Automation finished.")
+        createColoredNotification("✅ Tranquil fruit submission completed!", "Rarity: Common")
+        isRunning = false -- Ensure flag is false on completion/stop
+        print("Tranquil NPC automation finished.")
 
     else
         -- Toggle OFF logic
-        isRunning = false
-        createColoredNotification("🔴 Stopped fruit submission.", "Rarity: Common")
-
-        -- Restore tool if we were interrupted mid-process
-        if savedTool and savedTool.Parent == LocalPlayer.Backpack then
-            savedTool.Parent = LocalPlayer.Character
-            savedTool = nil
-            print("Restored tool after manual stop.")
+        if isRunning then -- Only if it was running due to this toggle
+            isRunning = false -- Signal to stop
+            createColoredNotification("🔴 Stopped Tranquil fruit submission.", "Rarity: Common")
+            -- Restore tool if we were interrupted mid-process
+            if savedTool and savedTool.Parent == LocalPlayer.Backpack then
+                savedTool.Parent = LocalPlayer.Character
+                savedTool = nil
+                print("Tranquil NPC: Restored tool after manual stop.")
+            end
+            print("Tranquil NPC: Toggle OFF: Automation stopped.")
         end
-        print("Toggle OFF: Automation stopped.")
     end
 end)
 
