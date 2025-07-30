@@ -565,6 +565,8 @@ end
 local lastEquippedFruit = nil
 local lastUpdateTime = 0
 local UPDATE_COOLDOWN = 0.5 -- Update at most every 0.5 seconds
+local lastKnownAttributes = nil
+local lastKnownWeight = nil
 
 local function updateFruitInfo()
     if not fruitInfoEnabled or not fruitInfoFrame then return end
@@ -590,9 +592,41 @@ local function updateFruitInfo()
         end
     end
 
-    -- Skip update if same fruit is still equipped
+    -- Skip update if same fruit is still equipped AND no attributes have changed
     if equippedFruit and lastEquippedFruit and equippedFruit == lastEquippedFruit then
-        return
+        -- Check if any attributes have changed
+        local attributesChanged = false
+        local currentAttributes = {}
+        
+        -- Get current attributes
+        for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
+            if attrName ~= "d" and attrValue == true and attrName ~= "Weight" then
+                table.insert(currentAttributes, attrName)
+            end
+        end
+        
+        -- Compare with last known attributes
+        if #currentAttributes ~= #lastKnownAttributes then
+            attributesChanged = true
+        else
+            for _, attr in ipairs(currentAttributes) do
+                if not table.find(lastKnownAttributes, attr) then
+                    attributesChanged = true
+                    break
+                end
+            end
+        end
+        
+        -- Also check if weight changed
+        if equippedFruit:FindFirstChild("Weight") then
+            if not lastKnownWeight or equippedFruit.Weight.Value ~= lastKnownWeight then
+                attributesChanged = true
+            end
+        end
+        
+        if not attributesChanged then
+            return -- No changes, skip update
+        end
     end
 
     -- Reset display if no fruit equipped
@@ -619,11 +653,26 @@ local function updateFruitInfo()
         priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         
         lastEquippedFruit = nil
+        lastKnownAttributes = nil
+        lastKnownWeight = nil
         return
     end
 
-    -- Update last equipped fruit
+    -- Update last equipped fruit and store its attributes
     lastEquippedFruit = equippedFruit
+    lastKnownAttributes = {}
+    for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
+        if attrName ~= "d" and attrValue == true and attrName ~= "Weight" then
+            table.insert(lastKnownAttributes, attrName)
+        end
+    end
+    
+    -- Store weight
+    if equippedFruit:FindFirstChild("Weight") then
+        lastKnownWeight = equippedFruit.Weight.Value
+    else
+        lastKnownWeight = nil
+    end
 
     -- Update name
     local nameLabel = mainFrame.ContentFrame.NameFrame.NameScroller.NameLabel
@@ -637,15 +686,8 @@ local function updateFruitInfo()
     mutationsLayout.Padding = UDim.new(0, 5)
     mutationsLayout.Parent = mutationsFrame
 
-    local mutations = {}
-    for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
-        if attrName ~= "d" and attrValue == true and attrName ~= "Weight" then
-            table.insert(mutations, attrName)
-        end
-    end
-
-    if #mutations > 0 then
-        for _, mutation in ipairs(mutations) do
+    if #lastKnownAttributes > 0 then
+        for _, mutation in ipairs(lastKnownAttributes) do
             local mutationLabel = Instance.new("TextLabel")
             mutationLabel.Size = UDim2.new(1, 0, 0, 20)
             mutationLabel.BackgroundTransparency = 1
@@ -674,7 +716,7 @@ local function updateFruitInfo()
 
     -- Update price and weight
     local price = CalculatePlantValue(equippedFruit)
-    local weight = equippedFruit.Weight.Value or "???"
+    local weight = lastKnownWeight or "???"
     local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
 
     local priceString
