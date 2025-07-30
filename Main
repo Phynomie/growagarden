@@ -488,7 +488,7 @@ local function createFruitInfoUI()
     priceLabel.Parent = priceFrame
 
     local cornerUI = Instance.new("UICorner")
-    cornerUI.CornerRadius = (1, 8)
+    cornerUI.CornerRadius = UDim.new(0.5, 8)
     cornerUI.Parent = priceFrame
     
     -- Ensure the frame is properly layered
