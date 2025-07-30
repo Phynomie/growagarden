@@ -500,7 +500,7 @@ local function createFruitInfoUI()
     if fruitInfoFrame then 
         fruitInfoFrame:Destroy()
         fruitInfoFrame = nil
-        wait(0.1) -- Small delay to ensure cleanup
+        task.wait(0.1) -- Small delay to ensure cleanup
     end
     
     -- Create the main frame with absolute positioning
@@ -519,7 +519,7 @@ local function createFruitInfoUI()
     mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     mainFrame.BackgroundTransparency = 0.15
     mainFrame.BorderSizePixel = 0
-    mainFrame.Visible = false
+    mainFrame.Visible = fruitInfoEnabled -- Start visible if enabled
     mainFrame.Parent = fruitInfoFrame
     
     -- Add visual elements
@@ -609,7 +609,7 @@ local function createFruitInfoUI()
     priceLabel.Size = UDim2.new(1, -10, 1, 0)
     priceLabel.Position = UDim2.new(0, 10, 0, 0)
     priceLabel.BackgroundTransparency = 1
-    priceLabel.Text = "Price: $0"
+    priceLabel.Text = "Value: $0"
     priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     priceLabel.Font = Enum.Font.GothamBold
     priceLabel.TextSize = 16
@@ -636,11 +636,11 @@ local function updateFruitInfo()
     local mainFrame = fruitInfoFrame:FindFirstChild("MainFrame")
     if not mainFrame then return end
     
-    mainFrame.Visible = true -- Make sure it's visible before updating
+    -- Always respect the toggle state for visibility
+    mainFrame.Visible = fruitInfoEnabled
     
     local character = game.Players.LocalPlayer.Character
     if not character then 
-        mainFrame.Visible = false
         return 
     end
     
@@ -654,7 +654,6 @@ local function updateFruitInfo()
     end
     
     if not equippedFruit then
-        mainFrame.Visible = false
         return
     end
     
@@ -664,7 +663,7 @@ local function updateFruitInfo()
     
     -- Update mutations
     local mutationsFrame = mainFrame.ContentFrame.MutationsFrame
-    mutationsFrame:ClearAllChildren() -- Clear existing mutations
+    mutationsFrame:ClearAllChildren()
     
     local mutationsLayout = Instance.new("UIListLayout")
     mutationsLayout.Padding = UDim.new(0, 5)
@@ -682,7 +681,7 @@ local function updateFruitInfo()
             local mutationLabel = Instance.new("TextLabel")
             mutationLabel.Size = UDim2.new(1, 0, 0, 20)
             mutationLabel.BackgroundTransparency = 1
-            mutationLabel.Text = "• "..mutation:gsub("^%l", string.upper) -- Capitalize first letter
+            mutationLabel.Text = "• "..mutation:gsub("^%l", string.upper)
             mutationLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
             mutationLabel.Font = Enum.Font.Gotham
             mutationLabel.TextSize = 14
@@ -705,7 +704,7 @@ local function updateFruitInfo()
     
     mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, mutationsFrame.UIListLayout.AbsoluteContentSize.Y)
     
-    -- Update price
+    -- Update price using correct formula: BaseValue × (Weight)² × RarityMultiplier
     local baseValue = baseValues[equippedFruit.Name] or 100
     local weight = equippedFruit:GetAttribute("Weight") or 1
     local rarityMultiplier = 1
@@ -720,56 +719,40 @@ local function updateFruitInfo()
     local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
     
     if price >= 1e12 then
-        priceLabel.Text = string.format("Price: $%.2f Trillion", price/1e12)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+        priceLabel.Text = string.format("Value: $%.2fT", price/1e12)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
     elseif price >= 1e9 then
-        priceLabel.Text = string.format("Price: $%.2f Billion", price/1e9)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange
+        priceLabel.Text = string.format("Value: $%.2fB", price/1e9)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
     elseif price >= 1e6 then
-        priceLabel.Text = string.format("Price: $%.2f Million", price/1e6)
-        priceLabel.TextColor3 = Color3.fromRGB(144, 238, 144) -- Light green
+        priceLabel.Text = string.format("Value: $%.2fM", price/1e6)
+        priceLabel.TextColor3 = Color3.fromRGB(144, 238, 144)
     else
-        priceLabel.Text = string.format("Price: $%.0f", price)
+        priceLabel.Text = string.format("Value: $%.0f", price)
         priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     end
-    
-    mainFrame.Visible = true -- Ensure it stays visible after update
 end
 
--- Create the toggle button with extra verification
-tab3:CreateToggle("Show Fruit Info", function(state)
+-- Create the toggle button with proper initialization
+tab:CreateToggle("Show Fruit Info", function(state)
     fruitInfoEnabled = state
     
     if state then
-        -- Triple-check creation
+        -- Create UI if it doesn't exist
         if not fruitInfoFrame or not fruitInfoFrame.Parent then
             fruitInfoFrame = createFruitInfoUI()
         end
         
-        -- Force visibility
+        -- Immediately show the frame
         if fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
             fruitInfoFrame.MainFrame.Visible = true
         end
         
-        -- Start update loop with error handling
+        -- Start update loop
         task.spawn(function()
             while fruitInfoEnabled do
-                local success, err = pcall(updateFruitInfo)
-                if not success then
-                    warn("Fruit Info Update Error:", err)
-                    -- Attempt to recreate UI if there's an error
-                    if fruitInfoFrame then
-                        fruitInfoFrame:Destroy()
-                        fruitInfoFrame = nil
-                    end
-                    fruitInfoFrame = createFruitInfoUI()
-                end
+                updateFruitInfo()
                 task.wait(0.5)
-            end
-            
-            -- Cleanup when disabled
-            if fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
-                fruitInfoFrame.MainFrame.Visible = false
             end
         end)
     elseif fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
@@ -777,9 +760,10 @@ tab3:CreateToggle("Show Fruit Info", function(state)
     end
 end)
 
--- Extra safety: Recreate UI if player respawns
+-- Handle character respawns
 game.Players.LocalPlayer.CharacterAdded:Connect(function()
     if fruitInfoEnabled then
+        -- Recreate UI when character respawns
         if fruitInfoFrame then
             fruitInfoFrame:Destroy()
             fruitInfoFrame = nil
@@ -788,6 +772,7 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function()
         updateFruitInfo()
     end
 end)
+
 
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
