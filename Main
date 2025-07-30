@@ -385,7 +385,7 @@ local function createFruitInfoUI()
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, 300, 0, 200) -- Fixed size
-    mainFrame.Position = UDim2.new(0.02, 0, 0.1, 0) -- Top-left corner
+    mainFrame.Position = UDim2.new(0.006, 0, 0.57, 0) -- Top-left corner
     mainFrame.AnchorPoint = Vector2.new(0, 0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     mainFrame.BackgroundTransparency = 0.15
@@ -470,7 +470,7 @@ local function createFruitInfoUI()
     local priceFrame = Instance.new("Frame")
     priceFrame.Name = "PriceFrame"
     priceFrame.Size = UDim2.new(1, 0, 0, 30)
-    priceFrame.Position = UDim2.new(0, 0, 0, 140)
+    priceFrame.Position = UDim2.new(0, 0, -0.01, 135)
     priceFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
     priceFrame.BackgroundTransparency = 0.5
     priceFrame.Parent = contentFrame
@@ -486,6 +486,10 @@ local function createFruitInfoUI()
     priceLabel.TextSize = 16
     priceLabel.TextXAlignment = Enum.TextXAlignment.Left
     priceLabel.Parent = priceFrame
+
+    local cornerUI = Instance.new("UICorner")
+    cornerUI.CornerRadius = (1, 8)
+    cornerUI.Parent = priceFrame
     
     -- Ensure the frame is properly layered
     mainFrame.ZIndex = 10
@@ -1257,7 +1261,7 @@ countdownGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 200, 0, 50)
-frame.Position = UDim2.new(0.085, 0, 0.7, 0)
+frame.Position = UDim2.new(0.085, 0, 0.4, 0)
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 frame.BackgroundTransparency = 0.5
