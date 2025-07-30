@@ -1175,11 +1175,10 @@ tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
         end)
     else
         -- Clean up
-        cleanup.connections["petCooldownHeartbeat"] = game:GetService("RunService").Heartbeat:Connect(function()
-            if petCooldownEnabled then
-                scanAndUpdatePets()
-            end
-        end)
+        if petCooldownConnection then
+            petCooldownConnection:Disconnect()
+            petCooldownConnection = nil
+        end
         
         for _, data in pairs(petCooldownDisplays) do
             if data.display and data.display.Parent then
