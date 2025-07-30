@@ -770,7 +770,7 @@ local function updateFruitInfo()
     -- Update price using correct formula: BaseValue × (Weight)² × RarityMultiplier
     -- Get base value, defaulting to 100 if the fruit isn't in baseValues
     local baseValue = baseValues[equippedFruit.Name] or 100
-    local weight = equippedFruit.Weight.Value or ??? -- Retrieve weight attribute
+    local weight = equippedFruit.Weight.Value or "???" -- Retrieve weight attribute
     local rarityMultiplier = 1
 
     if equippedFruit:GetAttribute("Rainbow") then
