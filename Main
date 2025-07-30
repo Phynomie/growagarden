@@ -892,7 +892,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                     print("[Weight Calculator] Touch didn't hit anything")
                 end
             end)
-            cleanupInstances.connections["WeightTouch"] = touchConnection
+            cleanup.connections["WeightTouch"] = touchConnection
         else
             print("[Weight Calculator] PC detected - setting up mouse input")
         end
@@ -924,7 +924,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                 end
             end
         end)
-        cleanupInstances.connections["WeightClick"] = clickConnection
+        cleanup.connections["WeightClick"] = clickConnection
 
         -- Tool equipped handling
         local function onEquipped()
@@ -942,10 +942,10 @@ tab:CreateToggle("Weight Calculator", function(enabled)
         print("[Weight Calculator] Disabling...")
 
         -- Cleanup connections
-        for name, conn in pairs(cleanupInstances.connections) do
+        for name, conn in pairs(cleanup.connections) do
             if name:find("Weight") then
                 conn:Disconnect()
-                cleanupInstances.connections[name] = nil
+                cleanup.connections[name] = nil
                 print("[Weight Calculator] Disconnected:", name)
             end
         end
@@ -1171,14 +1171,14 @@ tab:CreateToggle("Anti-Kick", function(enabled)
         end
 
         -- Store the hook in cleanup table
-        cleanupInstances.connections["AntiKick"] = namecallHook
+        cleanup.connections["AntiKick"] = namecallHook
     else
         -- Disable the hook when toggle is turned off
-        if cleanupInstances.connections["AntiKick"] then
+        if cleanup.connections["AntiKick"] then
             if unhookmetamethod then
-                unhookmetamethod(game.Players.LocalPlayer, "__namecall", cleanupInstances.connections["AntiKick"])
+                unhookmetamethod(game.Players.LocalPlayer, "__namecall", cleanup.connections["AntiKick"])
             end
-            cleanupInstances.connections["AntiKick"] = nil
+            cleanup.connections["AntiKick"] = nil
             print("[Anti-Kick] Protection disabled")
         end
     end
@@ -1294,7 +1294,7 @@ tab:CreateButton("Sell All Fruits", function()
 end)
 
 local autoBuyActive = false
-cleanupInstances.loops.buyLoop = nil
+cleanup.loops.buyLoop = nil
 
 local countdownGui = Instance.new("ScreenGui")
 countdownGui.Name = "AutoBuyCountdown"
@@ -1345,15 +1345,15 @@ progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBar
 
 local function stopBuyLoop()
-    if cleanupInstances.loops.buyLoop then
-        cleanupInstances.loops.buyLoop = nil
+    if cleanup.loops.buyLoop then
+        cleanup.loops.buyLoop = nil
     end
     autoBuyActive = false
     frame.Visible = false
 end
 
 local function startBuyLoop()
-    cleanupInstances.loops.buyLoop = coroutine.create(function()
+    cleanup.loops.buyLoop = coroutine.create(function()
         while autoBuyActive do
             frame.Visible = true
             
@@ -1377,14 +1377,14 @@ local function startBuyLoop()
         end
         stopBuyLoop()
     end)
-    coroutine.resume(cleanupInstances.loops.buyLoop)
+    coroutine.resume(cleanup.loops.buyLoop)
 end
 
 tab2:CreateToggle("Auto Buy Seed/Gear/Egg/TM", function(a)
     autoBuyActive = a
     
     if a then
-        if not cleanupInstances.loops.buyLoop then
+        if not cleanup.loops.buyLoop then
             startBuyLoop()
         end
     else
@@ -1993,14 +1993,14 @@ library.OnDestroy = function()
     print("Destroying all created instances...")
     
     -- Stop all loops
-    for _, loop in pairs(cleanupInstances.loops) do
+    for _, loop in pairs(cleanup.loops) do
         if type(loop) == "thread" then
             coroutine.close(loop)
         end
     end
     
     -- Disconnect all connections
-    for _, connection in ipairs(cleanupInstances.connections) do
+    for _, connection in ipairs(cleanup.connections) do
         if connection.Connected then
             connection:Disconnect()
         end
@@ -2010,8 +2010,8 @@ library.OnDestroy = function()
     managePrompts(false)
     
     -- Destroy GUI instances
-    if cleanupInstances.countdownGui then
-        cleanupInstances.countdownGui:Destroy()
+    if cleanup.countdownGui then
+        cleanup.countdownGui:Destroy()
     end
     
     -- Reset variables
@@ -2021,8 +2021,8 @@ library.OnDestroy = function()
     playerFarm = nil
     
     -- Clear tables
-    cleanupInstances.connections = {}
-    cleanupInstances.loops = {}
+    cleanup.connections = {}
+    cleanup.loops = {}
 
     if petCooldownConnection then
         petCooldownConnection:Disconnect()
