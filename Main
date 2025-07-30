@@ -1011,25 +1011,25 @@ local petCooldownEnabled = false
 local petCooldownDisplays = {}
 local petCooldownConnection = nil
 local lastUpdateTime = 0
-local UPDATE_INTERVAL = 5 -- Update every 5 seconds to reduce ping impact
+local UPDATE_INTERVAL = 2 -- Reduced update interval for better responsiveness
 
 local function createPetDisplay(pet)
     local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
     if not head then return nil end
     
-    -- Check if display already exists
+    -- Remove any existing display
     if head:FindFirstChild("PetCooldownDisplay") then
-        return head.PetCooldownDisplay.Frame.TextLabel
+        head.PetCooldownDisplay:Destroy()
     end
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
     billboard.Size = UDim2.new(10, 0, 4, 0)
-    billboard.StudsOffset = Vector3.new(0, 4.5, 0)
+    billboard.StudsOffset = Vector3.new(0, 3, 0) -- Adjusted height
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
     billboard.LightInfluence = 0
-    billboard.MaxDistance = 100
+    billboard.MaxDistance = 150 -- Increased view distance
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.Parent = head
 
@@ -1044,15 +1044,16 @@ local function createPetDisplay(pet)
     textLabel.Text = "Loading..."
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 14
+    textLabel.TextSize = 16
     textLabel.TextStrokeTransparency = 0.3
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     textLabel.TextYAlignment = Enum.TextYAlignment.Top
     textLabel.TextWrapped = true
     textLabel.Parent = frame
 
+    -- Make larger on mobile
     if UserInputService.TouchEnabled then
-        billboard.Size = UDim2.new(20, 0, 8, 0)
+        billboard.Size = UDim2.new(15, 0, 6, 0)
         billboard.StudsOffset = Vector3.new(0, 2.5, 0)
         textLabel.TextSize = 20
     end
@@ -1068,14 +1069,18 @@ local function updatePetDisplay(petName, display)
     if success and type(cooldownData) == "table" then
         local activeAbilities = {}
         
-        -- Collect all ability cooldowns
         for _, entry in ipairs(cooldownData) do
             if type(entry) == "table" and entry.Passive then
                 local timeLeft = entry.Time or 0
                 local totalTime = entry.Cooldown or entry.MaxTime or 60
-                local status = timeLeft > 0 and string.format("%s: %ds", entry.Passive, timeLeft)
-                          or string.format("%s: Ready!", entry.Passive)
-                local color = timeLeft > 0 and Color3.new(1, 0.5, 0.5) or Color3.new(0.5, 1, 0.5)
+                local percentage = math.clamp(timeLeft / totalTime, 0, 1)
+                
+                local status = timeLeft > 0 and string.format("%s: %ds (%.0f%%)", 
+                    entry.Passive, timeLeft, percentage * 100)
+                    or string.format("%s: Ready!", entry.Passive)
+                
+                local color = timeLeft > 0 and Color3.fromHSV(percentage * 0.3, 1, 1) -- Red to yellow gradient
+                    or Color3.new(0.5, 1, 0.5) -- Green when ready
                 
                 table.insert(activeAbilities, {
                     text = status,
@@ -1084,7 +1089,6 @@ local function updatePetDisplay(petName, display)
             end
         end
 
-        -- Update display with all abilities
         if #activeAbilities > 0 then
             local displayText = ""
             for i, ability in ipairs(activeAbilities) do
@@ -1094,7 +1098,9 @@ local function updatePetDisplay(petName, display)
                 end
             end
             display.Text = displayText
-            display.TextColor3 = #activeAbilities > 1 and Color3.new(1, 1, 1) or activeAbilities[1].color
+            
+            -- Use first ability's color if only one, otherwise white
+            display.TextColor3 = #activeAbilities == 1 and activeAbilities[1].color or Color3.new(1, 1, 1)
         else
             display.Text = "No active abilities"
             display.TextColor3 = Color3.new(0.8, 0.8, 0.8)
@@ -1106,19 +1112,20 @@ local function updatePetDisplay(petName, display)
 end
 
 local function scanAndUpdatePets()
-    -- Only update if enough time has passed
+    if not petCooldownEnabled then return end
+    
     local currentTime = os.clock()
     if currentTime - lastUpdateTime < UPDATE_INTERVAL then return end
     lastUpdateTime = currentTime
 
-    -- Find all current pets in the game (not just your farm)
+    -- Find all pets in workspace (including other players' pets)
     local currentPets = {}
-    for _, petMover in ipairs(workspace:GetDescendants()) do
-        if petMover.Name == "PetMover" and petMover:IsA("Model") then
-            for _, pet in ipairs(petMover:GetChildren()) do
-                if pet:IsA("Model") and pet.Name:match("^{.+}$") then
-                    currentPets[pet.Name] = pet
-                end
+    for _, pet in ipairs(workspace:GetDescendants()) do
+        -- Look for pet models (they typically have curly braces in their name)
+        if pet:IsA("Model") and pet.Name:match("^{.+}$") then
+            -- Additional check to confirm it's a pet (has Humanoid or PetMover)
+            if pet:FindFirstChild("Humanoid") or pet:FindFirstChildWhichIsA("BasePart") then
+                currentPets[pet.Name] = pet
             end
         end
     end
@@ -1135,8 +1142,7 @@ local function scanAndUpdatePets()
     
     -- Update all active displays
     for petName, pet in pairs(currentPets) do
-        -- Get or create display
-        if petCooldownDisplays[petName] == nil then
+        if not petCooldownDisplays[petName] then
             local display = createPetDisplay(pet)
             if display then
                 petCooldownDisplays[petName] = {
@@ -1147,8 +1153,7 @@ local function scanAndUpdatePets()
             end
         end
         
-        -- Only update if this pet hasn't been updated recently
-        if petCooldownDisplays[petName] and (currentTime - petCooldownDisplays[petName].lastUpdate) >= UPDATE_INTERVAL then
+        if petCooldownDisplays[petName] then
             updatePetDisplay(petName, petCooldownDisplays[petName].display)
             petCooldownDisplays[petName].lastUpdate = currentTime
         end
@@ -1159,20 +1164,15 @@ tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
     petCooldownEnabled = enabled
     
     if enabled then
-        -- Mobile notification
-        if UserInputService.TouchEnabled then
-            createColoredNotification("Mobile mode activated\nCooldowns may appear larger", "Rarity: Common")
-        end
-        
         -- Initial scan
         scanAndUpdatePets()
         
-        -- Set up recurring updates with optimized interval
+        -- Set up recurring updates
         petCooldownConnection = game:GetService("RunService").Heartbeat:Connect(function()
-            if petCooldownEnabled then
-                scanAndUpdatePets()
-            end
+            scanAndUpdatePets()
         end)
+        
+        createColoredNotification("Pet cooldowns enabled - Showing all pets", "Rarity: Common")
     else
         -- Clean up
         if petCooldownConnection then
@@ -1186,6 +1186,8 @@ tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
             end
         end
         petCooldownDisplays = {}
+        
+        createColoredNotification("Pet cooldowns disabled", "Rarity: Common")
     end
 end)
 
