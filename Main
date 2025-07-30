@@ -1499,7 +1499,8 @@ local function shouldSkipItem(itemName)
         "crate",       -- Catches all crates
         "radar",
         "spray x%d %[", -- Mutation sprays (x1/x2 with brackets)
-        "corrupted zen" -- Specific crate type
+        "corrupted zen", -- Specific crate type
+        "corrupted kodama"
     }
     
     for _, pattern in ipairs(skipPatterns) do
