@@ -493,121 +493,139 @@ local fruitInfoEnabled = false
 local fruitInfoFrame = nil
 
 local function createFruitInfoUI()
-    if fruitInfoFrame then fruitInfoFrame:Destroy() end
+    -- First, ensure we have a PlayerGui to parent to
+    local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
     
-    -- Create the main frame with adjusted size and position
-    fruitInfoFrame = Instance.new("Frame")
-    fruitInfoFrame.Name = "FruitInfoFrame"
-    fruitInfoFrame.Size = UDim2.new(0.25, 0, 0, 180) -- 25% of screen width, fixed height
-    fruitInfoFrame.Position = UDim2.new(0.02, 0, 0.65, 0) -- Left side, above center
-    fruitInfoFrame.AnchorPoint = Vector2.new(0, 0)
-    fruitInfoFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    fruitInfoFrame.BackgroundTransparency = 0.2
-    fruitInfoFrame.BorderSizePixel = 0
-    fruitInfoFrame.Visible = false
-    fruitInfoFrame.ZIndex = 10 -- Higher than auto-buy frame
-    fruitInfoFrame.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    -- Remove any existing frame
+    if fruitInfoFrame then 
+        fruitInfoFrame:Destroy()
+        fruitInfoFrame = nil
+        wait(0.1) -- Small delay to ensure cleanup
+    end
     
-    -- Add corner rounding and shadow for better visibility
+    -- Create the main frame with absolute positioning
+    fruitInfoFrame = Instance.new("ScreenGui")
+    fruitInfoFrame.Name = "FruitInfoGUI"
+    fruitInfoFrame.ResetOnSpawn = false
+    fruitInfoFrame.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    fruitInfoFrame.DisplayOrder = 10 -- High priority display
+    fruitInfoFrame.Parent = playerGui
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 300, 0, 200) -- Fixed size
+    mainFrame.Position = UDim2.new(0.02, 0, 0.1, 0) -- Top-left corner
+    mainFrame.AnchorPoint = Vector2.new(0, 0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    mainFrame.BackgroundTransparency = 0.15
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Visible = false
+    mainFrame.Parent = fruitInfoFrame
+    
+    -- Add visual elements
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, 8)
-    uiCorner.Parent = fruitInfoFrame
+    uiCorner.Parent = mainFrame
     
     local uiStroke = Instance.new("UIStroke")
-    uiStroke.Color = Color3.fromRGB(100, 100, 100)
+    uiStroke.Color = Color3.fromRGB(100, 100, 255)
     uiStroke.Thickness = 2
-    uiStroke.Parent = fruitInfoFrame
+    uiStroke.Parent = mainFrame
     
-    -- Title with improved styling
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    title.BackgroundTransparency = 0.3
-    title.Text = "FRUIT INFORMATION"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 16
-    title.ZIndex = 11
-    title.Parent = fruitInfoFrame
+    -- Title bar
+    local titleBar = Instance.new("Frame")
+    titleBar.Name = "TitleBar"
+    titleBar.Size = UDim2.new(1, 0, 0, 30)
+    titleBar.Position = UDim2.new(0, 0, 0, 0)
+    titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    titleBar.BackgroundTransparency = 0.3
+    titleBar.Parent = mainFrame
     
-    -- Fruit name with icon
-    local nameContainer = Instance.new("Frame")
-    nameContainer.Name = "NameContainer"
-    nameContainer.Size = UDim2.new(1, -10, 0, 30)
-    nameContainer.Position = UDim2.new(0, 5, 0, 35)
-    nameContainer.BackgroundTransparency = 1
-    nameContainer.ZIndex = 11
-    nameContainer.Parent = fruitInfoFrame
+    local titleText = Instance.new("TextLabel")
+    titleText.Name = "TitleText"
+    titleText.Size = UDim2.new(1, -10, 1, 0)
+    titleText.Position = UDim2.new(0, 10, 0, 0)
+    titleText.BackgroundTransparency = 1
+    titleText.Text = "FRUIT INFORMATION"
+    titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleText.Font = Enum.Font.GothamBold
+    titleText.TextSize = 16
+    titleText.TextXAlignment = Enum.TextXAlignment.Left
+    titleText.Parent = titleBar
     
-    local nameIcon = Instance.new("ImageLabel")
-    nameIcon.Name = "Icon"
-    nameIcon.Size = UDim2.new(0, 24, 0, 24)
-    nameIcon.Position = UDim2.new(0, 0, 0.5, -12)
-    nameIcon.BackgroundTransparency = 1
-    nameIcon.Image = "rbxassetid://7072717162" -- Default fruit icon
-    nameIcon.ZIndex = 11
-    nameIcon.Parent = nameContainer
+    -- Content area
+    local contentFrame = Instance.new("Frame")
+    contentFrame.Name = "ContentFrame"
+    contentFrame.Size = UDim2.new(1, -10, 1, -40)
+    contentFrame.Position = UDim2.new(0, 5, 0, 35)
+    contentFrame.BackgroundTransparency = 1
+    contentFrame.Parent = mainFrame
+    
+    -- Fruit name display
+    local nameFrame = Instance.new("Frame")
+    nameFrame.Name = "NameFrame"
+    nameFrame.Size = UDim2.new(1, 0, 0, 30)
+    nameFrame.Position = UDim2.new(0, 0, 0, 0)
+    nameFrame.BackgroundTransparency = 1
+    nameFrame.Parent = contentFrame
     
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(1, -30, 1, 0)
-    nameLabel.Position = UDim2.new(0, 30, 0, 0)
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = "No fruit equipped"
     nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.Font = Enum.Font.GothamSemibold
-    nameLabel.TextSize = 14
+    nameLabel.TextSize = 18
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.ZIndex = 11
-    nameLabel.Parent = nameContainer
+    nameLabel.Parent = nameFrame
     
-    -- Mutations list with scrollable container
-    local mutationsContainer = Instance.new("ScrollingFrame")
-    mutationsContainer.Name = "MutationsContainer"
-    mutationsContainer.Size = UDim2.new(1, -10, 0, 70)
-    mutationsContainer.Position = UDim2.new(0, 5, 0, 70)
-    mutationsContainer.BackgroundTransparency = 1
-    mutationsContainer.ScrollBarThickness = 4
-    mutationsContainer.ZIndex = 11
-    mutationsContainer.Parent = fruitInfoFrame
+    -- Mutations display with scrolling
+    local mutationsFrame = Instance.new("ScrollingFrame")
+    mutationsFrame.Name = "MutationsFrame"
+    mutationsFrame.Size = UDim2.new(1, 0, 0, 100)
+    mutationsFrame.Position = UDim2.new(0, 0, 0, 35)
+    mutationsFrame.BackgroundTransparency = 1
+    mutationsFrame.ScrollBarThickness = 4
+    mutationsFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 255)
+    mutationsFrame.Parent = contentFrame
     
     local mutationsLayout = Instance.new("UIListLayout")
-    mutationsLayout.Padding = UDim.new(0, 3)
-    mutationsLayout.Parent = mutationsContainer
+    mutationsLayout.Padding = UDim.new(0, 5)
+    mutationsLayout.Parent = mutationsFrame
     
-    -- Current price with improved formatting
-    local priceContainer = Instance.new("Frame")
-    priceContainer.Name = "PriceContainer"
-    priceContainer.Size = UDim2.new(1, -10, 0, 30)
-    priceContainer.Position = UDim2.new(0, 5, 0, 145)
-    priceContainer.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    priceContainer.BackgroundTransparency = 0.5
-    priceContainer.ZIndex = 11
-    priceContainer.Parent = fruitInfoFrame
-    
-    local priceIcon = Instance.new("ImageLabel")
-    priceIcon.Name = "PriceIcon"
-    priceIcon.Size = UDim2.new(0, 24, 0, 24)
-    priceIcon.Position = UDim2.new(0, 5, 0.5, -12)
-    priceIcon.BackgroundTransparency = 1
-    priceIcon.Image = "rbxassetid://7072716646" -- Currency icon
-    priceIcon.ZIndex = 12
-    priceIcon.Parent = priceContainer
+    -- Price display
+    local priceFrame = Instance.new("Frame")
+    priceFrame.Name = "PriceFrame"
+    priceFrame.Size = UDim2.new(1, 0, 0, 30)
+    priceFrame.Position = UDim2.new(0, 0, 0, 140)
+    priceFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+    priceFrame.BackgroundTransparency = 0.5
+    priceFrame.Parent = contentFrame
     
     local priceLabel = Instance.new("TextLabel")
     priceLabel.Name = "PriceLabel"
-    priceLabel.Size = UDim2.new(1, -35, 1, 0)
-    priceLabel.Position = UDim2.new(0, 35, 0, 0)
+    priceLabel.Size = UDim2.new(1, -10, 1, 0)
+    priceLabel.Position = UDim2.new(0, 10, 0, 0)
     priceLabel.BackgroundTransparency = 1
-    priceLabel.Text = "0"
+    priceLabel.Text = "Price: $0"
     priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     priceLabel.Font = Enum.Font.GothamBold
     priceLabel.TextSize = 16
     priceLabel.TextXAlignment = Enum.TextXAlignment.Left
-    priceLabel.ZIndex = 12
-    priceLabel.Parent = priceContainer
+    priceLabel.Parent = priceFrame
+    
+    -- Ensure the frame is properly layered
+    mainFrame.ZIndex = 10
+    titleBar.ZIndex = 11
+    titleText.ZIndex = 12
+    contentFrame.ZIndex = 11
+    nameFrame.ZIndex = 12
+    nameLabel.ZIndex = 13
+    mutationsFrame.ZIndex = 12
+    priceFrame.ZIndex = 12
+    priceLabel.ZIndex = 13
     
     return fruitInfoFrame
 end
@@ -615,10 +633,18 @@ end
 local function updateFruitInfo()
     if not fruitInfoEnabled or not fruitInfoFrame then return end
     
-    local character = game.Players.LocalPlayer.Character
-    if not character then return end
+    local mainFrame = fruitInfoFrame:FindFirstChild("MainFrame")
+    if not mainFrame then return end
     
-    -- Find equipped fruit (tool)
+    mainFrame.Visible = true -- Make sure it's visible before updating
+    
+    local character = game.Players.LocalPlayer.Character
+    if not character then 
+        mainFrame.Visible = false
+        return 
+    end
+    
+    -- Find equipped fruit
     local equippedFruit = nil
     for _, item in pairs(character:GetChildren()) do
         if item:IsA("Tool") then
@@ -628,15 +654,22 @@ local function updateFruitInfo()
     end
     
     if not equippedFruit then
-        fruitInfoFrame.Visible = false
+        mainFrame.Visible = false
         return
     end
     
-    -- Update UI with fruit info
-    fruitInfoFrame.Visible = true
-    fruitInfoFrame.NameContainer.NameLabel.Text = equippedFruit.Name
+    -- Update name
+    local nameLabel = mainFrame.ContentFrame.NameFrame.NameLabel
+    nameLabel.Text = equippedFruit.Name
     
-    -- Get mutations (ignore attribute "d")
+    -- Update mutations
+    local mutationsFrame = mainFrame.ContentFrame.MutationsFrame
+    mutationsFrame:ClearAllChildren() -- Clear existing mutations
+    
+    local mutationsLayout = Instance.new("UIListLayout")
+    mutationsLayout.Padding = UDim.new(0, 5)
+    mutationsLayout.Parent = mutationsFrame
+    
     local mutations = {}
     for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
         if attrName ~= "d" and attrValue == true and attrName ~= "Weight" then
@@ -644,27 +677,18 @@ local function updateFruitInfo()
         end
     end
     
-    -- Clear existing mutation labels
-    local mutationsContainer = fruitInfoFrame.MutationsContainer
-    for _, child in ipairs(mutationsContainer:GetChildren()) do
-        if child:IsA("TextLabel") then
-            child:Destroy()
-        end
-    end
-    
-    -- Add mutation labels
     if #mutations > 0 then
         for _, mutation in ipairs(mutations) do
             local mutationLabel = Instance.new("TextLabel")
             mutationLabel.Size = UDim2.new(1, 0, 0, 20)
             mutationLabel.BackgroundTransparency = 1
-            mutationLabel.Text = "• "..mutation
+            mutationLabel.Text = "• "..mutation:gsub("^%l", string.upper) -- Capitalize first letter
             mutationLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
             mutationLabel.Font = Enum.Font.Gotham
-            mutationLabel.TextSize = 12
+            mutationLabel.TextSize = 14
             mutationLabel.TextXAlignment = Enum.TextXAlignment.Left
-            mutationLabel.ZIndex = 12
-            mutationLabel.Parent = mutationsContainer
+            mutationLabel.ZIndex = 13
+            mutationLabel.Parent = mutationsFrame
         end
     else
         local noMutations = Instance.new("TextLabel")
@@ -673,78 +697,95 @@ local function updateFruitInfo()
         noMutations.Text = "No mutations"
         noMutations.TextColor3 = Color3.fromRGB(150, 150, 150)
         noMutations.Font = Enum.Font.Gotham
-        noMutations.TextSize = 12
+        noMutations.TextSize = 14
         noMutations.TextXAlignment = Enum.TextXAlignment.Left
-        noMutations.ZIndex = 12
-        noMutations.Parent = mutationsContainer
+        noMutations.ZIndex = 13
+        noMutations.Parent = mutationsFrame
     end
     
-    -- Update canvas size for scrolling
-    mutationsContainer.CanvasSize = UDim2.new(0, 0, 0, mutationsContainer.UIListLayout.AbsoluteContentSize.Y)
+    mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, mutationsFrame.UIListLayout.AbsoluteContentSize.Y)
     
-    -- Calculate current price
-    local baseValue = baseValues[equippedFruit.Name] or 100 -- Default base value
+    -- Update price
+    local baseValue = baseValues[equippedFruit.Name] or 100
     local weight = equippedFruit:GetAttribute("Weight") or 1
     local rarityMultiplier = 1
     
-    -- Check for rarity attributes
     if equippedFruit:GetAttribute("Rainbow") then
         rarityMultiplier = 50
     elseif equippedFruit:GetAttribute("Gold") then
         rarityMultiplier = 20
     end
     
-    -- Price calculation
     local price = baseValue * (weight ^ 2) * rarityMultiplier
-    
-    -- Format price with color coding
-    local formattedPrice
-    local textColor = Color3.fromRGB(255, 255, 255)
+    local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
     
     if price >= 1e12 then
-        formattedPrice = string.format("%.2fT", price/1e12)
-        textColor = Color3.fromRGB(255, 215, 0) -- Gold for trillion
+        priceLabel.Text = string.format("Price: $%.2f Trillion", price/1e12)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
     elseif price >= 1e9 then
-        formattedPrice = string.format("%.2fB", price/1e9)
-        textColor = Color3.fromRGB(255, 165, 0) -- Orange for billion
+        priceLabel.Text = string.format("Price: $%.2f Billion", price/1e9)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange
     elseif price >= 1e6 then
-        formattedPrice = string.format("%.2fM", price/1e6)
-        textColor = Color3.fromRGB(144, 238, 144) -- Light green for million
+        priceLabel.Text = string.format("Price: $%.2f Million", price/1e6)
+        priceLabel.TextColor3 = Color3.fromRGB(144, 238, 144) -- Light green
     else
-        formattedPrice = string.format("%.0f", price)
+        priceLabel.Text = string.format("Price: $%.0f", price)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     end
     
-    fruitInfoFrame.PriceContainer.PriceLabel.Text = formattedPrice
-    fruitInfoFrame.PriceContainer.PriceLabel.TextColor3 = textColor
+    mainFrame.Visible = true -- Ensure it stays visible after update
 end
 
--- Create the toggle button
-tab:CreateToggle("Show Fruit Info", function(state)
+-- Create the toggle button with extra verification
+tab3:CreateToggle("Show Fruit Info", function(state)
     fruitInfoEnabled = state
     
     if state then
-        -- Create UI if it doesn't exist
-        if not fruitInfoFrame then
-            createFruitInfoUI()
+        -- Triple-check creation
+        if not fruitInfoFrame or not fruitInfoFrame.Parent then
+            fruitInfoFrame = createFruitInfoUI()
         end
         
-        -- Make sure it's visible
-        fruitInfoFrame.Visible = true
+        -- Force visibility
+        if fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
+            fruitInfoFrame.MainFrame.Visible = true
+        end
         
-        -- Set up update loop
+        -- Start update loop with error handling
         task.spawn(function()
             while fruitInfoEnabled do
-                updateFruitInfo()
-                task.wait(0.5) -- Update twice per second
+                local success, err = pcall(updateFruitInfo)
+                if not success then
+                    warn("Fruit Info Update Error:", err)
+                    -- Attempt to recreate UI if there's an error
+                    if fruitInfoFrame then
+                        fruitInfoFrame:Destroy()
+                        fruitInfoFrame = nil
+                    end
+                    fruitInfoFrame = createFruitInfoUI()
+                end
+                task.wait(0.5)
             end
             
-            -- Hide frame when disabled
-            if fruitInfoFrame then
-                fruitInfoFrame.Visible = false
+            -- Cleanup when disabled
+            if fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
+                fruitInfoFrame.MainFrame.Visible = false
             end
         end)
-    elseif fruitInfoFrame then
-        fruitInfoFrame.Visible = false
+    elseif fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
+        fruitInfoFrame.MainFrame.Visible = false
+    end
+end)
+
+-- Extra safety: Recreate UI if player respawns
+game.Players.LocalPlayer.CharacterAdded:Connect(function()
+    if fruitInfoEnabled then
+        if fruitInfoFrame then
+            fruitInfoFrame:Destroy()
+            fruitInfoFrame = nil
+        end
+        fruitInfoFrame = createFruitInfoUI()
+        updateFruitInfo()
     end
 end)
 
