@@ -671,18 +671,18 @@ end
 
 local function updateFruitInfo()
     if not fruitInfoEnabled or not fruitInfoFrame then return end
-    
+
     local mainFrame = fruitInfoFrame:FindFirstChild("MainFrame")
     if not mainFrame then return end
-    
+
     -- Always respect the toggle state for visibility
     mainFrame.Visible = fruitInfoEnabled
-    
+
     local character = game.Players.LocalPlayer.Character
-    if not character then 
-        return 
+    if not character then
+        return
     end
-    
+
     -- Find equipped fruit
     local equippedFruit = nil
     for _, item in pairs(character:GetChildren()) do
@@ -691,12 +691,12 @@ local function updateFruitInfo()
             break
         end
     end
-    
+
     if not equippedFruit then
-        -- If no fruit is equipped, display "No fruit equipped" and reset price
+        -- If no fruit is equipped, display "No fruit equipped" and reset price/weight
         local nameLabel = mainFrame.ContentFrame.NameFrame.NameLabel
         nameLabel.Text = "No fruit equipped"
-        
+
         local mutationsFrame = mainFrame.ContentFrame.MutationsFrame
         mutationsFrame:ClearAllChildren()
         local noMutations = Instance.new("TextLabel")
@@ -710,33 +710,35 @@ local function updateFruitInfo()
         noMutations.ZIndex = 13
         noMutations.Parent = mutationsFrame
         mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, noMutations.AbsoluteSize.Y) -- Adjust canvas size
-        
+
         local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
-        priceLabel.Text = "Value: $0"
+        -- Modified: Include Weight in the "No fruit equipped" state
+        priceLabel.Text = "Value: $0 , Weight: N/A"
         priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        
+
         return
     end
-    
+
     -- Update name
     local nameLabel = mainFrame.ContentFrame.NameFrame.NameLabel
     nameLabel.Text = equippedFruit.Name
-    
+
     -- Update mutations
     local mutationsFrame = mainFrame.ContentFrame.MutationsFrame
     mutationsFrame:ClearAllChildren()
-    
+
     local mutationsLayout = Instance.new("UIListLayout")
     mutationsLayout.Padding = UDim.new(0, 5)
     mutationsLayout.Parent = mutationsFrame
-    
+
     local mutations = {}
     for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
+        -- Ensure 'd' and 'Weight' attributes are not treated as mutations
         if attrName ~= "d" and attrValue == true and attrName ~= "Weight" then
             table.insert(mutations, attrName)
         end
     end
-    
+
     if #mutations > 0 then
         for _, mutation in ipairs(mutations) do
             local mutationLabel = Instance.new("TextLabel")
@@ -762,37 +764,44 @@ local function updateFruitInfo()
         noMutations.ZIndex = 13
         noMutations.Parent = mutationsFrame
     end
-    
+
     mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, mutationsFrame.UIListLayout.AbsoluteContentSize.Y)
-    
+
     -- Update price using correct formula: BaseValue × (Weight)² × RarityMultiplier
     -- Get base value, defaulting to 100 if the fruit isn't in baseValues
-    local baseValue = baseValues[equippedFruit.Name] or 100 
-    local weight = equippedFruit:GetAttribute("Weight") or 1
+    local baseValue = baseValues[equippedFruit.Name] or 100
+    local weight = equippedFruit:GetAttribute("Weight") or 1 -- Retrieve weight attribute
     local rarityMultiplier = 1
-    
+
     if equippedFruit:GetAttribute("Rainbow") then
         rarityMultiplier = 50
     elseif equippedFruit:GetAttribute("Gold") then
         rarityMultiplier = 20
     end
-    
+
     local price = CalculatePlantValue(equippedFruit)
     local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
-    
+
+    -- --- MODIFIED SECTION ---
+    -- Concatenate the price string with the weight string
+    local priceString
     if price >= 1e12 then
-        priceLabel.Text = string.format("Value: $%.2fT", price/1e12)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+        priceString = string.format("Value: $%.2fT", price/1e12)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold for Trillions
     elseif price >= 1e9 then
-        priceLabel.Text = string.format("Value: $%.2fB", price/1e9)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
+        priceString = string.format("Value: $%.2fB", price/1e9)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange for Billions
     elseif price >= 1e6 then
-        priceLabel.Text = string.format("Value: $%.2fM", price/1e6)
-        priceLabel.TextColor3 = Color3.fromRGB(144, 238, 144)
+        priceString = string.format("Value: $%.2fM", price/1e6)
+        priceLabel.TextColor3 = Color3.fromRGB(144, 238, 144) -- Light Green for Millions
     else
-        priceLabel.Text = string.format("Value: $%.0f", price)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        priceString = string.format("Value: $%.0f", price)
+        priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White for normal
     end
+
+    -- Append the weight information
+    priceLabel.Text = priceString .. string.format(" , Weight: %s", tostring(weight))
+    -- --- END MODIFIED SECTION ---
 end
 
 -- Create the toggle button with proper initialization
@@ -835,6 +844,38 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function()
     end
 end)
 
+local function CalculateMaxMutationValue(plantName, currentWeightValue)
+    local itemData = Item_Module.Return_Data(plantName)
+    if not itemData or #itemData < 3 then
+        warn("CalculateMaxMutationValue | ItemData is invalid for " .. plantName)
+        return 0
+    end
+
+    local baseValue = itemData[3]
+    local baseWeightCap = itemData[2]
+
+    -- These are the consolidated values derived from our previous calculations
+    -- Sum of all mutation multipliers from your list (excluding Rainbow/Gold as separate entries)
+    local sumOfAllIndividualMutationMultipliers = 1939
+    -- Total count of those individual mutations
+    local numberOfIndividualMutations = 39
+    -- The multiplier for Rainbow rarity (used for max value)
+    local rainbowRarityMultiplier = 50
+
+    -- This calculates the combined effect of all mutations and Rainbow rarity
+    local combinedMutationFactor = rainbowRarityMultiplier * (1 + sumOfAllIndividualMutationMultipliers - numberOfIndividualMutations)
+
+    local clampedWeight = math.clamp(currentWeightValue / baseWeightCap, 0.95, 100000000)
+    local weightSquaredFactor = clampedWeight * clampedWeight
+
+    local finalMaxCalculatedValue = baseValue * weightSquaredFactor * combinedMutationFactor
+
+    -- IMPORTANT: Removed the 1 Trillion cap here, as your "correct number" was higher than 1T.
+    -- If your game strictly caps ALL values at 1T, you can re-add this line:
+    -- finalMaxCalculatedValue = math.min(finalMaxCalculatedValue, 1000000000000)
+
+    return math.round(finalMaxCalculatedValue)
+end
 
 tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
@@ -876,36 +917,18 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                     local weightKg = weight.Value
                     print("[Weight Calculator] Found weight:", weightKg)
 
-                    -- Define base value per plant (this is the 'value' part of the formula)
-                    -- These values are crucial to get the Trillion-level results you expect.
-
-                    local name = plant.Name
-                    -- The actual rarity of the plant is not used for the calculation, but kept for display.
+                    local name = plant.Name -- Name of the fruit
                     local actualRarity = plant:FindFirstChild("Rarity") and plant.Rarity.Value or "Common"
-
-                    local base = baseValues[name] or 100000 -- fallback if not defined
-                    
-                    -- *** ALWAYS USE RAINBOW MULTIPLIER FOR MAX MUTATION VALUE ***
-                    local rarityMultiplierForCalculation = rarityMultipliers["Rainbow"] 
 
                     print("name of da fruit:", name)
                     print("Actual Rarity of plant:", actualRarity) -- Show the plant's true rarity
-                    print("Calculated Base from table:", base) 
-                    print("Rarity Multiplier Used (forced to Rainbow):", rarityMultiplierForCalculation) 
 
-                    -- These values (sumOfModifiers, numModifiers) are constant based on your input
-                    local sumOfModifiers = 1566
-                    local numModifiers = 32
-
-                    local combinedModifierPart = rarityMultiplierForCalculation * (1 + sumOfModifiers - numModifiers)
-                    print("Combined Modifier Part:", combinedModifierPart) 
-
-                    -- Final calculation using the exact formula: value * weight^2 * ((rainbow/gold)*(1+sum-number))
-                    local totalValue = CalculatePlantValue(plant)
-                    print("Total Calculated Value (raw):", totalValue) 
+                    -- *** CALL THE NEW MAX MUTATION CALCULATION FUNCTION HERE ***
+                    local totalValueMaxMutation = CalculateMaxMutationValue(name, weightKg)
+                    print("Estimated Value (Max Mutation, raw):", totalValueMaxMutation)
 
 
-                    -- Format function
+                    -- Format function (remains the same)
                     local function formatBillions(num)
                         if num >= 1e12 then
                             return string.format("$%.0f (%.3f Trillion)", num, num / 1e12)
@@ -918,12 +941,12 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                         end
                     end
 
-                    local formattedValue = formatBillions(totalValue)
+                    local formattedValue = formatBillions(totalValueMaxMutation)
 
                     -- The notification will now reflect the calculated value assuming Rainbow mutation
                     createColoredNotification(string.format("%s\nWeight: %.3f kg\nEstimated Value (Max Mutation): %s", name, weightKg, formattedValue), "Rarity: " .. actualRarity)
 
-                    -- Highlight
+                    -- Highlight (remains the same)
                     local highlight = Instance.new("Highlight")
                     highlight.Name = "WeightHighlight"
                     highlight.FillColor = Color3.new(1, 0.5, 0)
