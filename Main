@@ -1,3 +1,6 @@
+if getgenv().script_loaded then return end
+getgenv().script_loaded = true
+
 local library = loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Phynomie/growagarden/main/Library"))()
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
@@ -54,10 +57,11 @@ local function createColoredNotification(text, rarityText)
     end
 end
 
-local cleanupInstances = {
-    countdownGui = nil,
+local cleanup = {
     connections = {},
-    loops = {}
+    instances = {},
+    loops = {},
+    hooks = {}
 }
 
 local Main = library:CreateWindow("Grow a garden script (Creds to Phy)","Crimson")
@@ -432,7 +436,7 @@ local function createFruitInfoUI()
     contentFrame.BackgroundTransparency = 1
     contentFrame.Parent = mainFrame
     
-    -- Fruit name display
+    -- Fruit name display with ScrollingFrame
     local nameFrame = Instance.new("Frame")
     nameFrame.Name = "NameFrame"
     nameFrame.Size = UDim2.new(1, 0, 0, 30)
@@ -440,9 +444,20 @@ local function createFruitInfoUI()
     nameFrame.BackgroundTransparency = 1
     nameFrame.Parent = contentFrame
     
+    local nameScrollingFrame = Instance.new("ScrollingFrame")
+    nameScrollingFrame.Name = "NameScroller"
+    nameScrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+    nameScrollingFrame.Position = UDim2.new(0, 0, 0, 0)
+    nameScrollingFrame.BackgroundTransparency = 1
+    nameScrollingFrame.ScrollBarThickness = 4
+    nameScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 255)
+    nameScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.X -- Auto-expand horizontally
+    nameScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    nameScrollingFrame.Parent = nameFrame
+    
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.Size = UDim2.new(0, 0, 1, 0) -- Width will auto-size
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = "No fruit equipped"
@@ -450,7 +465,9 @@ local function createFruitInfoUI()
     nameLabel.Font = Enum.Font.GothamSemibold
     nameLabel.TextSize = 18
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Parent = nameFrame
+    nameLabel.TextWrapped = false -- Important for horizontal scrolling
+    nameLabel.AutomaticSize = Enum.AutomaticSize.X -- Auto-size width to text
+    nameLabel.Parent = nameScrollingFrame
     
     -- Mutations display with scrolling
     local mutationsFrame = Instance.new("ScrollingFrame")
@@ -497,7 +514,8 @@ local function createFruitInfoUI()
     titleText.ZIndex = 12
     contentFrame.ZIndex = 11
     nameFrame.ZIndex = 12
-    nameLabel.ZIndex = 13
+    nameScrollingFrame.ZIndex = 13
+    nameLabel.ZIndex = 14
     mutationsFrame.ZIndex = 12
     priceFrame.ZIndex = 12
     priceLabel.ZIndex = 13
@@ -544,21 +562,26 @@ local function CalculatePlantValue(plant)
     return math.round(value)
 end
 
+local lastEquippedFruit = nil
+local lastUpdateTime = 0
+local UPDATE_COOLDOWN = 0.5 -- Update at most every 0.5 seconds
+
 local function updateFruitInfo()
     if not fruitInfoEnabled or not fruitInfoFrame then return end
+    
+    local currentTime = os.clock()
+    if currentTime - lastUpdateTime < UPDATE_COOLDOWN then return end
+    lastUpdateTime = currentTime
 
     local mainFrame = fruitInfoFrame:FindFirstChild("MainFrame")
     if not mainFrame then return end
-
-    -- Always respect the toggle state for visibility
-    mainFrame.Visible = fruitInfoEnabled
 
     local character = game.Players.LocalPlayer.Character
     if not character then
         return
     end
 
-    -- Find equipped fruit
+    -- Find currently equipped fruit
     local equippedFruit = nil
     for _, item in pairs(character:GetChildren()) do
         if item:IsA("Tool") then
@@ -567,9 +590,14 @@ local function updateFruitInfo()
         end
     end
 
+    -- Skip update if same fruit is still equipped
+    if equippedFruit and lastEquippedFruit and equippedFruit == lastEquippedFruit then
+        return
+    end
+
+    -- Reset display if no fruit equipped
     if not equippedFruit then
-        -- If no fruit is equipped, display "No fruit equipped" and reset price/weight
-        local nameLabel = mainFrame.ContentFrame.NameFrame.NameLabel
+        local nameLabel = mainFrame.ContentFrame.NameFrame.NameScroller.NameLabel
         nameLabel.Text = "No fruit equipped"
 
         local mutationsFrame = mainFrame.ContentFrame.MutationsFrame
@@ -584,18 +612,21 @@ local function updateFruitInfo()
         noMutations.TextXAlignment = Enum.TextXAlignment.Left
         noMutations.ZIndex = 13
         noMutations.Parent = mutationsFrame
-        mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, noMutations.AbsoluteSize.Y) -- Adjust canvas size
+        mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, noMutations.AbsoluteSize.Y)
 
         local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
-        -- Modified: Include Weight in the "No fruit equipped" state
         priceLabel.Text = "Value: $0 , Weight: N/A"
         priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-
+        
+        lastEquippedFruit = nil
         return
     end
 
+    -- Update last equipped fruit
+    lastEquippedFruit = equippedFruit
+
     -- Update name
-    local nameLabel = mainFrame.ContentFrame.NameFrame.NameLabel
+    local nameLabel = mainFrame.ContentFrame.NameFrame.NameScroller.NameLabel
     nameLabel.Text = equippedFruit.Name
 
     -- Update mutations
@@ -608,7 +639,6 @@ local function updateFruitInfo()
 
     local mutations = {}
     for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
-        -- Ensure 'd' and 'Weight' attributes are not treated as mutations
         if attrName ~= "d" and attrValue == true and attrName ~= "Weight" then
             table.insert(mutations, attrName)
         end
@@ -642,41 +672,48 @@ local function updateFruitInfo()
 
     mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, mutationsFrame.UIListLayout.AbsoluteContentSize.Y)
 
-    -- Update price using correct formula: BaseValue × (Weight)² × RarityMultiplier
-    -- Get base value, defaulting to 100 if the fruit isn't in baseValues
-    local weight = equippedFruit.Weight.Value or "???" -- Retrieve weight attribute
-    local rarityMultiplier = 1
-
-    if equippedFruit:GetAttribute("Rainbow") then
-        rarityMultiplier = 50
-    elseif equippedFruit:GetAttribute("Gold") then
-        rarityMultiplier = 20
-    end
-
+    -- Update price and weight
     local price = CalculatePlantValue(equippedFruit)
+    local weight = equippedFruit.Weight.Value or "???"
     local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
 
-    -- --- MODIFIED SECTION ---
-    -- Concatenate the price string with the weight string
     local priceString
     if price >= 1e12 then
         priceString = string.format("Value: $%.2fT", price/1e12)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold for Trillions
+        priceLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
     elseif price >= 1e9 then
         priceString = string.format("Value: $%.2fB", price/1e9)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- Orange for Billions
+        priceLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
     elseif price >= 1e6 then
         priceString = string.format("Value: $%.2fM", price/1e6)
-        priceLabel.TextColor3 = Color3.fromRGB(144, 238, 144) -- Light Green for Millions
+        priceLabel.TextColor3 = Color3.fromRGB(144, 238, 144)
     else
         priceString = string.format("Value: $%.0f", price)
-        priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- White for normal
+        priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     end
 
-    -- Append the weight information
     priceLabel.Text = priceString .. string.format(" , Weight: %s", tostring(weight))
-    -- --- END MODIFIED SECTION ---
 end
+
+-- Add this connection to detect tool changes
+cleanup.connections["characterAdded"] = game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    if fruitInfoEnabled then
+        -- Recreate UI when character respawns
+        if fruitInfoFrame then
+            fruitInfoFrame:Destroy()
+            fruitInfoFrame = nil
+        end
+        fruitInfoFrame = createFruitInfoUI()
+        updateFruitInfo()
+    end
+    cleanup.connections["childAdded"] = character.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") and fruitInfoEnabled then
+            -- Force update when a new tool is equipped
+            lastEquippedFruit = nil
+            updateFruitInfo()
+        end
+    end)
+end)
 
 -- Create the toggle button with proper initialization
 tab:CreateToggle("Show Fruit Info", function(state)
@@ -702,19 +739,6 @@ tab:CreateToggle("Show Fruit Info", function(state)
         end)
     elseif fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
         fruitInfoFrame.MainFrame.Visible = false
-    end
-end)
-
--- Handle character respawns
-game.Players.LocalPlayer.CharacterAdded:Connect(function()
-    if fruitInfoEnabled then
-        -- Recreate UI when character respawns
-        if fruitInfoFrame then
-            fruitInfoFrame:Destroy()
-            fruitInfoFrame = nil
-        end
-        fruitInfoFrame = createFruitInfoUI()
-        updateFruitInfo()
     end
 end)
 
@@ -908,8 +932,8 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             createColoredNotification("Weight Calculator ready\nTouch/Click fruits to check weight", "Rarity: Common")
         end
 
-        weightTool.Equipped:Connect(onEquipped)
-        weightTool.Unequipped:Connect(function()
+        cleanup.connections["weightToolEquipped"] = weightTool.Equipped:Connect(onEquipped)
+        cleanup.connections["weightToolUnequipped"] = weightTool.Unequipped:Connect(function()
             print("[Weight Calculator] Tool unequipped")
         end)
 
@@ -944,6 +968,8 @@ end)
 local petCooldownEnabled = false
 local petCooldownDisplays = {}
 local petCooldownConnection = nil
+local lastUpdateTime = 0
+local UPDATE_INTERVAL = 5 -- Update every 5 seconds to reduce ping impact
 
 local function createPetDisplay(pet)
     local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
@@ -956,8 +982,8 @@ local function createPetDisplay(pet)
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
-    billboard.Size = UDim2.new(10, 0, 4, 0) -- Fixed size that can accommodate multiple abilities
-    billboard.StudsOffset = Vector3.new(0, 4.5, 0) -- Higher to fit multiple lines
+    billboard.Size = UDim2.new(10, 0, 4, 0)
+    billboard.StudsOffset = Vector3.new(0, 4.5, 0)
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
     billboard.LightInfluence = 0
@@ -973,18 +999,17 @@ local function createPetDisplay(pet)
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = "Loading abilities..."
+    textLabel.Text = "Loading..."
     textLabel.TextColor3 = Color3.new(1, 1, 1)
     textLabel.Font = Enum.Font.GothamBold
-    textLabel.TextSize = 14 -- Smaller to fit more text
+    textLabel.TextSize = 14
     textLabel.TextStrokeTransparency = 0.3
     textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    textLabel.TextYAlignment = Enum.TextYAlignment.Top -- Align text to top
-    textLabel.TextWrapped = true -- Allow text to wrap if needed
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top
+    textLabel.TextWrapped = true
     textLabel.Parent = frame
 
     if UserInputService.TouchEnabled then
-        -- Mobile-specific adjustments
         billboard.Size = UDim2.new(20, 0, 8, 0)
         billboard.StudsOffset = Vector3.new(0, 2.5, 0)
         textLabel.TextSize = 20
@@ -1023,11 +1048,10 @@ local function updatePetDisplay(petName, display)
             for i, ability in ipairs(activeAbilities) do
                 displayText = displayText .. ability.text
                 if i < #activeAbilities then
-                    displayText = displayText .. "\n" -- New line between abilities
+                    displayText = displayText .. "\n"
                 end
             end
             display.Text = displayText
-            -- For multiple abilities, we'll use white text for better visibility
             display.TextColor3 = #activeAbilities > 1 and Color3.new(1, 1, 1) or activeAbilities[1].color
         else
             display.Text = "No active abilities"
@@ -1040,24 +1064,18 @@ local function updatePetDisplay(petName, display)
 end
 
 local function scanAndUpdatePets()
-    -- Find all current pets
+    -- Only update if enough time has passed
+    local currentTime = os.clock()
+    if currentTime - lastUpdateTime < UPDATE_INTERVAL then return end
+    lastUpdateTime = currentTime
+
+    -- Find all current pets in the game (not just your farm)
     local currentPets = {}
-    for _, petMover in ipairs(workspace.PetsPhysical:GetChildren()) do
-        if petMover.Name == "PetMover" then
+    for _, petMover in ipairs(workspace:GetDescendants()) do
+        if petMover.Name == "PetMover" and petMover:IsA("Model") then
             for _, pet in ipairs(petMover:GetChildren()) do
                 if pet:IsA("Model") and pet.Name:match("^{.+}$") then
                     currentPets[pet.Name] = pet
-                    
-                    -- Get or create display
-                    if petCooldownDisplays[pet.Name] == nil then
-                        local display = createPetDisplay(pet)
-                        if display then
-                            petCooldownDisplays[pet.Name] = {
-                                display = display,
-                                pet = pet
-                            }
-                        end
-                    end
                 end
             end
         end
@@ -1074,9 +1092,23 @@ local function scanAndUpdatePets()
     end
     
     -- Update all active displays
-    for petName, data in pairs(petCooldownDisplays) do
-        if data.display and data.display.Parent then
-            updatePetDisplay(petName, data.display)
+    for petName, pet in pairs(currentPets) do
+        -- Get or create display
+        if petCooldownDisplays[petName] == nil then
+            local display = createPetDisplay(pet)
+            if display then
+                petCooldownDisplays[petName] = {
+                    display = display,
+                    pet = pet,
+                    lastUpdate = 0
+                }
+            end
+        end
+        
+        -- Only update if this pet hasn't been updated recently
+        if petCooldownDisplays[petName] and (currentTime - petCooldownDisplays[petName].lastUpdate) >= UPDATE_INTERVAL then
+            updatePetDisplay(petName, petCooldownDisplays[petName].display)
+            petCooldownDisplays[petName].lastUpdate = currentTime
         end
     end
 end
@@ -1093,18 +1125,19 @@ tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
         -- Initial scan
         scanAndUpdatePets()
         
-        -- Set up recurring updates with mobile interval
-        local updateInterval = UserInputService.TouchEnabled and 2 or 1
+        -- Set up recurring updates with optimized interval
         petCooldownConnection = game:GetService("RunService").Heartbeat:Connect(function()
-            scanAndUpdatePets()
-            task.wait(updateInterval)
+            if petCooldownEnabled then
+                scanAndUpdatePets()
+            end
         end)
     else
         -- Clean up
-        if petCooldownConnection then
-            petCooldownConnection:Disconnect()
-            petCooldownConnection = nil
-        end
+        cleanup.connections["petCooldownHeartbeat"] = game:GetService("RunService").Heartbeat:Connect(function()
+            if petCooldownEnabled then
+                scanAndUpdatePets()
+            end
+        end)
         
         for _, data in pairs(petCooldownDisplays) do
             if data.display and data.display.Parent then
@@ -1156,23 +1189,31 @@ tab:CreateToggle("Anti-Afk", function(enabled)
         sendNotification("✅ Anti-AFK", "Anti AFK has been enabled.", 5)
         
         -- Disable all existing Idled connections
+        cleanup.connections["antiAfk"] = {}
+
+        -- Disable all idle connections and store original states
         for _, connection in pairs(getconnections(game.Players.LocalPlayer.Idled)) do
+            local originalState = connection.Enabled
             connection:Disable()
-            -- Store disabled connections for re-enabling later
-            table.insert(cleanupInstances.connections, {
+    
+            -- Store in cleanup table with restore information
+            table.insert(cleanup.connections["antiAfk"], {
                 connection = connection,
-                enabled = connection.Enabled -- Store original state
+                originalState = originalState
             })
         end
         
     else
         sendNotification("❌ Anti-AFK", "Anti AFK has been disabled.", 5)
         
-        -- Re-enable original Idled connections
-        for _, connectionData in pairs(cleanupInstances.connections) do
-            if typeof(connectionData) == "table" and connectionData.connection then
-                connectionData.connection.Enabled = connectionData.enabled
+        if cleanup.connections["antiAfk"] then
+            for _, afkData in ipairs(cleanup.connections["antiAfk"]) do
+                if afkData.connection and typeof(afkData.connection) == "userdata" then
+                    -- Restore original enabled state
+                    afkData.connection.Enabled = afkData.originalEnabled
+                end
             end
+            cleanup.connections["antiAfk"] = nil  -- Clear the stored connections
         end
     
     end
@@ -1994,6 +2035,8 @@ library.OnDestroy = function()
         end
     end
     petCooldownDisplays = {}
+
+    getgenv().script_loaded = false
     
     print("Cleanup complete!")
 end
