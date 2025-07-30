@@ -654,6 +654,28 @@ local function updateFruitInfo()
     end
     
     if not equippedFruit then
+        -- If no fruit is equipped, display "No fruit equipped" and reset price
+        local nameLabel = mainFrame.ContentFrame.NameFrame.NameLabel
+        nameLabel.Text = "No fruit equipped"
+        
+        local mutationsFrame = mainFrame.ContentFrame.MutationsFrame
+        mutationsFrame:ClearAllChildren()
+        local noMutations = Instance.new("TextLabel")
+        noMutations.Size = UDim2.new(1, 0, 0, 20)
+        noMutations.BackgroundTransparency = 1
+        noMutations.Text = "No mutations"
+        noMutations.TextColor3 = Color3.fromRGB(150, 150, 150)
+        noMutations.Font = Enum.Font.Gotham
+        noMutations.TextSize = 14
+        noMutations.TextXAlignment = Enum.TextXAlignment.Left
+        noMutations.ZIndex = 13
+        noMutations.Parent = mutationsFrame
+        mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, noMutations.AbsoluteSize.Y) -- Adjust canvas size
+        
+        local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
+        priceLabel.Text = "Value: $0"
+        priceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        
         return
     end
     
@@ -705,7 +727,8 @@ local function updateFruitInfo()
     mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, mutationsFrame.UIListLayout.AbsoluteContentSize.Y)
     
     -- Update price using correct formula: BaseValue × (Weight)² × RarityMultiplier
-    local baseValue = baseValues[equippedFruit.Name] or 100
+    -- Get base value, defaulting to 100 if the fruit isn't in baseValues
+    local baseValue = baseValues[equippedFruit.Name] or 100 
     local weight = equippedFruit:GetAttribute("Weight") or 1
     local rarityMultiplier = 1
     
