@@ -630,6 +630,45 @@ local function createFruitInfoUI()
     return fruitInfoFrame
 end
 
+local Item_Module = require(ReplicatedStorage.Item_Module)
+local MutationHandler = require(ReplicatedStorage.Modules.MutationHandler)
+local InventoryServiceEnums = require(ReplicatedStorage.Data.EnumRegistry.InventoryServiceEnums)
+
+local function CalculatePlantValue(plant)
+    local Item_String = plant:FindFirstChild("Item_String")
+    local itemName
+    if Item_String and Item_String.Value ~= "" then
+        itemName = Item_String.Value
+    else
+        itemName = plant.Name
+    end
+
+    local Variant = plant:FindFirstChild("Variant")
+    if not Variant then
+        return 0
+    end
+
+    local Weight = plant:FindFirstChild("Weight")
+    if not Weight then
+        return 0
+    end
+
+    local itemData = Item_Module.Return_Data(itemName)
+    if not itemData or #itemData < 3 then
+        warn("CalculatePlantValue | ItemData is invalid")
+        return 0
+    end
+
+    local clamped = math.clamp(Weight.Value / itemData[2], 0.95, 100000000)
+    local value = (itemData[3] * MutationHandler:CalcValueMulti(plant) * Item_Module.Return_Multiplier(Variant.Value)) * (clamped * clamped)
+    
+    if 1 <= (plant:GetAttribute(InventoryServiceEnums.FruitVersion) or 0) then
+        value = math.min(value, 1000000000000)
+    end
+    
+    return math.round(value)
+end
+
 local function updateFruitInfo()
     if not fruitInfoEnabled or not fruitInfoFrame then return end
     
@@ -738,7 +777,7 @@ local function updateFruitInfo()
         rarityMultiplier = 20
     end
     
-    local price = baseValue * (weight ^ 2) * rarityMultiplier
+    local price = CalculatePlantValue(equippedFruit)
     local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
     
     if price >= 1e12 then
@@ -862,7 +901,7 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                     print("Combined Modifier Part:", combinedModifierPart) 
 
                     -- Final calculation using the exact formula: value * weight^2 * ((rainbow/gold)*(1+sum-number))
-                    local totalValue = base * (weightKg ^ 2) * combinedModifierPart
+                    local totalValue = CalculatePlantValue(plant)
                     print("Total Calculated Value (raw):", totalValue) 
 
 
