@@ -1490,7 +1490,7 @@ local function shouldSkipItem(itemName)
         "staff",           -- Catches all staff variants
         "crate",           -- Catches all crates
         "radar",
-        "spray x%d %[",    -- Mutation sprays (x1/x2 with brackets)
+        "spray x%d+ %[",    -- Mutation sprays (x1/x2 with brackets)
         "corrupted zen",   -- Specific crate type
         "corrupted kodama" -- Catches "Shiny Corrupted Kodama" and similar
     }
