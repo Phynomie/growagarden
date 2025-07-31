@@ -2118,9 +2118,14 @@ local fruitAutomationActive = false
 local loopCount = 0
 local blacklistedFruits = {}
 
--- Function to detect backpack limit by filling it
-local function detectBackpackLimit()
-    createColoredNotification("Detecting backpack limit...", "Rarity: Common")
+-- Function to detect when backpack is full
+local function detectBackpackFull()
+    createColoredNotification("Detecting when backpack is full...", "Rarity: Common")
+    
+    local initialCount = #LocalPlayer.Backpack:GetChildren()
+    local lastCount = initialCount
+    local unchangedTime = 0
+    local startTime = os.clock()
     
     -- Store original position
     local originalPos
@@ -2137,53 +2142,70 @@ local function detectBackpackLimit()
         end
     end
     
-    -- Collect fruits until backpack is full
+    -- Collect fruits until backpack stops filling
     local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
     if plantsPhysical then
-        for _, plant in pairs(plantsPhysical:GetChildren()) do
-            local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+        while fruitAutomationActive and unchangedTime < 3 do -- 3 second timeout
+            local collectedAny = false
             
-            -- Scan all fruits in the plant
-            for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                if fruit:GetAttribute("DoneGrowTime") then
-                    -- Find prompt
-                    local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
-                    if not prompt then
-                        for _, part in pairs(fruit:GetDescendants()) do
-                            if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
-                                prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
-                                break
+            for _, plant in pairs(plantsPhysical:GetChildren()) do
+                local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+                
+                for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                    if fruit:GetAttribute("DoneGrowTime") then
+                        -- Find prompt
+                        local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                        if not prompt then
+                            for _, part in pairs(fruit:GetDescendants()) do
+                                if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
+                                    prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
+                                    break
+                                end
                             end
                         end
-                    end
-                    
-                    -- Collect if prompt found
-                    if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local hrp = LocalPlayer.Character.HumanoidRootPart
-                        hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
-                        task.wait(0.15)
-                        fireproximityprompt(prompt)
-                        task.wait(0.5)
                         
-                        -- Check if backpack is full
-                        if #LocalPlayer.Backpack:GetChildren() >= 477 then -- Temporary max while detecting
-                            maxBackpackItems = #LocalPlayer.Backpack:GetChildren()
-                            createColoredNotification("Backpack limit detected: "..maxBackpackItems, "Rarity: Common")
+                        -- Try to collect
+                        if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            local hrp = LocalPlayer.Character.HumanoidRootPart
+                            hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+                            task.wait(0.1)
+                            fireproximityprompt(prompt)
+                            task.wait(0.2)
                             
-                            -- Return to original position
-                            if originalPos then
-                                hrp.CFrame = originalPos
+                            -- Check if count changed
+                            local currentCount = #LocalPlayer.Backpack:GetChildren()
+                            if currentCount > lastCount then
+                                lastCount = currentCount
+                                unchangedTime = 0
+                                collectedAny = true
+                                createColoredNotification("Collected ("..currentCount..")", "Rarity: Common")
                             end
-                            return true
                         end
                     end
                 end
             end
+            
+            if not collectedAny then
+                unchangedTime = unchangedTime + 0.5
+                task.wait(0.5)
+            end
         end
     end
     
-    createColoredNotification("Couldn't fill backpack! Not enough fruits?", "Rarity: Common")
-    return false
+    -- Verify we actually filled the backpack
+    if unchangedTime >= 3 then
+        maxBackpackItems = #LocalPlayer.Backpack:GetChildren()
+        createColoredNotification("Backpack full at "..maxBackpackItems.." items!", "Rarity: Common")
+        
+        -- Return to original position
+        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+        end
+        return true
+    else
+        createColoredNotification("Failed to fill backpack!", "Rarity: Common")
+        return false
+    end
 end
 
 local function sellAllFruits()
@@ -2295,25 +2317,19 @@ local function safeSubmitToKitsune(fruit)
     return true
 end
 
--- Modified collectTargetFruits function with better phase interruption
 local function collectTargetFruits()
-
-    if not maxBackpackItems then
-        if not detectBackpackLimit() then
-            fruitAutomationActive = false
-            return
-        end
-    elseif #LocalPlayer.Backpack:GetChildren() < maxBackpackItems then
-        createColoredNotification("Backpack not full! Collecting to fill...", "Rarity: Common")
-        if not detectBackpackLimit() then
+    -- First ensure backpack is full
+    if not maxBackpackItems or #LocalPlayer.Backpack:GetChildren() < maxBackpackItems then
+        if not detectBackpackFull() then
             fruitAutomationActive = false
             return
         end
     end
-
+    
+    -- Main loop
     while fruitAutomationActive do
         loopCount = loopCount + 1
-        createColoredNotification(string.format("Starting AFK loop #%d (Backpack: %d/%d)", 
+        createColoredNotification(string.format("Loop %d - Backpack: %d/%d", 
             loopCount, #LocalPlayer.Backpack:GetChildren(), maxBackpackItems), "Rarity: Common")
         
         -- Store original position once at start of collection phase
