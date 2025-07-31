@@ -2130,7 +2130,7 @@ local function collectTargetFruits()
 
         -- Phase 2: Kitsune Automation
         createColoredNotification("Backpack full, starting Kitsune automation...", "Rarity: Common")
-        local kitsuneToggle = tab:FindFirstChild("Auto Give Fruits to Kitsune")
+        local kitsuneToggle = tab2:FindFirstChild("Auto Give Fruits to Kitsune")
         if kitsuneToggle then
             kitsuneToggle:SetState(true)
             
