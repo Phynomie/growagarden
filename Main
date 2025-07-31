@@ -2115,6 +2115,7 @@ local tab4 = Main:CreateTab("Fruit Automation")
 local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple"}
 local backpackCapacity = 0 -- Will be set when automation starts
 local fruitAutomationActive = false
+local tranquilOnlyActive = false
 local loopCount = 0
 local blacklistedFruits = {} -- New table to track problematic fruits
 
@@ -2255,7 +2256,8 @@ local function collectTargetFruits()
     
     while fruitAutomationActive do
         loopCount = loopCount + 1
-        createColoredNotification(string.format("Starting AFK loop #%d", loopCount), "Rarity: Common")
+        local modeText = tranquilOnlyActive and "Tranquil-Only Mode" or "Full Automation Mode"
+        createColoredNotification(string.format("Starting AFK loop #%d (%s)", loopCount, modeText), "Rarity: Common")
         
         -- Store original position once at start of collection phase
         local originalPos
@@ -2334,7 +2336,7 @@ local function collectTargetFruits()
 
         -- PHASE 2: KITSUNE AUTOMATION
         createColoredNotification("Starting Kitsune submission...", "Rarity: Common")
-        if automationToggles.kitsune and fruitAutomationActive then
+        if not tranquilOnlyActive and automationToggles.kitsune and fruitAutomationActive then
             -- Modified Kitsune automation with safety checks
             local kitsuneSuccess = false
             while fruitAutomationActive and not kitsuneSuccess do
@@ -2468,15 +2470,141 @@ local function collectTargetFruits()
     createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
+local function tranquilOnlyAutomation()
+    -- Get the initial backpack capacity
+    backpackCapacity = getBackpackCapacity()
+    createColoredNotification("Detected backpack capacity: "..backpackCapacity, "Rarity: Common")
+    
+    while tranquilOnlyActive do
+        loopCount = loopCount + 1
+        createColoredNotification(string.format("Starting Tranquil-Only loop #%d", loopCount), "Rarity: Common")
+        
+        -- Store original position
+        local originalPos
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+        end
+        
+        -- PHASE 1: CONTINUOUS FRUIT COLLECTION (same as before)
+        while tranquilOnlyActive and getBackpackCapacity() < backpackCapacity do
+            -- ... (use the same collection code as in collectTargetFruits) ...
+        end
+
+        if not tranquilOnlyActive then break end
+
+        -- Return to original position after collection phase
+        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+            task.wait(0.5)
+        end
+
+        if not tranquilOnlyActive then break end
+
+        -- PHASE 2: TRANQUIL AUTOMATION ONLY
+        createColoredNotification("Starting Tranquil submission...", "Rarity: Common")
+        local tranquilSuccess = false
+        while tranquilOnlyActive and not tranquilSuccess do
+            -- Find tranquil fruits
+            local currentTranquilFruits = {}
+            for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+                if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                    table.insert(currentTranquilFruits, item)
+                end
+            end
+            
+            if LocalPlayer.Character then
+                for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                    if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                        table.insert(currentTranquilFruits, item)
+                    end
+                end
+            end
+            
+            -- Filter out skipped/blacklisted fruits
+            local submitableTranquilFruits = {}
+            for _, fruit in ipairs(currentTranquilFruits) do
+                if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") and not blacklistedFruits[fruit] then
+                    table.insert(submitableTranquilFruits, fruit)
+                end
+            end
+            
+            if #submitableTranquilFruits == 0 then
+                tranquilSuccess = true
+                break
+            end
+            
+            -- Submit one fruit at a time with checks
+            local fruitToSubmit = submitableTranquilFruits[1]
+            fruitToSubmit.Parent = LocalPlayer.Character
+            task.wait(0.5)
+            
+            -- Fire the RemoteEvent
+            local args = {"SubmitAllPlants"}
+            game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
+            
+            -- Verify submission
+            local startTime = os.clock()
+            while os.clock() - startTime < 2 do
+                if fruitToSubmit.Parent ~= LocalPlayer.Character then
+                    break -- Fruit was consumed
+                end
+                task.wait(0.1)
+            end
+            
+            -- If fruit still exists, blacklist it
+            if fruitToSubmit.Parent == LocalPlayer.Character then
+                blacklistedFruits[fruitToSubmit] = true
+                fruitToSubmit.Parent = LocalPlayer.Backpack
+            end
+            
+            task.wait(1.5)
+        end
+
+        if not tranquilOnlyActive then break end
+
+        -- PHASE 3: SELL REMAINING FRUITS
+        createColoredNotification("Selling remaining fruits...", "Rarity: Common")
+        sellAllFruits()
+        
+        if not tranquilOnlyActive then break end
+        
+        createColoredNotification(string.format("Completed Tranquil-Only loop #%d", loopCount), "Rarity: Common")
+        task.wait(3)
+    end
+    
+    -- Cleanup when loop ends
+    blacklistedFruits = {} -- Reset blacklist
+    createColoredNotification("Tranquil-only loop stopped", "Rarity: Common")
+end
+
 tab4:CreateToggle("AFK Fruit Farm Loop (must have full backpack)", function(state)
     fruitAutomationActive = state
+    if tranquilOnlyActive then
+        tranquilOnlyActive = false -- Ensure only one mode is active at a time
+    end
     if state then
         loopCount = 0
-        blacklistedFruits = {} -- Reset blacklist on start
-        createColoredNotification("Started optimized AFK farming loop:\n1. Collect Fruits → 2. Kitsune → 3. Tranquil → 4. Sell → Repeat", "Rarity: Common")
+        blacklistedFruits = {}
+        createColoredNotification("Started full AFK farming loop:\n1. Collect → 2. Kitsune → 3. Tranquil → 4. Sell → Repeat", "Rarity: Common")
         task.spawn(collectTargetFruits)
     else
         createColoredNotification("Stopping AFK farming loop...", "Rarity: Common")
+    end
+end)
+
+-- New Tranquil-Only Toggle
+tab4:CreateToggle("Tranquil-Only Loop (must have full backpack)", function(state)
+    tranquilOnlyActive = state
+    if fruitAutomationActive then
+        fruitAutomationActive = false -- Ensure only one mode is active at a time
+    end
+    if state then
+        loopCount = 0
+        blacklistedFruits = {}
+        createColoredNotification("Started Tranquil-only loop:\n1. Collect → 2. Tranquil → 3. Sell → Repeat", "Rarity: Common")
+        task.spawn(tranquilOnlyAutomation)
+    else
+        createColoredNotification("Stopping Tranquil-only loop...", "Rarity: Common")
     end
 end)
 
