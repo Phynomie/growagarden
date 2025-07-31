@@ -2048,7 +2048,7 @@ end)
 
 local tab4 = Main:CreateTab("Fruit Automation")
 
-local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine"}
+local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple"}
 local maxBackpackItems = 477
 local fruitAutomationActive = false
 local loopCount = 0
@@ -2099,7 +2099,13 @@ local function collectTargetFruits()
         loopCount = loopCount + 1
         createColoredNotification(string.format("Starting AFK loop #%d", loopCount), "Rarity: Common")
         
-        -- PHASE 1: COLLECT TARGET FRUITS USING YOUR EXISTING FUNCTION
+        -- Store original position once at start of collection phase
+        local originalPos
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+        end
+        
+        -- PHASE 1: CONTINUOUS FRUIT COLLECTION
         while fruitAutomationActive and #LocalPlayer.Backpack:GetChildren() < maxBackpackItems do
             if not playerFarm then
                 playerFarm = findPlayerFarm()
@@ -2112,77 +2118,61 @@ local function collectTargetFruits()
             local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
             if plantsPhysical then
                 for _, plant in pairs(plantsPhysical:GetChildren()) do
-                    local fruitsFolder = plant:FindFirstChild("Fruits")
-                    local fruitsToCheck = {}
+                    local fruitsFolder = plant:FindFirstChild("Fruits") or plant
                     
-                    -- Collect all target fruits
-                    if fruitsFolder then
-                        for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                            for _, targetName in pairs(targetFruits) do
-                                if fruit.Name:find(targetName) and fruit:GetAttribute("DoneGrowTime") then
-                                    table.insert(fruitsToCheck, fruit)
-                                    break
-                                end
-                            end
-                        end
-                    end
-                    
-                    -- Process collected fruits using your proven method
-                    for _, fruit in pairs(fruitsToCheck) do
+                    -- Scan all fruits in the plant
+                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
                         if not fruitAutomationActive or #LocalPlayer.Backpack:GetChildren() >= maxBackpackItems then break end
                         
-                        -- Use your existing scan and collection logic
-                        local function scanAndCollect(model)
-                            if model:GetAttribute("DoneGrowTime") then
-                                local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
-                                if not prompt then
-                                    for _, descendant in pairs(model:GetDescendants()) do
-                                        if descendant:IsA("ProximityPrompt") then
-                                            prompt = descendant
-                                            break
-                                        end
-                                    end
-                                end
-                                
-                                if prompt then
-                                    local char = LocalPlayer.Character
-                                    if char and char:FindFirstChild("HumanoidRootPart") then
-                                        local hrp = char.HumanoidRootPart
-                                        local originalPos = hrp.CFrame
-                                        
-                                        hrp.CFrame = model:GetPivot() * CFrame.new(0, 0, -2)
-                                        task.wait(0.2)
-                                        fireproximityprompt(prompt)
-                                        createColoredNotification("Collected "..fruit.Name, "Rarity: Common")
-                                        
-                                        task.wait(0.1)
-                                        hrp.CFrame = originalPos
-                                        task.wait(0.5) -- Reduced delay between collections
-                                    end
-                                end
+                        -- Check if target fruit and ready to harvest
+                        local isTargetFruit = false
+                        for _, targetName in pairs(targetFruits) do
+                            if fruit.Name:find(targetName) and fruit:GetAttribute("DoneGrowTime") then
+                                isTargetFruit = true
+                                break
                             end
                         end
                         
-                        scanAndCollect(fruit)
+                        if isTargetFruit then
+                            -- Find prompt (optimized search)
+                            local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                            if not prompt then
+                                for _, part in pairs(fruit:GetDescendants()) do
+                                    if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
+                                        prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
+                                        break
+                                    end
+                                end
+                            end
+                            
+                            -- Collect if prompt found
+                            if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                                local hrp = LocalPlayer.Character.HumanoidRootPart
+                                hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5) -- Optimal collection distance
+                                task.wait(0.15) -- Short wait for positioning
+                                fireproximityprompt(prompt)
+                                createColoredNotification("Collected "..fruit.Name.." ("..#LocalPlayer.Backpack:GetChildren().."/"..maxBackpackItems..")", "Rarity: Common")
+                                task.wait(0.35) -- Short delay before next collection
+                            end
+                        end
                     end
                 end
             end
-            task.wait(1) -- Brief pause between farm scans
+            task.wait(0.5) -- Brief pause between full farm scans
         end
 
-        if not fruitAutomationActive then break end
+        -- Return to original position after collection phase
+        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+            task.wait(0.5)
+        end
 
         -- PHASE 2: KITSUNE AUTOMATION
         createColoredNotification("Starting Kitsune submission...", "Rarity: Common")
         if automationToggles.kitsune then
-            automationToggles.kitsune(true) -- Activate Kitsune
-            
-            -- Wait for completion
-            while isRunning and fruitAutomationActive do
-                task.wait(1)
-            end
-            
-            automationToggles.kitsune(false) -- Deactivate Kitsune
+            automationToggles.kitsune(true)
+            while isRunning and fruitAutomationActive do task.wait(1) end
+            automationToggles.kitsune(false)
         end
 
         if not fruitAutomationActive then break end
@@ -2190,14 +2180,9 @@ local function collectTargetFruits()
         -- PHASE 3: TRANQUIL AUTOMATION
         createColoredNotification("Starting Tranquil submission...", "Rarity: Common")
         if automationToggles.tranquil then
-            automationToggles.tranquil(true) -- Activate Tranquil
-            
-            -- Wait for completion
-            while isRunning and fruitAutomationActive do
-                task.wait(1)
-            end
-            
-            automationToggles.tranquil(false) -- Deactivate Tranquil
+            automationToggles.tranquil(true)
+            while isRunning and fruitAutomationActive do task.wait(1) end
+            automationToggles.tranquil(false)
         end
 
         if not fruitAutomationActive then break end
@@ -2208,7 +2193,7 @@ local function collectTargetFruits()
         task.wait(2)
 
         createColoredNotification(string.format("Completed AFK loop #%d", loopCount), "Rarity: Common")
-        task.wait(5) -- Brief pause before next loop
+        task.wait(3) -- Slightly longer pause before next loop
     end
 end
 
@@ -2216,7 +2201,7 @@ tab4:CreateToggle("AFK Fruit Farm Loop", function(state)
     fruitAutomationActive = state
     if state then
         loopCount = 0
-        createColoredNotification("Started full AFK farming loop:\n1. Collect Fruits → 2. Kitsune → 3. Tranquil → 4. Sell → Repeat", "Rarity: Common")
+        createColoredNotification("Started optimized AFK farming loop:\n1. Collect Fruits → 2. Kitsune → 3. Tranquil → 4. Sell → Repeat", "Rarity: Common")
         task.spawn(collectTargetFruits)
     else
         createColoredNotification("Stopped AFK farming loop", "Rarity: Common")
