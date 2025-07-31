@@ -2152,7 +2152,7 @@ local function collectTargetFruits()
                                 task.wait(0.15) -- Short wait for positioning
                                 fireproximityprompt(prompt)
                                 createColoredNotification("Collected "..fruit.Name.." ("..#LocalPlayer.Backpack:GetChildren().."/"..maxBackpackItems..")", "Rarity: Common")
-                                task.wait(0.35) -- Short delay before next collection
+                                task.wait(0.5) -- Short delay before next collection
                             end
                         end
                     end
