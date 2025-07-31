@@ -2113,13 +2113,87 @@ end)
 local tab4 = Main:CreateTab("Fruit Automation")
 
 local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple"}
-local maxBackpackItems = nil -- Will be set when toggle is activated
+local maxBackpackItems = nil -- Will be detected when script starts
 local fruitAutomationActive = false
 local loopCount = 0
 local blacklistedFruits = {} -- Table to track problematic fruits
 
+local function detectMaxBackpackSlots()
+    -- First, sell all current fruits to get empty backpack
+    sellAllFruits()
+    task.wait(1)
+    
+    -- Then collect fruits until we can't collect anymore
+    local previousCount = 0
+    local currentCount = 0
+    local stableCount = 0
+    
+    -- Keep checking until we get consistent count for 3 checks
+    while stableCount < 3 do
+        previousCount = currentCount
+        currentCount = getBackpackLimit()
+        
+        if currentCount == previousCount then
+            stableCount = stableCount + 1
+        else
+            stableCount = 0
+        end
+        
+        -- Try to collect one more fruit
+        if not attemptToCollectOneFruit() then
+            break
+        end
+        
+        task.wait(0.5)
+    end
+    
+    maxBackpackItems = currentCount
+    createColoredNotification("Detected backpack capacity: "..maxBackpackItems, "Rarity: Common")
+    
+    -- Sell all fruits after detection
+    sellAllFruits()
+    return maxBackpackItems
+end
+
+local function attemptToCollectOneFruit()
+    if not playerFarm then
+        playerFarm = findPlayerFarm()
+        if not playerFarm then return false end
+    end
+
+    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+    if plantsPhysical then
+        for _, plant in pairs(plantsPhysical:GetChildren()) do
+            local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+            
+            for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                if fruit:GetAttribute("DoneGrowTime") then
+                    local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                    if not prompt then
+                        for _, part in pairs(fruit:GetDescendants()) do
+                            if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
+                                prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
+                                break
+                            end
+                        end
+                    end
+                    
+                    if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = LocalPlayer.Character.HumanoidRootPart
+                        hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+                        task.wait(0.15)
+                        fireproximityprompt(prompt)
+                        task.wait(0.5)
+                        return true
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
 local function getBackpackLimit()
-    -- Count all items in backpack and character
     local totalItems = 0
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
         if item:IsA("Tool") then
@@ -2448,17 +2522,21 @@ end
 tab4:CreateToggle("AFK Fruit Farm Loop", function(state)
     fruitAutomationActive = state
     if state then
-        -- Get current backpack limit when toggled on
-        maxBackpackItems = getBackpackLimit()
-        if maxBackpackItems == 0 then
-            createColoredNotification("Backpack is empty! Please collect some fruits first.", "Rarity: Common")
+        -- First detect backpack capacity if not already detected
+        if not maxBackpackItems then
+            createColoredNotification("Detecting backpack capacity...", "Rarity: Common")
+            detectMaxBackpackSlots()
+        end
+        
+        if not maxBackpackItems or maxBackpackItems == 0 then
+            createColoredNotification("Failed to detect backpack capacity!", "Rarity: Common")
             fruitAutomationActive = false
             return
         end
         
         loopCount = 0
         blacklistedFruits = {}
-        createColoredNotification("Started optimized AFK farming loop with backpack limit: "..maxBackpackItems, "Rarity: Common")
+        createColoredNotification("Started AFK farming with backpack limit: "..maxBackpackItems, "Rarity: Common")
         task.spawn(collectTargetFruits)
     else
         createColoredNotification("Stopping AFK farming loop...", "Rarity: Common")
