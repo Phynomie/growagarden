@@ -2099,7 +2099,7 @@ local function collectTargetFruits()
         loopCount = loopCount + 1
         createColoredNotification(string.format("Starting AFK loop #%d", loopCount), "Rarity: Common")
         
-        -- PHASE 1: COLLECT TARGET FRUITS
+        -- PHASE 1: COLLECT TARGET FRUITS USING YOUR EXISTING FUNCTION
         while fruitAutomationActive and #LocalPlayer.Backpack:GetChildren() < maxBackpackItems do
             if not playerFarm then
                 playerFarm = findPlayerFarm()
@@ -2115,75 +2115,59 @@ local function collectTargetFruits()
                     local fruitsFolder = plant:FindFirstChild("Fruits")
                     local fruitsToCheck = {}
                     
+                    -- Collect all target fruits
                     if fruitsFolder then
                         for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                            table.insert(fruitsToCheck, fruit)
+                            for _, targetName in pairs(targetFruits) do
+                                if fruit.Name:find(targetName) and fruit:GetAttribute("DoneGrowTime") then
+                                    table.insert(fruitsToCheck, fruit)
+                                    break
+                                end
+                            end
                         end
-                    else
-                        table.insert(fruitsToCheck, plant)
                     end
                     
+                    -- Process collected fruits using your proven method
                     for _, fruit in pairs(fruitsToCheck) do
-            if not fruitAutomationActive or #LocalPlayer.Backpack:GetChildren() >= maxBackpackItems then break end
-            
-            -- Check if target fruit and ready to harvest
-            local isTargetFruit = false
-            for _, targetName in pairs(targetFruits) do
-                if fruit.Name:find(targetName) then
-                    isTargetFruit = true
-                    break
-                end
-            end
-            
-            if isTargetFruit and fruit:GetAttribute("DoneGrowTime") then
-                -- NEW IMPROVED PROMPT FINDING LOGIC
-                local prompt
-                
-                -- Method 1: Check common prompt locations
-                if fruit:FindFirstChild("Handle") then
-                    prompt = fruit.Handle:FindFirstChildWhichIsA("ProximityPrompt")
-                end
-                
-                -- Method 2: Check fruit directly
-                if not prompt then
-                    prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
-                end
-                
-                -- Method 3: Check all parts if needed
-                if not prompt and fruit:IsA("Model") then
-                    for _, part in ipairs(fruit:GetDescendants()) do
-                        if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
-                            prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
-                            break
+                        if not fruitAutomationActive or #LocalPlayer.Backpack:GetChildren() >= maxBackpackItems then break end
+                        
+                        -- Use your existing scan and collection logic
+                        local function scanAndCollect(model)
+                            if model:GetAttribute("DoneGrowTime") then
+                                local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
+                                if not prompt then
+                                    for _, descendant in pairs(model:GetDescendants()) do
+                                        if descendant:IsA("ProximityPrompt") then
+                                            prompt = descendant
+                                            break
+                                        end
+                                    end
+                                end
+                                
+                                if prompt then
+                                    local char = LocalPlayer.Character
+                                    if char and char:FindFirstChild("HumanoidRootPart") then
+                                        local hrp = char.HumanoidRootPart
+                                        local originalPos = hrp.CFrame
+                                        
+                                        hrp.CFrame = model:GetPivot() * CFrame.new(0, 0, -2)
+                                        task.wait(0.2)
+                                        fireproximityprompt(prompt)
+                                        createColoredNotification("Collected "..fruit.Name, "Rarity: Common")
+                                        
+                                        task.wait(0.1)
+                                        hrp.CFrame = originalPos
+                                        task.wait(0.5) -- Reduced delay between collections
+                                    end
+                                end
+                            end
                         end
+                        
+                        scanAndCollect(fruit)
                     end
-                end
-
-                if prompt then
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        local hrp = char.HumanoidRootPart
-                        local originalPos = hrp.CFrame
-                        
-                        -- Teleport to fruit (adjusted for better positioning)
-                        hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5) -- Increased distance
-                        task.wait(0.25) -- Slightly longer wait
-                        
-                        -- Fire prompt with visual feedback
-                        fireproximityprompt(prompt)
-                        createColoredNotification("Collected "..fruit.Name, "Rarity: Common")
-                        
-                        -- Return with adjusted timing
-                        task.wait(0.15)
-                        hrp.CFrame = originalPos
-                        task.wait(0.75) -- Reduced delay between collections
-                    end
-                else
-                    warn("Could not find prompt on: "..fruit:GetFullName())
                 end
             end
-        end
-            task.wait(5) -- Wait between scans
+            task.wait(1) -- Brief pause between farm scans
         end
 
         if not fruitAutomationActive then break end
