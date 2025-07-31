@@ -2548,13 +2548,7 @@ tab4:CreateToggle("AFK Fruit Farm Loop", function(state)
     if state then
         loopCount = 0
         blacklistedFruits = {}
-        
-        -- Verify backpack is full before starting
-        if #LocalPlayer.Backpack:GetChildren() < (maxBackpackItems or 477) then
-            createColoredNotification("Please fill your backpack first!", "Rarity: Common")
-            fruitAutomationActive = false
-            return
-        end
+        maxBackpackItems = nil -- Reset detection
         
         createColoredNotification("Starting AFK farming loop...", "Rarity: Common")
         task.spawn(collectTargetFruits)
