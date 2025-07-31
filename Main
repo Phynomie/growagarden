@@ -2248,6 +2248,103 @@ local function safeSubmitToKitsune(fruit)
     return true
 end
 
+local UserInputService = game:GetService("UserInputService")
+local PROMPT_DISTANCE = 10 -- Max proximity prompt distance
+local HOLD_E_DURATION = 0.5 -- How long to hold E
+
+-- Modified fruit collection function
+local function collectNearbyTargetFruits()
+    if not playerFarm then
+        playerFarm = findPlayerFarm()
+        if not playerFarm then return false end
+    end
+
+    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+    if not plantsPhysical then return false end
+
+    -- Find all target fruits with prompts within range
+    local targetPrompts = {}
+    for _, plant in pairs(plantsPhysical:GetChildren()) do
+        local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+        for _, fruit in pairs(fruitsFolder:GetChildren()) do
+            if not fruit:GetAttribute("DoneGrowTime") then continue end
+            
+            -- Check if target fruit
+            local isTarget = false
+            for _, targetName in pairs(targetFruits) do
+                if fruit.Name:find(targetName) then
+                    isTarget = true
+                    break
+                end
+            end
+            if not isTarget then continue end
+
+            -- Find prompt
+            local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+            if not prompt then
+                for _, part in pairs(fruit:GetDescendants()) do
+                    if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
+                        prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
+                        break
+                    end
+                end
+            end
+            
+            if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = LocalPlayer.Character.HumanoidRootPart
+                local dist = (hrp.Position - fruit:GetPivot().Position).Magnitude
+                if dist <= PROMPT_DISTANCE then
+                    table.insert(targetPrompts, prompt)
+                end
+            end
+        end
+    end
+
+    if #targetPrompts > 0 then
+        -- Hold E to collect all nearby target fruits
+        UserInputService:SetKeysDown({Enum.KeyCode.E})
+        task.wait(HOLD_E_DURATION)
+        UserInputService:SetKeysUp({Enum.KeyCode.E})
+        return true
+    end
+
+    -- No fruits nearby, find closest target fruit to teleport to
+    local closestFruit, minDist = nil, math.huge
+    for _, plant in pairs(plantsPhysical:GetChildren()) do
+        local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+        for _, fruit in pairs(fruitsFolder:GetChildren()) do
+            if not fruit:GetAttribute("DoneGrowTime") then continue end
+            
+            local isTarget = false
+            for _, targetName in pairs(targetFruits) do
+                if fruit.Name:find(targetName) then
+                    isTarget = true
+                    break
+                end
+            end
+            if not isTarget then continue end
+
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = LocalPlayer.Character.HumanoidRootPart
+                local dist = (hrp.Position - fruit:GetPivot().Position).Magnitude
+                if dist < minDist then
+                    closestFruit = fruit
+                    minDist = dist
+                end
+            end
+        end
+    end
+
+    if closestFruit and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        hrp.CFrame = closestFruit:GetPivot() * CFrame.new(0, 0, -PROMPT_DISTANCE/2)
+        task.wait(0.3)
+        return false -- Didn't collect yet, need to try again after moving
+    end
+
+    return false -- No target fruits found at all
+end
+
 -- Modified collectTargetFruits function with better phase interruption
 local function collectTargetFruits()
     -- Get the initial backpack capacity
@@ -2266,62 +2363,11 @@ local function collectTargetFruits()
         end
         
         -- PHASE 1: CONTINUOUS FRUIT COLLECTION
-        while fruitAutomationActive and getBackpackCapacity() < backpackCapacity do
-            if not playerFarm then
-                playerFarm = findPlayerFarm()
-                if not playerFarm then 
-                    task.wait(5)
-                    continue 
-                end
+        while (fruitAutomationActive or tranquilOnlyActive) and getBackpackCapacity() < backpackCapacity do
+            if collectNearbyTargetFruits() then
+                createColoredNotification("Collected nearby fruits ("..getBackpackCapacity().."/"..backpackCapacity..")", "Rarity: Common")
             end
-
-            local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-            if plantsPhysical then
-                for _, plant in pairs(plantsPhysical:GetChildren()) do
-                    local fruitsFolder = plant:FindFirstChild("Fruits") or plant
-                    
-                    -- Scan all fruits in the plant
-                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                        if not fruitAutomationActive then break end -- Check if toggled off
-                        if getBackpackCapacity() >= backpackCapacity then break end
-                        
-                        -- Check if target fruit and ready to harvest
-                        local isTargetFruit = false
-                        for _, targetName in pairs(targetFruits) do
-                            if fruit.Name:find(targetName) and fruit:GetAttribute("DoneGrowTime") then
-                                isTargetFruit = true
-                                break
-                            end
-                        end
-                        
-                        if isTargetFruit then
-                            -- Find prompt (optimized search)
-                            local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
-                            if not prompt then
-                                for _, part in pairs(fruit:GetDescendants()) do
-                                    if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
-                                        prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
-                                        break
-                                    end
-                                end
-                            end
-                            
-                            -- Collect if prompt found
-                            if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                local hrp = LocalPlayer.Character.HumanoidRootPart
-                                hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
-                                task.wait(0.15)
-                                fireproximityprompt(prompt)
-                                createColoredNotification("Collected "..fruit.Name.." ("..getBackpackCapacity().."/"..backpackCapacity..")", "Rarity: Common")
-                                task.wait(0.5)
-                            end
-                        end
-                    end
-                    if not fruitAutomationActive then break end -- Check if toggled off
-                end
-            end
-            if not fruitAutomationActive then break end -- Check if toggled off
-            task.wait(0.5)
+            task.wait(0.3)
         end
 
         if not fruitAutomationActive then break end -- Check if toggled off before next phase
