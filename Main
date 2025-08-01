@@ -1954,17 +1954,29 @@ end)
 local tab4 = Main:CreateTab("Fruit Automation")
 
 local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple", "Lucky Bamboo"}
-local maxBackpackItems = 445
+local maxBackpackItems = nil -- Will be set dynamically
 local fruitAutomationActive = false
 local loopCount = 0
 local blacklistedFruits = {} 
 local tranquilAutomationActive = false
 
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
 local playerBackpackLimits = {
-    ["Phynomie"] = 445,
-    ["HEZZYOFFICIALE"] = 329,
-    ["default"] = 100
+    ["default"] = 100 
 }
+
+local function setBackpackLimit()
+    -- Get current backpack count as default
+    local currentCount = countBackpackItems()
+    playerBackpackLimits["default"] = currentCount
+    
+    -- Set the limit (prioritizes player-specific limits)
+    maxBackpackItems = playerBackpackLimits[player.Name] or currentCount
+    
+    createColoredNotification(string.format("Backpack slots: %d/%d", countBackpackItems(), maxBackpackItems), "Rarity: Common")
+end
 
 local function sellAllFruits()
     if not (fruitAutomationActive or tranquilAutomationActive) then return false end 
