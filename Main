@@ -2352,17 +2352,29 @@ local function collectTargetFruits()
             local tranquilSuccess = false
             while fruitAutomationActive and not tranquilSuccess do
                 local currentTranquilFruits = {}
+
+                if LocalPlayer.Character then
+                    local equippedTools = 0
+                    for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                        if item:IsA("Tool") then
+                            equippedTools = equippedTools + 1
+                        end
+                    end
+                
+                    if equippedTools > 0 then
+                        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                            if item:IsA("Tool") then
+                                item.Parent = LocalPlayer.Backpack
+                            end
+                        end
+                        task.wait(0.5)
+                        continue 
+                    end
+                end
+
                 for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                     if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
                         table.insert(currentTranquilFruits, item)
-                    end
-                end
-                
-                if LocalPlayer.Character then
-                    for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-                        if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-                            table.insert(currentTranquilFruits, item)
-                        end
                     end
                 end
 
