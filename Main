@@ -2487,6 +2487,138 @@ tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state
     end
 end)
 
+local tranquilAutomationActive = false
+local tranquilBlacklistedFruits = {}
+local TRANQUIL_NPC_POSITION = CFrame.new(-73.59021, 4.3999157, -12.1218204)
+
+-- Function to safely submit to Tranquil NPC with optimized timing
+local function safeSubmitToTranquil(fruit)
+    if not tranquilAutomationActive then return false end
+    
+    -- Check if fruit is blacklisted
+    if tranquilBlacklistedFruits[fruit] then
+        print("Skipping blacklisted fruit: "..fruit.Name)
+        return false
+    end
+    
+    -- Equip the fruit (faster than before)
+    fruit.Parent = LocalPlayer.Character
+    task.wait(0.25)  -- Reduced from 0.5 to 0.25 seconds
+    
+    -- Verify the fruit was equipped
+    if fruit.Parent ~= LocalPlayer.Character then
+        print("Failed to equip fruit: "..fruit.Name)
+        tranquilBlacklistedFruits[fruit] = true
+        return false
+    end
+    
+    -- Submit to Tranquil NPC
+    local args = {"SubmitAllPlants"}
+    game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
+    
+    -- Faster verification (1 second total with more frequent checks)
+    local startTime = os.clock()
+    while os.clock() - startTime < 1 do
+        if fruit.Parent ~= LocalPlayer.Character then
+            return true  -- Successfully submitted
+        end
+        task.wait(0.05)
+    end
+    
+    -- If fruit still exists after submission
+    if fruit.Parent == LocalPlayer.Character then
+        print("Fruit not consumed after submission: "..fruit.Name)
+        tranquilBlacklistedFruits[fruit] = true
+        fruit.Parent = LocalPlayer.Backpack
+        return false
+    end
+    
+    return true
+end
+
+-- Main tranquil automation function
+local function runTranquilAutomation()
+    while tranquilAutomationActive do
+        -- Store original position
+        local originalPos
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+        end
+        
+        -- Teleport to Tranquil NPC
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = TRANQUIL_NPC_POSITION
+            task.wait(0.8)  -- Slightly shorter wait for teleport
+        end
+        
+        local success = false
+        while tranquilAutomationActive and not success do
+            -- Find all tranquil fruits (not corrupt)
+            local tranquilFruits = {}
+            for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+                if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                    table.insert(tranquilFruits, item)
+                end
+            end
+            
+            -- Check equipped tool
+            if LocalPlayer.Character then
+                for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                    if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                        table.insert(tranquilFruits, item)
+                    end
+                end
+            end
+            
+            -- Filter out skipped/blacklisted fruits
+            local submitableFruits = {}
+            for _, fruit in ipairs(tranquilFruits) do
+                if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") and not tranquilBlacklistedFruits[fruit] then
+                    table.insert(submitableFruits, fruit)
+                end
+            end
+            
+            if #submitableFruits == 0 then
+                success = true
+                break
+            end
+            
+            -- Submit the first available fruit
+            local fruitToSubmit = submitableFruits[1]
+            if safeSubmitToTranquil(fruitToSubmit) then
+                createColoredNotification("Submitted: "..fruitToSubmit.Name, "Rarity: Common")
+                task.wait(0.5)  -- Short delay between submissions
+            end
+        end
+        
+        -- Return to original position
+        if originalPos then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+            task.wait(0.5)
+        end
+        
+        if tranquilAutomationActive then
+            createColoredNotification("Tranquil submission cycle completed", "Rarity: Common")
+            task.wait(2)  -- Short wait before next cycle
+        end
+    end
+    
+    tranquilBlacklistedFruits = {}
+    createColoredNotification("Tranquil automation stopped", "Rarity: Common")
+end
+
+-- Create the toggle
+tab4:CreateToggle("Auto Submit to Tranquil NPC", function(state)
+    tranquilAutomationActive = state
+    if state then
+        tranquilBlacklistedFruits = {}
+        createColoredNotification("Starting Tranquil NPC automation", "Rarity: Common")
+        task.spawn(runTranquilAutomation)
+    else
+        createColoredNotification("Stopping Tranquil NPC automation...", "Rarity: Common")
+    end
+end)
+
 tab:Show()
 
 library.OnDestroy = function()
