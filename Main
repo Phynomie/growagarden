@@ -1967,6 +1967,11 @@ local playerBackpackLimits = {
     ["default"] = nil
 }
 
+local function countBackpackItems()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    return backpack and #backpack:GetChildren() or 0
+end
+
 local function setBackpackLimit()
     local currentCount = countBackpackItems()
 
@@ -2074,21 +2079,6 @@ local function safeSubmitToKitsune(fruit)
     end
     
     return true
-end
-
-local function setBackpackLimit()
-    local playerName = LocalPlayer.Name
-    maxBackpackItems = playerBackpackLimits[playerName] or playerBackpackLimits["default"]
-    createColoredNotification(string.format("Backpack limit set to %d for %s", maxBackpackItems, playerName), "Rarity: Common")
-end
-
-local function countBackpackItems()
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    return backpack and #backpack:GetChildren() or 0
-end
-
-local function getAvailableSpace()
-    return maxBackpackItems - countBackpackItems()
 end
 
 local function collectTargetFruits()
