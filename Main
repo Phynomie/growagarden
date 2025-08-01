@@ -2418,6 +2418,38 @@ local function collectTargetFruits()
     createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
+local function tranquilOnlyLoop()
+    setBackpackLimit()
+    local originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+
+    while tranquilAutomationActive do
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-73.59021, 4.3999157, -12.1218204)
+        task.wait(1)
+
+        local submitted = false
+        for _, fruit in pairs(getTranquilFruits()) do
+            if not tranquilAutomationActive then break end
+            if submitToTranquil(fruit) then
+                submitted = true
+                task.wait(1.5)
+            end
+        end
+
+        if not submitted and getAvailableSpace() > 20 then
+            collectTargetFruits() 
+        end
+
+        if countBackpackItems() >= (maxBackpackItems - 10) then
+            sellAllFruits()
+        end
+
+        task.wait(3) 
+    end
+
+    -- Return to original position
+    LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+end
+
 tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
     fruitAutomationActive = state
     if state then
@@ -2430,15 +2462,10 @@ tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state
     end
 end)
 
-tab4:CreateToggle("AFK Fruit Farm Loop (Tranquil Only)", function(state)
+tab4:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
     tranquilAutomationActive = state
     if state then
-        loopCount = 0
-        blacklistedFruits = {}
-        createColoredNotification("Started optimized AFK farming loop", "Rarity: Common")
-        task.spawn(collectTargetFruits)
-    else
-        createColoredNotification("Stopping AFK farming loop...", "Rarity: Common")
+        task.spawn(tranquilOnlyLoop)
     end
 end)
 
