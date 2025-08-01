@@ -2324,6 +2324,11 @@ local function collectTargetFruits()
         createColoredNotification("Starting Kitsune submission...", "Rarity: Common")
         if automationToggles.kitsune and fruitAutomationActive then
             -- Modified Kitsune automation with safety checks
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-101.82, 3.0, -13.08)
+                task.wait(1) -- Wait for teleport to complete
+            end
+
             local kitsuneSuccess = false
             while fruitAutomationActive and not kitsuneSuccess do
                 -- Get current levels
@@ -2372,14 +2377,22 @@ local function collectTargetFruits()
                 
                 task.wait(1)
             end
+            if originalPos then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+                task.wait(0.5)
+            end
         end
 
         if not fruitAutomationActive then break end -- Check if toggled off before next phase
 
         -- PHASE 3: TRANQUIL AUTOMATION
-        createColoredNotification("Starting Tranquil submission...", "Rarity: Common")
         if automationToggles.tranquil and fruitAutomationActive then
-            -- Modified Tranquil automation with safety checks
+            -- Teleport to Tranquil NPC first
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-73.59021, 4.3999157, -12.1218204)
+                task.wait(1) -- Wait for teleport to complete
+            end
+            
             local tranquilSuccess = false
             while fruitAutomationActive and not tranquilSuccess do
                 -- Find tranquil fruits
@@ -2437,15 +2450,21 @@ local function collectTargetFruits()
                 
                 task.wait(1.5)
             end
+            
+            -- Return to original position after Tranquil submission
+            if originalPos then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+                task.wait(0.5)
+            end
         end
 
-        if not fruitAutomationActive then break end -- Check if toggled off before next phase
+        if not fruitAutomationActive then break end
 
         -- PHASE 4: SELL REMAINING FRUITS
         createColoredNotification("Selling remaining fruits...", "Rarity: Common")
         sellAllFruits()
         
-        if not fruitAutomationActive then break end -- Final check before loop continues
+        if not fruitAutomationActive then break end
         
         createColoredNotification(string.format("Completed AFK loop #%d", loopCount), "Rarity: Common")
         task.wait(3)
@@ -2456,7 +2475,7 @@ local function collectTargetFruits()
     createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
-tab4:CreateToggle("AFK Fruit Farm Loop", function(state)
+tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
     fruitAutomationActive = state
     if state then
         loopCount = 0
