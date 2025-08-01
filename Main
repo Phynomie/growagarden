@@ -2354,21 +2354,10 @@ local function collectTargetFruits()
                 local currentTranquilFruits = {}
 
                 if LocalPlayer.Character then
-                    local equippedTools = 0
                     for _, item in pairs(LocalPlayer.Character:GetChildren()) do
                         if item:IsA("Tool") then
-                            equippedTools = equippedTools + 1
+                            item.Parent = LocalPlayer.Backpack
                         end
-                    end
-                
-                    if equippedTools > 0 then
-                        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-                            if item:IsA("Tool") then
-                                item.Parent = LocalPlayer.Backpack
-                            end
-                        end
-                        task.wait(0.5)
-                        continue 
                     end
                 end
 
