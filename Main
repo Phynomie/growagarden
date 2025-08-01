@@ -2112,7 +2112,7 @@ end)
 
 local tab4 = Main:CreateTab("Fruit Automation")
 
-local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple"}
+local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple", "Lucky Bamboo"}
 local maxBackpackItems = 456
 local fruitAutomationActive = false
 local loopCount = 0
