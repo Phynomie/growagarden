@@ -2113,13 +2113,39 @@ end)
 local tab4 = Main:CreateTab("Fruit Automation")
 
 local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple", "Lucky Bamboo"}
-local maxBackpackItems = 456
+local maxBackpackItems = nil -- Will be set based on player
 local fruitAutomationActive = false
 local loopCount = 0
-local blacklistedFruits = {} -- New table to track problematic fruits
+local blacklistedFruits = {}
+
+-- Player-specific backpack capacities
+local playerBackpackLimits = {
+    ["Phynomie"] = 456,
+    ["HEZZYOFFICIALE"] = 329,
+    -- Default capacity for other players
+    ["default"] = 100
+}
+
+-- Function to set backpack limit based on player
+local function setBackpackLimit()
+    local playerName = LocalPlayer.Name
+    maxBackpackItems = playerBackpackLimits[playerName] or playerBackpackLimits["default"]
+    createColoredNotification(string.format("Backpack limit set to %d for %s", maxBackpackItems, playerName), "Rarity: Common")
+end
+
+-- Function to count current backpack items
+local function countBackpackItems()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    return backpack and #backpack:GetChildren() or 0
+end
+
+-- Function to check available space
+local function getAvailableSpace()
+    return maxBackpackItems - countBackpackItems()
+end
 
 local function sellAllFruits()
-    if not fruitAutomationActive then return false end -- Early exit if toggled off
+    if not fruitAutomationActive then return false end
     
     local steven = workspace.NPCS:FindFirstChild("Steven")
     if not steven then
@@ -2161,17 +2187,14 @@ local function sellAllFruits()
     return true
 end
 
--- Modified Kitsune submission function with safety checks
 local function safeSubmitToKitsune(fruit)
-    if not fruitAutomationActive then return false end -- Early exit if toggled off
+    if not fruitAutomationActive then return false end
     
-    -- Check if fruit is blacklisted
     if blacklistedFruits[fruit] then
         print("Skipping blacklisted fruit: "..fruit.Name)
         return false
     end
     
-    -- Check if player is holding more than 1 tool (should never happen)
     if LocalPlayer.Character then
         local equippedTools = 0
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
@@ -2181,7 +2204,6 @@ local function safeSubmitToKitsune(fruit)
         end
         
         if equippedTools > 1 then
-            -- Unequip all tools and try again
             for _, item in pairs(LocalPlayer.Character:GetChildren()) do
                 if item:IsA("Tool") then
                     item.Parent = LocalPlayer.Backpack
@@ -2192,129 +2214,106 @@ local function safeSubmitToKitsune(fruit)
         end
     end
     
-    -- Equip the fruit
     fruit.Parent = LocalPlayer.Character
-    task.wait(0.5) -- Give more time to equip
+    task.wait(0.5)
     
-    -- Verify the fruit was equipped
     if fruit.Parent ~= LocalPlayer.Character then
         print("Failed to equip fruit: "..fruit.Name)
-        blacklistedFruits[fruit] = true -- Add to blacklist
+        blacklistedFruits[fruit] = true
         return false
     end
     
-    -- Submit to Kitsune
     local args = {"SubmitToFox"}
     game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
     
-    -- Wait and verify if fruit was consumed
     local startTime = os.clock()
-    while os.clock() - startTime < 2 do -- Wait up to 2 seconds
+    while os.clock() - startTime < 2 do
         if fruit.Parent ~= LocalPlayer.Character then
-            break -- Fruit was consumed
+            break
         end
         task.wait(0.1)
     end
     
-    -- If fruit still exists after submission, blacklist it
     if fruit.Parent == LocalPlayer.Character then
         print("Fruit not consumed after submission: "..fruit.Name)
         blacklistedFruits[fruit] = true
-        fruit.Parent = LocalPlayer.Backpack -- Put it back
+        fruit.Parent = LocalPlayer.Backpack
         return false
     end
     
     return true
 end
 
--- Modified collectTargetFruits function with better phase interruption
 local function collectTargetFruits()
+    setBackpackLimit()
+    
     while fruitAutomationActive do
         loopCount = loopCount + 1
-        createColoredNotification(string.format("Starting AFK loop #%d", loopCount), "Rarity: Common")
+        local availableSpace = getAvailableSpace()
         
-        -- Store original position once at start of collection phase
+        createColoredNotification(string.format("Starting AFK loop #%d (%d/%d slots used)", 
+            loopCount, countBackpackItems(), maxBackpackItems), "Rarity: Common")
+        
+        -- PHASE 1: CONTINUOUS FRUIT COLLECTION
         local originalPos
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
         end
         
-        -- PHASE 1: CONTINUOUS FRUIT COLLECTION
-        while fruitAutomationActive and #LocalPlayer.Backpack:GetChildren() < maxBackpackItems do
-            if not playerFarm then
-                playerFarm = findPlayerFarm()
-                if not playerFarm then 
-                    task.wait(5)
-                    continue 
-                end
-            end
+        while fruitAutomationActive and getAvailableSpace() > 0 do
+            if not playerFarm then playerFarm = findPlayerFarm() end
+            if not playerFarm then task.wait(5); continue end
 
             local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-            if plantsPhysical then
-                for _, plant in pairs(plantsPhysical:GetChildren()) do
-                    local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+            if not plantsPhysical then task.wait(1); continue end
+
+            for _, plant in pairs(plantsPhysical:GetChildren()) do
+                if not fruitAutomationActive or getAvailableSpace() <= 0 then break end
+                
+                local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+                for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                    if not fruitAutomationActive or getAvailableSpace() <= 0 then break end
                     
-                    -- Scan all fruits in the plant
-                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                        if not fruitAutomationActive then break end -- Check if toggled off
-                        if #LocalPlayer.Backpack:GetChildren() >= maxBackpackItems then break end
-                        
-                        -- Check if target fruit and ready to harvest
-                        local isTargetFruit = false
-                        for _, targetName in pairs(targetFruits) do
-                            if fruit.Name:find(targetName) and fruit:GetAttribute("DoneGrowTime") then
-                                isTargetFruit = true
-                                break
-                            end
-                        end
-                        
-                        if isTargetFruit then
-                            -- Find prompt (optimized search)
-                            local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
-                            if not prompt then
-                                for _, part in pairs(fruit:GetDescendants()) do
-                                    if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
-                                        prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
-                                        break
-                                    end
-                                end
-                            end
-                            
-                            -- Collect if prompt found
-                            if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                                local hrp = LocalPlayer.Character.HumanoidRootPart
-                                hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
-                                task.wait(0.15)
-                                fireproximityprompt(prompt)
-                                createColoredNotification("Collected "..fruit.Name.." ("..#LocalPlayer.Backpack:GetChildren().."/"..maxBackpackItems..")", "Rarity: Common")
-                                task.wait(0.5)
-                            end
+                    local isTarget = false
+                    for _, target in pairs(targetFruits) do
+                        if fruit.Name:find(target) and fruit:GetAttribute("DoneGrowTime") then
+                            isTarget = true
+                            break
                         end
                     end
-                    if not fruitAutomationActive then break end -- Check if toggled off
+                    if not isTarget then continue end
+
+                    local prompt
+                    for _, descendant in pairs(fruit:GetDescendants()) do
+                        if descendant:IsA("ProximityPrompt") then
+                            prompt = descendant
+                            break
+                        end
+                    end
+                    if not prompt then continue end
+
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        local hrp = char.HumanoidRootPart
+                        hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+                        task.wait(0.15)
+                        fireproximityprompt(prompt)
+                        createColoredNotification("Collected "..fruit.Name..string.format(" (%d/%d free)", 
+                            getAvailableSpace(), maxBackpackItems), "Rarity: Common")
+                        task.wait(0.35)
+                    end
                 end
             end
-            if not fruitAutomationActive then break end -- Check if toggled off
             task.wait(0.5)
         end
 
-        if not fruitAutomationActive then break end -- Check if toggled off before next phase
-
-        -- Return to original position after collection phase
-        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
-            task.wait(0.5)
-        end
-
-        if not fruitAutomationActive then break end -- Check if toggled off before next phase
+        if not fruitAutomationActive then break end
 
         -- PHASE 2: KITSUNE AUTOMATION
         createColoredNotification("Starting Kitsune submission...", "Rarity: Common")
         if automationToggles.kitsune and fruitAutomationActive then
-            -- Modified Kitsune automation with safety checks
             local kitsuneSuccess = false
             while fruitAutomationActive and not kitsuneSuccess do
-                -- Get current levels
                 local TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
                 local CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
                 
@@ -2323,7 +2322,6 @@ local function collectTargetFruits()
                     break
                 end
                 
-                -- Find suitable fruits
                 getFruits()
                 local submittedAny = false
                 
@@ -2349,28 +2347,26 @@ local function collectTargetFruits()
                             submittedAny = true
                             table.remove(fruits, i)
                             task.wait(1.5)
-                            break -- Submit one at a time with checks
+                            break
                         end
                     end
                 end
                 
                 if not submittedAny then
-                    kitsuneSuccess = true -- No more fruits to submit
+                    kitsuneSuccess = true
                 end
                 
                 task.wait(1)
             end
         end
 
-        if not fruitAutomationActive then break end -- Check if toggled off before next phase
+        if not fruitAutomationActive then break end
 
         -- PHASE 3: TRANQUIL AUTOMATION
         createColoredNotification("Starting Tranquil submission...", "Rarity: Common")
         if automationToggles.tranquil and fruitAutomationActive then
-            -- Modified Tranquil automation with safety checks
             local tranquilSuccess = false
             while fruitAutomationActive and not tranquilSuccess do
-                -- Find tranquil fruits
                 local currentTranquilFruits = {}
                 for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                     if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
@@ -2386,7 +2382,6 @@ local function collectTargetFruits()
                     end
                 end
                 
-                -- Filter out skipped/blacklisted fruits
                 local submitableTranquilFruits = {}
                 for _, fruit in ipairs(currentTranquilFruits) do
                     if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") and not blacklistedFruits[fruit] then
@@ -2399,25 +2394,21 @@ local function collectTargetFruits()
                     break
                 end
                 
-                -- Submit one fruit at a time with checks
                 local fruitToSubmit = submitableTranquilFruits[1]
                 fruitToSubmit.Parent = LocalPlayer.Character
                 task.wait(0.5)
                 
-                -- Fire the RemoteEvent
                 local args = {"SubmitAllPlants"}
                 game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
                 
-                -- Verify submission
                 local startTime = os.clock()
                 while os.clock() - startTime < 2 do
                     if fruitToSubmit.Parent ~= LocalPlayer.Character then
-                        break -- Fruit was consumed
+                        break
                     end
                     task.wait(0.1)
                 end
                 
-                -- If fruit still exists, blacklist it
                 if fruitToSubmit.Parent == LocalPlayer.Character then
                     blacklistedFruits[fruitToSubmit] = true
                     fruitToSubmit.Parent = LocalPlayer.Backpack
@@ -2427,29 +2418,28 @@ local function collectTargetFruits()
             end
         end
 
-        if not fruitAutomationActive then break end -- Check if toggled off before next phase
+        if not fruitAutomationActive then break end
 
         -- PHASE 4: SELL REMAINING FRUITS
         createColoredNotification("Selling remaining fruits...", "Rarity: Common")
         sellAllFruits()
         
-        if not fruitAutomationActive then break end -- Final check before loop continues
+        if not fruitAutomationActive then break end
         
         createColoredNotification(string.format("Completed AFK loop #%d", loopCount), "Rarity: Common")
         task.wait(3)
     end
     
-    -- Cleanup when loop ends
-    blacklistedFruits = {} -- Reset blacklist
+    blacklistedFruits = {}
     createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
-tab4:CreateToggle("AFK Fruit Farm Loop", function(state)
+tab4:CreateToggle("AFK Fruit Farm Loop for kitsune", function(state)
     fruitAutomationActive = state
     if state then
         loopCount = 0
-        blacklistedFruits = {} -- Reset blacklist on start
-        createColoredNotification("Started optimized AFK farming loop:\n1. Collect Fruits → 2. Kitsune → 3. Tranquil → 4. Sell → Repeat", "Rarity: Common")
+        blacklistedFruits = {}
+        createColoredNotification("Started optimized AFK farming loop", "Rarity: Common")
         task.spawn(collectTargetFruits)
     else
         createColoredNotification("Stopping AFK farming loop...", "Rarity: Common")
