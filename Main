@@ -2113,36 +2113,10 @@ end)
 local tab4 = Main:CreateTab("Fruit Automation")
 
 local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple"}
-local maxBackpackCapacity = nil -- Will be set dynamically
+local maxBackpackItems = 441
 local fruitAutomationActive = false
 local loopCount = 0
-local blacklistedFruits = {}
-
--- Function to calculate maximum backpack capacity
-local function getMaxBackpackCapacity()
-    
-    local baseCapacity = 100
-    local upgradeBonus = 0
-    
-    if LocalPlayer:FindFirstChild("BackpackUpgrades") then
-        upgradeBonus = LocalPlayer.BackpackUpgrades:GetAttribute("CapacityBonus") or 0
-    end
-    
-    return baseCapacity + upgradeBonus
-end
-
--- Function to count current backpack items
-local function countBackpackItems()
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    return backpack and #backpack:GetChildren() or 0
-end
-
--- Function to check available space
-local function getAvailableSpace()
-    maxBackpackCapacity = getMaxBackpackCapacity() -- Update capacity in case it changed
-    local currentItems = countBackpackItems()
-    return maxBackpackCapacity - currentItems
-end
+local blacklistedFruits = {} -- New table to track problematic fruits
 
 local function sellAllFruits()
     if not fruitAutomationActive then return false end -- Early exit if toggled off
@@ -2257,64 +2231,70 @@ end
 local function collectTargetFruits()
     while fruitAutomationActive do
         loopCount = loopCount + 1
-        local availableSpace = getAvailableSpace()
-        createColoredNotification(string.format("Starting AFK loop #%d (%d/%d slots free)", 
-            loopCount, availableSpace, maxBackpackCapacity), "Rarity: Common")
+        createColoredNotification(string.format("Starting AFK loop #%d", loopCount), "Rarity: Common")
         
-        -- PHASE 1: CONTINUOUS FRUIT COLLECTION
+        -- Store original position once at start of collection phase
         local originalPos
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
         end
         
-        while fruitAutomationActive and getAvailableSpace() > 0 do
-            if not playerFarm then playerFarm = findPlayerFarm() end
-            if not playerFarm then task.wait(5); continue end
-
-            local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-            if not plantsPhysical then task.wait(1); continue end
-
-            for _, plant in pairs(plantsPhysical:GetChildren()) do
-                if not fruitAutomationActive or updateBackpackCapacity() <= 0 then break end
-                
-                local fruitsFolder = plant:FindFirstChild("Fruits") or plant
-                for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                    if not fruitAutomationActive or updateBackpackCapacity() <= 0 then break end
-                    
-                    -- Check if target fruit
-                    local isTarget = false
-                    for _, target in pairs(targetFruits) do
-                        if fruit.Name:find(target) and fruit:GetAttribute("DoneGrowTime") then
-                            isTarget = true
-                            break
-                        end
-                    end
-                    if not isTarget then continue end
-
-                    -- Find prompt (optimized)
-                    local prompt
-                    for _, descendant in pairs(fruit:GetDescendants()) do
-                        if descendant:IsA("ProximityPrompt") then
-                            prompt = descendant
-                            break
-                        end
-                    end
-                    if not prompt then continue end
-
-                    -- Collect fruit
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        local hrp = char.HumanoidRootPart
-                        hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
-                        task.wait(0.15)
-                        fireproximityprompt(prompt)
-                        updateBackpackCapacity() -- Update immediately after collection
-                        createColoredNotification("Collected "..fruit.Name..string.format(" (%d/%d free)", 
-                getAvailableSpace(), maxBackpackCapacity), "Rarity: Common")
-                        task.wait(0.35)
-                    end
+        -- PHASE 1: CONTINUOUS FRUIT COLLECTION
+        while fruitAutomationActive and #LocalPlayer.Backpack:GetChildren() < maxBackpackItems do
+            if not playerFarm then
+                playerFarm = findPlayerFarm()
+                if not playerFarm then 
+                    task.wait(5)
+                    continue 
                 end
             end
+
+            local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+            if plantsPhysical then
+                for _, plant in pairs(plantsPhysical:GetChildren()) do
+                    local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+                    
+                    -- Scan all fruits in the plant
+                    for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                        if not fruitAutomationActive then break end -- Check if toggled off
+                        if #LocalPlayer.Backpack:GetChildren() >= maxBackpackItems then break end
+                        
+                        -- Check if target fruit and ready to harvest
+                        local isTargetFruit = false
+                        for _, targetName in pairs(targetFruits) do
+                            if fruit.Name:find(targetName) and fruit:GetAttribute("DoneGrowTime") then
+                                isTargetFruit = true
+                                break
+                            end
+                        end
+                        
+                        if isTargetFruit then
+                            -- Find prompt (optimized search)
+                            local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                            if not prompt then
+                                for _, part in pairs(fruit:GetDescendants()) do
+                                    if part:IsA("BasePart") and part:FindFirstChildWhichIsA("ProximityPrompt") then
+                                        prompt = part:FindFirstChildWhichIsA("ProximityPrompt")
+                                        break
+                                    end
+                                end
+                            end
+                            
+                            -- Collect if prompt found
+                            if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                                local hrp = LocalPlayer.Character.HumanoidRootPart
+                                hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+                                task.wait(0.15)
+                                fireproximityprompt(prompt)
+                                createColoredNotification("Collected "..fruit.Name.." ("..#LocalPlayer.Backpack:GetChildren().."/"..maxBackpackItems..")", "Rarity: Common")
+                                task.wait(0.5)
+                            end
+                        end
+                    end
+                    if not fruitAutomationActive then break end -- Check if toggled off
+                end
+            end
+            if not fruitAutomationActive then break end -- Check if toggled off
             task.wait(0.5)
         end
 
@@ -2468,11 +2448,11 @@ tab4:CreateToggle("AFK Fruit Farm Loop", function(state)
     fruitAutomationActive = state
     if state then
         loopCount = 0
-        blacklistedFruits = {}
-        maxBackpackCapacity = getMaxBackpackCapacity() -- Set actual capacity
-        createColoredNotification(string.format("Started farming (%d max slots)", 
-            maxBackpackCapacity), "Rarity: Common")
+        blacklistedFruits = {} -- Reset blacklist on start
+        createColoredNotification("Started optimized AFK farming loop:\n1. Collect Fruits → 2. Kitsune → 3. Tranquil → 4. Sell → Repeat", "Rarity: Common")
         task.spawn(collectTargetFruits)
+    else
+        createColoredNotification("Stopping AFK farming loop...", "Rarity: Common")
     end
 end)
 
