@@ -2583,11 +2583,11 @@ local function collectTargetFruits2()
                     if char and char:FindFirstChild("HumanoidRootPart") then
                         local hrp = char.HumanoidRootPart
                         hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
-                        task.wait(0.15)
+                        task.wait(0.5)
                         fireproximityprompt(prompt)
                         createColoredNotification("Collected "..fruit.Name..string.format(" (%d/%d free)", 
                             getAvailableSpace(), maxBackpackItems), "Rarity: Common")
-                        task.wait(0.35)
+                        task.wait(0.5)
                     end
                 end
             end
