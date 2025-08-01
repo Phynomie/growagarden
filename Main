@@ -2530,6 +2530,7 @@ end
 
 local tranquilAutomationActive = false
 local TRANQUIL_NPC_POSITION = CFrame.new(-73.59021, 4.3999157, -12.1218204)
+local originalPos1
 
 local function collectTargetFruits2()
     setBackpackLimit()
@@ -2542,9 +2543,8 @@ local function collectTargetFruits2()
             loopCount, countBackpackItems(), maxBackpackItems), "Rarity: Common")
         
         -- PHASE 1: FRUIT COLLECTION
-        local originalPos
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+            originalPos1 = LocalPlayer.Character.HumanoidRootPart.CFrame
         end
         
         while tranquilAutomationActive and getAvailableSpace() > 0 do
@@ -2639,8 +2639,8 @@ local function collectTargetFruits2()
             end
         end
 
-        if originalPos then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+        if originalPos1 then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos1
             task.wait(0.5)
         end
 
@@ -2660,7 +2660,7 @@ local function collectTargetFruits2()
     createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
-tab4:CreateToggle("AFK Tranquil Farm Loop", function(state)
+tab4:CreateToggle("AFK Fruit Farm Loop for tranquil only", function(state)
     tranquilAutomationActive = state
     if state then
         loopCount = 0
