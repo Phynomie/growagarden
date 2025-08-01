@@ -2201,7 +2201,7 @@ local function safeSubmitToKitsune(fruit)
     
     -- Equip the fruit
     fruit.Parent = LocalPlayer.Character
-    task.wait(0.5) -- Give more time to equip
+    task.wait(0.3) -- Give more time to equip
     
     -- Verify the fruit was equipped
     if fruit.Parent ~= LocalPlayer.Character then
@@ -2216,11 +2216,11 @@ local function safeSubmitToKitsune(fruit)
     
     -- Wait and verify if fruit was consumed
     local startTime = os.clock()
-    while os.clock() - startTime < 2 do -- Wait up to 2 seconds
+    while os.clock() - startTime < 1.2 do -- Wait up to 2 seconds
         if fruit.Parent ~= LocalPlayer.Character then
             break -- Fruit was consumed
         end
-        task.wait(0.1)
+        task.wait(0.05)
     end
     
     -- If fruit still exists after submission, blacklist it
@@ -2365,7 +2365,7 @@ local function collectTargetFruits()
                         if safeSubmitToKitsune(fruit) then
                             submittedAny = true
                             table.remove(fruits, i)
-                            task.wait(1.5)
+                            task.wait(1)
                             break -- Submit one at a time with checks
                         end
                     end
