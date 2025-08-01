@@ -1973,11 +1973,11 @@ local function shouldSkipPet(petName)
         "Raccoon", "Dragonfly", "Butterfly", "Spinosaurus", "T-Rex", "Corrupted Kitsune",
         "Kitsune", "Queen Bee", "Disco Bee", "Red Fox", "Raiju", "Koi", "Kappa",
         "Mimic Octopus", "Bear Bee", "Pack Bee", "Tanchozuru", "Corrupted Kodama",
-        "Kodama", "Triceratops", "Moon Cat", "Silver Monkey", "Blood Hedgehog",
+        ""Triceratops", "Moon Cat", "Silver Monkey", "Blood Hedgehog",
         "Bald Eagle", "Mole", "Football", "Hamster", "Chicken Zombie", "Firefly",
         "Owl", "Golden Bee", "Echo Frog", "Cooked Owl", "Blood Kiwi", "Night Owl",
         "Hyacinth Macaw", "Axolotl", "Dilophosaurus", "Ankylosaurus", "Pterodactyl",
-        "Brontosaurus", "Fennec Fox", "Blood Owl", "Red Dragon"
+        "Brontosaurus", "Fennec Fox", "Blood Owl", "Red Dragon", "Moth"
     }
     
     for _, highTierPet in ipairs(highTierPets) do
@@ -2731,7 +2731,7 @@ local function tranquilOnlyLoop()
     createColoredNotification("Tranquil AFK loop stopped", "Rarity: Common")
 end
 
-tab3:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
+tab2:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
     fruitAutomationActive = state
     if state then
         loopCount = 0
@@ -2744,7 +2744,7 @@ tab3:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state
     end
 end)
 
-tab3:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
+tab2:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
     tranquilAutomationActive = state
     if state then
         task.spawn(tranquilOnlyLoop)
