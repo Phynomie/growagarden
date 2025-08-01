@@ -1954,35 +1954,15 @@ end)
 local tab4 = Main:CreateTab("Fruit Automation")
 
 local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple", "Lucky Bamboo"}
-local maxBackpackItems = nil -- Will be set dynamically
+local maxBackpackItems = nil
 local fruitAutomationActive = false
 local loopCount = 0
 local blacklistedFruits = {} 
 local tranquilAutomationActive = false
 
-local Players = game:GetService("Players")
-local player = Players.LocalPlayer
-
 local playerBackpackLimits = {
     ["default"] = nil
 }
-
-local function countBackpackItems()
-    local backpack = LocalPlayer:FindFirstChild("Backpack")
-    return backpack and #backpack:GetChildren() or 0
-end
-
-local function setBackpackLimit()
-    local currentCount = countBackpackItems()
-
-    if playerBackpackLimits["default"] == nil then
-        playerBackpackLimits["default"] = currentCount
-    end
-
-    maxBackpackItems = playerBackpackLimits[player.Name] or playerBackpackLimits["default"]
-    
-    createColoredNotification(string.format("Backpack slots: %d/%d", countBackpackItems(), maxBackpackItems), "Rarity: Common")
-end
 
 local function sellAllFruits()
     if not (fruitAutomationActive or tranquilAutomationActive) then return false end 
@@ -2079,6 +2059,27 @@ local function safeSubmitToKitsune(fruit)
     end
     
     return true
+end
+
+local function countBackpackItems()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    return backpack and #backpack:GetChildren() or 0
+end
+
+local function setBackpackLimit()
+    local currentCount = countBackpackItems()
+
+    if playerBackpackLimits["default"] == nil then
+        playerBackpackLimits["default"] = currentCount
+    end
+
+    maxBackpackItems = playerBackpackLimits["default"]
+    
+    createColoredNotification(string.format("Backpack slots: %d/%d", countBackpackItems(), maxBackpackItems), "Rarity: Common")
+end
+
+local function getAvailableSpace()
+    return maxBackpackItems - countBackpackItems()
 end
 
 local function collectTargetFruits()
