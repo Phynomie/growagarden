@@ -1973,7 +1973,7 @@ local function shouldSkipPet(petName)
         "Raccoon", "Dragonfly", "Butterfly", "Spinosaurus", "T-Rex", "Corrupted Kitsune",
         "Kitsune", "Queen Bee", "Disco Bee", "Red Fox", "Raiju", "Koi", "Kappa",
         "Mimic Octopus", "Bear Bee", "Pack Bee", "Tanchozuru", "Corrupted Kodama",
-        ""Triceratops", "Moon Cat", "Silver Monkey", "Blood Hedgehog",
+        "Triceratops", "Moon Cat", "Silver Monkey", "Blood Hedgehog",
         "Bald Eagle", "Mole", "Football", "Hamster", "Chicken Zombie", "Firefly",
         "Owl", "Golden Bee", "Echo Frog", "Cooked Owl", "Blood Kiwi", "Night Owl",
         "Hyacinth Macaw", "Axolotl", "Dilophosaurus", "Ankylosaurus", "Pterodactyl",
