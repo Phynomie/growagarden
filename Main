@@ -1228,6 +1228,7 @@ tab:CreateButton("Sell Equipped Fruit/Pet", function()
             return
         end
     end
+    
     local equippedFruit = nil
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
