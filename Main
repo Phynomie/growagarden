@@ -2504,7 +2504,9 @@ local function getTranquilFruits()
     -- Check Backpack
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
         if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-            table.insert(tranquilFruits, item)
+            if not shouldSkipItem(item.Name) then -- SKIP UNWANTED ITEMS
+                table.insert(tranquilFruits, item)
+            end
         end
     end
     
@@ -2512,7 +2514,9 @@ local function getTranquilFruits()
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
             if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-                table.insert(tranquilFruits, item)
+                if not shouldSkipItem(item.Name) then -- SKIP UNWANTED ITEMS
+                    table.insert(tranquilFruits, item)
+                end
             end
         end
     end
@@ -2562,20 +2566,24 @@ end
 local function collectTargetFruits2()
     if not playerFarm then playerFarm = findPlayerFarm() end
     if not playerFarm then return false end
-    
+
     local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
     if not plantsPhysical then return false end
-    
+
     for _, plant in pairs(plantsPhysical:GetChildren()) do
         if not tranquilAutomationActive then break end
-        
+
         local fruitsFolder = plant:FindFirstChild("Fruits") or plant
         for _, fruit in pairs(fruitsFolder:GetChildren()) do
             if not tranquilAutomationActive then break end
-            
-            -- Check if fruit is ready and matches target
+
+            -- SKIP UNWANTED ITEMS
+            if shouldSkipItem(fruit.Name) then
+                continue
+            end
+
+            -- Only collect harvestable Tranquil fruits
             if fruit:GetAttribute("DoneGrowTime") and fruit.Name:find("Tranquil") then
-                -- Find prompt
                 local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
                 if not prompt then
                     for _, descendant in pairs(fruit:GetDescendants()) do
@@ -2585,8 +2593,7 @@ local function collectTargetFruits2()
                         end
                     end
                 end
-                
-                -- Collect fruit
+
                 if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local hrp = LocalPlayer.Character.HumanoidRootPart
                     hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
