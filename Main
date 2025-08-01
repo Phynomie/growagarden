@@ -10,14 +10,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 
--- Load Notification module
 local Notification
 local success, err = pcall(function()
     Notification = require(ReplicatedStorage.Modules.Notification)
 end)
 if not success then
     warn("Failed to load Notification module: "..tostring(err))
-    -- Fallback to default notifications
     Notification = {
         CreateNotification = function(text)
             StarterGui:SetCore("SendNotification", {
@@ -29,16 +27,15 @@ if not success then
     }
 end
 
--- Rarity color mapping
 local RARITY_COLORS = {
-    Common = "#FFFFFF",       -- White
-    Uncommon = "#00FF00",     -- Light Green
-    Rare = "#0000FF",         -- Blue
-    Legendary = "#FFFF00",    -- Light Yellow
-    Mythical = "#800080",     -- Light Purple
-    Divine = "#FFA500",       -- Orange
-    Prismatic = "#00FFFF",    -- Aqua
-    Transcendent = "#000000"  -- Black
+    Common = "#FFFFFF",      
+    Uncommon = "#00FF00",     
+    Rare = "#0000FF",        
+    Legendary = "#FFFF00", 
+    Mythical = "#800080",    
+    Divine = "#FFA500",       
+    Prismatic = "#00FFFF",   
+    Transcendent = "#000000"  
 }
 
 local automationToggles = {
@@ -47,7 +44,6 @@ local automationToggles = {
 }
 
 local function getRarityColor(rarityText)
-    -- Extract the actual rarity name from the text (e.g., "Rarity: Common" -> "Common")
     local rarity = rarityText:gsub("Rarity: ", ""):gsub("%s+", "")
     return RARITY_COLORS[rarity] or RARITY_COLORS.Common
 end
@@ -55,7 +51,6 @@ end
 local function createColoredNotification(text, rarityText)
     local color = getRarityColor(rarityText)
     if color == RARITY_COLORS.Common then
-        -- Default color (no HTML tags)
         Notification:CreateNotification(text)
     else
         Notification:CreateNotification(string.format('<font color="%s">%s</font>', color, text))
@@ -75,7 +70,6 @@ local tab = Main:CreateTab("Exploits")
 local tab2 = Main:CreateTab("Automation")
 local tab3 = Main:CreateTab("Misc")
 
--- Farm protection system
 local savedPrompts = {}
 local playerFarm = nil
 local enabled = nil
@@ -160,7 +154,7 @@ end
 
 local function autoBuySeeds()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 10000000000 then -- 1 billion
+    if sheckles < 10000000000 then
         createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
     end
@@ -197,7 +191,7 @@ end
 
 local function autoBuyGears()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 10000000000 then -- 1 billion
+    if sheckles < 10000000000 then
         createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
     end
@@ -234,7 +228,7 @@ end
 
 local function autoBuyEggs()
     local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-    if sheckles < 10000000000 then -- 1 billion
+    if sheckles < 10000000000 then 
         createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
     end
@@ -270,14 +264,12 @@ local function autoBuyEggs()
 end
 
 local function autoBuyTM()
-    -- First check if the shop is even open
     local TMShop = LocalPlayer.PlayerGui:FindFirstChild("TravelingMerchantShop_UI")
     if not TMShop then
         createColoredNotification("Traveling Merchant shop not open!", "Rarity: Common")
         return false
     end
 
-    -- Check honey UI if it exists (for honey-based purchases)
     local honeyUI = LocalPlayer.PlayerGui:FindFirstChild("Honey_UI")
     local playerHoney = 0
     if honeyUI and honeyUI:FindFirstChild("Frame") and honeyUI.Frame:FindFirstChild("TextLabel1") then
@@ -293,13 +285,12 @@ local function autoBuyTM()
         if not frame.Name:find("_Padding") and frame:FindFirstChild("Main_Frame") then
             local mainFrame = frame.Main_Frame
             local stockText = mainFrame:FindFirstChild("Stock_Text")
-            local priceText = mainFrame:FindFirstChild("Price_Text") -- Check for price text
+            local priceText = mainFrame:FindFirstChild("Price_Text")
             local rarityText = mainFrame:FindFirstChild("Rarity_Text") and mainFrame.Rarity_Text.Text or "Rarity: Common"
             
             if stockText and stockText.Text ~= "X0 Stock" then
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
                 if stockNum and stockNum > 0 then
-                    -- Check if this is a honey purchase
                     local isHoneyPurchase = false
                     local price = 0
                     
@@ -312,10 +303,9 @@ local function autoBuyTM()
                     end
 
                     if isHoneyPurchase then
-                        -- Honey-based item logic
                         if playerHoney >= price then
                             for i = 1, stockNum do
-                                if playerHoney >= price then -- Check honey again in case it changed
+                                if playerHoney >= price then
                                     local args = {frame.Name}
                                     ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyTravelingMerchantShopStock"):FireServer(unpack(args))
                                     playerHoney = playerHoney - price
@@ -333,9 +323,8 @@ local function autoBuyTM()
                             createColoredNotification("You need "..price.." honey to buy "..frame.Name, "Rarity: Common")
                         end
                     else
-                        -- Sheckles-based item logic
                         local sheckles = LocalPlayer.leaderstats.Sheckles.Value
-                        if sheckles >= 10000000000 then -- 10B sheckles check
+                        if sheckles >= 10000000000 then 
                             for i = 1, stockNum do
                                 local args = {frame.Name}
                                 ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyTravelingMerchantShopStock"):FireServer(unpack(args))
@@ -373,36 +362,32 @@ local fruitInfoEnabled = false
 local fruitInfoFrame = nil
 
 local function createFruitInfoUI()
-    -- First, ensure we have a PlayerGui to parent to
     local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
     
-    -- Remove any existing frame
     if fruitInfoFrame then 
         fruitInfoFrame:Destroy()
         fruitInfoFrame = nil
-        task.wait(0.1) -- Small delay to ensure cleanup
+        task.wait(0.1) 
     end
     
-    -- Create the main frame with absolute positioning
     fruitInfoFrame = Instance.new("ScreenGui")
     fruitInfoFrame.Name = "FruitInfoGUI"
     fruitInfoFrame.ResetOnSpawn = false
     fruitInfoFrame.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    fruitInfoFrame.DisplayOrder = 10 -- High priority display
+    fruitInfoFrame.DisplayOrder = 10 
     fruitInfoFrame.Parent = playerGui
     
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 300, 0, 200) -- Fixed size
-    mainFrame.Position = UDim2.new(0.006, 0, 0.57, 0) -- Top-left corner
+    mainFrame.Size = UDim2.new(0, 300, 0, 200) 
+    mainFrame.Position = UDim2.new(0.006, 0, 0.57, 0) 
     mainFrame.AnchorPoint = Vector2.new(0, 0)
     mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
     mainFrame.BackgroundTransparency = 0.15
     mainFrame.BorderSizePixel = 0
-    mainFrame.Visible = fruitInfoEnabled -- Start visible if enabled
+    mainFrame.Visible = fruitInfoEnabled 
     mainFrame.Parent = fruitInfoFrame
     
-    -- Add visual elements
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, 8)
     uiCorner.Parent = mainFrame
@@ -412,7 +397,6 @@ local function createFruitInfoUI()
     uiStroke.Thickness = 2
     uiStroke.Parent = mainFrame
     
-    -- Title bar
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Size = UDim2.new(1, 0, 0, 30)
@@ -433,7 +417,6 @@ local function createFruitInfoUI()
     titleText.TextXAlignment = Enum.TextXAlignment.Left
     titleText.Parent = titleBar
     
-    -- Content area
     local contentFrame = Instance.new("Frame")
     contentFrame.Name = "ContentFrame"
     contentFrame.Size = UDim2.new(1, -10, 1, -40)
@@ -441,7 +424,6 @@ local function createFruitInfoUI()
     contentFrame.BackgroundTransparency = 1
     contentFrame.Parent = mainFrame
     
-    -- Fruit name display with ScrollingFrame
     local nameFrame = Instance.new("Frame")
     nameFrame.Name = "NameFrame"
     nameFrame.Size = UDim2.new(1, 0, 0, 30)
@@ -456,13 +438,13 @@ local function createFruitInfoUI()
     nameScrollingFrame.BackgroundTransparency = 1
     nameScrollingFrame.ScrollBarThickness = 4
     nameScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 255)
-    nameScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.X -- Auto-expand horizontally
+    nameScrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.X
     nameScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     nameScrollingFrame.Parent = nameFrame
     
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(0, 0, 1, 0) -- Width will auto-size
+    nameLabel.Size = UDim2.new(0, 0, 1, 0)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = "No fruit equipped"
@@ -470,11 +452,10 @@ local function createFruitInfoUI()
     nameLabel.Font = Enum.Font.GothamSemibold
     nameLabel.TextSize = 18
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.TextWrapped = false -- Important for horizontal scrolling
-    nameLabel.AutomaticSize = Enum.AutomaticSize.X -- Auto-size width to text
+    nameLabel.TextWrapped = false 
+    nameLabel.AutomaticSize = Enum.AutomaticSize.X 
     nameLabel.Parent = nameScrollingFrame
     
-    -- Mutations display with scrolling
     local mutationsFrame = Instance.new("ScrollingFrame")
     mutationsFrame.Name = "MutationsFrame"
     mutationsFrame.Size = UDim2.new(1, 0, 0, 100)
@@ -488,7 +469,6 @@ local function createFruitInfoUI()
     mutationsLayout.Padding = UDim.new(0, 5)
     mutationsLayout.Parent = mutationsFrame
     
-    -- Price display
     local priceFrame = Instance.new("Frame")
     priceFrame.Name = "PriceFrame"
     priceFrame.Size = UDim2.new(1, 0, 0, 30)
@@ -513,7 +493,6 @@ local function createFruitInfoUI()
     cornerUI.CornerRadius = UDim.new(0.5, 8)
     cornerUI.Parent = priceFrame
     
-    -- Ensure the frame is properly layered
     mainFrame.ZIndex = 10
     titleBar.ZIndex = 11
     titleText.ZIndex = 12
@@ -569,7 +548,7 @@ end
 
 local lastEquippedFruit = nil
 local lastUpdateTime = 0
-local UPDATE_COOLDOWN = 0.5 -- Update at most every 0.5 seconds
+local UPDATE_COOLDOWN = 0.5
 local lastKnownAttributes = nil
 local lastKnownWeight = nil
 
@@ -588,7 +567,6 @@ local function updateFruitInfo()
         return
     end
 
-    -- Find currently equipped fruit
     local equippedFruit = nil
     for _, item in pairs(character:GetChildren()) do
         if item:IsA("Tool") then
@@ -597,20 +575,16 @@ local function updateFruitInfo()
         end
     end
 
-    -- Skip update if same fruit is still equipped AND no attributes have changed
     if equippedFruit and lastEquippedFruit and equippedFruit == lastEquippedFruit then
-        -- Check if any attributes have changed
         local attributesChanged = false
         local currentAttributes = {}
         
-        -- Get current attributes
         for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
             if attrName ~= "d" and attrValue == true and attrName ~= "Weight" then
                 table.insert(currentAttributes, attrName)
             end
         end
         
-        -- Compare with last known attributes
         if #currentAttributes ~= #lastKnownAttributes then
             attributesChanged = true
         else
@@ -621,8 +595,7 @@ local function updateFruitInfo()
                 end
             end
         end
-        
-        -- Also check if weight changed
+
         if equippedFruit:FindFirstChild("Weight") then
             if not lastKnownWeight or equippedFruit.Weight.Value ~= lastKnownWeight then
                 attributesChanged = true
@@ -630,11 +603,10 @@ local function updateFruitInfo()
         end
         
         if not attributesChanged then
-            return -- No changes, skip update
+            return 
         end
     end
 
-    -- Reset display if no fruit equipped
     if not equippedFruit then
         local nameLabel = mainFrame.ContentFrame.NameFrame.NameScroller.NameLabel
         nameLabel.Text = "No fruit equipped"
@@ -663,7 +635,6 @@ local function updateFruitInfo()
         return
     end
 
-    -- Update last equipped fruit and store its attributes
     lastEquippedFruit = equippedFruit
     lastKnownAttributes = {}
     for attrName, attrValue in pairs(equippedFruit:GetAttributes()) do
@@ -672,18 +643,15 @@ local function updateFruitInfo()
         end
     end
     
-    -- Store weight
     if equippedFruit:FindFirstChild("Weight") then
         lastKnownWeight = equippedFruit.Weight.Value
     else
         lastKnownWeight = nil
     end
 
-    -- Update name
     local nameLabel = mainFrame.ContentFrame.NameFrame.NameScroller.NameLabel
     nameLabel.Text = equippedFruit.Name
 
-    -- Update mutations
     local mutationsFrame = mainFrame.ContentFrame.MutationsFrame
     mutationsFrame:ClearAllChildren()
 
@@ -719,7 +687,6 @@ local function updateFruitInfo()
 
     mutationsFrame.CanvasSize = UDim2.new(0, 0, 0, mutationsFrame.UIListLayout.AbsoluteContentSize.Y)
 
-    -- Update price and weight
     local price = CalculatePlantValue(equippedFruit)
     local weight = lastKnownWeight or "???"
     local priceLabel = mainFrame.ContentFrame.PriceFrame.PriceLabel
@@ -742,10 +709,8 @@ local function updateFruitInfo()
     priceLabel.Text = priceString .. string.format(" , Weight: %s", tostring(weight))
 end
 
--- Add this connection to detect tool changes
 cleanup.connections["characterAdded"] = game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
     if fruitInfoEnabled then
-        -- Recreate UI when character respawns
         if fruitInfoFrame then
             fruitInfoFrame:Destroy()
             fruitInfoFrame = nil
@@ -755,29 +720,24 @@ cleanup.connections["characterAdded"] = game.Players.LocalPlayer.CharacterAdded:
     end
     cleanup.connections["childAdded"] = character.ChildAdded:Connect(function(child)
         if child:IsA("Tool") and fruitInfoEnabled then
-            -- Force update when a new tool is equipped
             lastEquippedFruit = nil
             updateFruitInfo()
         end
     end)
 end)
 
--- Create the toggle button with proper initialization
 tab:CreateToggle("Show Fruit Info", function(state)
     fruitInfoEnabled = state
     
     if state then
-        -- Create UI if it doesn't exist
         if not fruitInfoFrame or not fruitInfoFrame.Parent then
             fruitInfoFrame = createFruitInfoUI()
         end
         
-        -- Immediately show the frame
         if fruitInfoFrame and fruitInfoFrame:FindFirstChild("MainFrame") then
             fruitInfoFrame.MainFrame.Visible = true
         end
         
-        -- Start update loop
         task.spawn(function()
             while fruitInfoEnabled do
                 updateFruitInfo()
@@ -799,25 +759,17 @@ local function CalculateMaxMutationValue(plantName, currentWeightValue)
     local baseValue = itemData[3]
     local baseWeightCap = itemData[2]
 
-    -- These are the consolidated values derived from our previous calculations
-    -- Sum of all mutation multipliers from your list (excluding Rainbow/Gold as separate entries)
+
     local sumOfAllIndividualMutationMultipliers = 1939
-    -- Total count of those individual mutations
     local numberOfIndividualMutations = 39
-    -- The multiplier for Rainbow rarity (used for max value)
     local rainbowRarityMultiplier = 50
 
-    -- This calculates the combined effect of all mutations and Rainbow rarity
     local combinedMutationFactor = rainbowRarityMultiplier * (1 + sumOfAllIndividualMutationMultipliers - numberOfIndividualMutations)
 
     local clampedWeight = math.clamp(currentWeightValue / baseWeightCap, 0.95, 100000000)
     local weightSquaredFactor = clampedWeight * clampedWeight
 
     local finalMaxCalculatedValue = baseValue * weightSquaredFactor * combinedMutationFactor
-
-    -- IMPORTANT: Removed the 1 Trillion cap here, as your "correct number" was higher than 1T.
-    -- If your game strictly caps ALL values at 1T, you can re-add this line:
-    -- finalMaxCalculatedValue = math.min(finalMaxCalculatedValue, 1000000000000)
 
     return math.round(finalMaxCalculatedValue)
 end
@@ -826,7 +778,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
     if enabled then
         print("[Weight Calculator] Enabling...")
 
-        -- Create the tool
         local weightTool = Instance.new("Tool")
         weightTool.Name = "Weight Calculator"
         weightTool.RequiresHandle = false
@@ -840,7 +791,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
         weightTool.Parent = LocalPlayer.Backpack
         print("[Weight Calculator] Tool created in backpack")
 
-        -- Main function to check weight
         local function checkWeight(target)
             print("[Weight Calculator] Checking weight for:", target:GetFullName())
 
@@ -862,18 +812,15 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                     local weightKg = weight.Value
                     print("[Weight Calculator] Found weight:", weightKg)
 
-                    local name = plant.Name -- Name of the fruit
+                    local name = plant.Name 
                     local actualRarity = plant:FindFirstChild("Rarity") and plant.Rarity.Value or "Common"
 
                     print("name of da fruit:", name)
-                    print("Actual Rarity of plant:", actualRarity) -- Show the plant's true rarity
+                    print("Actual Rarity of plant:", actualRarity) 
 
-                    -- *** CALL THE NEW MAX MUTATION CALCULATION FUNCTION HERE ***
                     local totalValueMaxMutation = CalculateMaxMutationValue(name, weightKg)
                     print("Estimated Value (Max Mutation, raw):", totalValueMaxMutation)
 
-
-                    -- Format function (remains the same)
                     local function formatBillions(num)
                         if num >= 1e12 then
                             return string.format("$%.0f (%.3f Trillion)", num, num / 1e12)
@@ -888,10 +835,8 @@ tab:CreateToggle("Weight Calculator", function(enabled)
 
                     local formattedValue = formatBillions(totalValueMaxMutation)
 
-                    -- The notification will now reflect the calculated value assuming Rainbow mutation
                     createColoredNotification(string.format("%s\nWeight: %.3f kg\nEstimated Value (Max Mutation): %s", name, weightKg, formattedValue), "Rarity: " .. actualRarity)
 
-                    -- Highlight (remains the same)
                     local highlight = Instance.new("Highlight")
                     highlight.Name = "WeightHighlight"
                     highlight.FillColor = Color3.new(1, 0.5, 0)
@@ -911,7 +856,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
                 print("[Weight Calculator] No harvestable plant found in ancestry")
             end
         end
-        -- Mobile touch detection
         if UserInputService.TouchEnabled then
             print("[Weight Calculator] Mobile device detected - setting up touch input")
 
@@ -943,8 +887,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
         else
             print("[Weight Calculator] PC detected - setting up mouse input")
         end
-
-        -- PC click detection
         local clickConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if not (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Weight Calculator")) then
                 print("[Weight Calculator] Tool not equipped - ignoring click")
@@ -973,7 +915,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
         end)
         cleanup.connections["WeightClick"] = clickConnection
 
-        -- Tool equipped handling
         local function onEquipped()
             print("[Weight Calculator] Tool equipped")
             createColoredNotification("Weight Calculator ready\nTouch/Click fruits to check weight", "Rarity: Common")
@@ -988,7 +929,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
     else
         print("[Weight Calculator] Disabling...")
 
-        -- Cleanup connections
         for name, conn in pairs(cleanup.connections) do
             if name:find("Weight") then
                 conn:Disconnect()
@@ -997,7 +937,6 @@ tab:CreateToggle("Weight Calculator", function(enabled)
             end
         end
 
-        -- Remove tool
         if LocalPlayer.Backpack:FindFirstChild("Weight Calculator") then
             LocalPlayer.Backpack["Weight Calculator"]:Destroy()
             print("[Weight Calculator] Removed tool from backpack")
@@ -1016,13 +955,12 @@ local petCooldownEnabled = false
 local petCooldownDisplays = {}
 local petCooldownConnection = nil
 local lastUpdateTime = 0
-local UPDATE_INTERVAL = 2 -- Reduced update interval for better responsiveness
+local UPDATE_INTERVAL = 2
 
 local function createPetDisplay(pet)
     local head = pet:FindFirstChild("Head") or pet:FindFirstChildWhichIsA("BasePart")
     if not head then return nil end
-    
-    -- Remove any existing display
+
     if head:FindFirstChild("PetCooldownDisplay") then
         head.PetCooldownDisplay:Destroy()
     end
@@ -1030,11 +968,11 @@ local function createPetDisplay(pet)
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "PetCooldownDisplay"
     billboard.Size = UDim2.new(10, 0, 4, 0)
-    billboard.StudsOffset = Vector3.new(0, 3, 0) -- Adjusted height
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
     billboard.Adornee = head
     billboard.LightInfluence = 0
-    billboard.MaxDistance = 150 -- Increased view distance
+    billboard.MaxDistance = 150 
     billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     billboard.Parent = head
 
@@ -1056,7 +994,6 @@ local function createPetDisplay(pet)
     textLabel.TextWrapped = true
     textLabel.Parent = frame
 
-    -- Make larger on mobile
     if UserInputService.TouchEnabled then
         billboard.Size = UDim2.new(15, 0, 6, 0)
         billboard.StudsOffset = Vector3.new(0, 2.5, 0)
@@ -1084,8 +1021,8 @@ local function updatePetDisplay(petName, display)
                     entry.Passive, timeLeft, percentage * 100)
                     or string.format("%s: Ready!", entry.Passive)
                 
-                local color = timeLeft > 0 and Color3.fromHSV(percentage * 0.3, 1, 1) -- Red to yellow gradient
-                    or Color3.new(0.5, 1, 0.5) -- Green when ready
+                local color = timeLeft > 0 and Color3.fromHSV(percentage * 0.3, 1, 1) 
+                    or Color3.new(0.5, 1, 0.5) 
                 
                 table.insert(activeAbilities, {
                     text = status,
@@ -1103,8 +1040,7 @@ local function updatePetDisplay(petName, display)
                 end
             end
             display.Text = displayText
-            
-            -- Use first ability's color if only one, otherwise white
+
             display.TextColor3 = #activeAbilities == 1 and activeAbilities[1].color or Color3.new(1, 1, 1)
         else
             display.Text = "No active abilities"
@@ -1123,19 +1059,15 @@ local function scanAndUpdatePets()
     if currentTime - lastUpdateTime < UPDATE_INTERVAL then return end
     lastUpdateTime = currentTime
 
-    -- Find all pets in workspace (including other players' pets)
     local currentPets = {}
     for _, pet in ipairs(workspace:GetDescendants()) do
-        -- Look for pet models (they typically have curly braces in their name)
         if pet:IsA("Model") and pet.Name:match("^{.+}$") then
-            -- Additional check to confirm it's a pet (has Humanoid or PetMover)
             if pet:FindFirstChild("Humanoid") or pet:FindFirstChildWhichIsA("BasePart") then
                 currentPets[pet.Name] = pet
             end
         end
     end
     
-    -- Clean up displays for pets that no longer exist
     for petName, data in pairs(petCooldownDisplays) do
         if not currentPets[petName] then
             if data.display and data.display.Parent then
@@ -1144,8 +1076,7 @@ local function scanAndUpdatePets()
             petCooldownDisplays[petName] = nil
         end
     end
-    
-    -- Update all active displays
+
     for petName, pet in pairs(currentPets) do
         if not petCooldownDisplays[petName] then
             local display = createPetDisplay(pet)
@@ -1169,17 +1100,14 @@ tab:CreateToggle("Show All Pet Cooldowns", function(enabled)
     petCooldownEnabled = enabled
     
     if enabled then
-        -- Initial scan
         scanAndUpdatePets()
-        
-        -- Set up recurring updates
+
         petCooldownConnection = game:GetService("RunService").Heartbeat:Connect(function()
             scanAndUpdatePets()
         end)
         
         createColoredNotification("Pet cooldowns enabled - Showing all pets", "Rarity: Common")
     else
-        -- Clean up
         if petCooldownConnection then
             petCooldownConnection:Disconnect()
             petCooldownConnection = nil
@@ -1200,7 +1128,6 @@ tab:CreateToggle("Anti-Kick", function(enabled)
     local namecallHook
     
     if enabled then
-        -- Create the hook when toggle is enabled
         namecallHook = hookmetamethod(game.Players.LocalPlayer, "__namecall", function(...)
             local method = getnamecallmethod()
             if method == "Kick" then
@@ -1210,7 +1137,6 @@ tab:CreateToggle("Anti-Kick", function(enabled)
             return namecallHook(...)
         end)
 
-        -- Verify the hook was successful
         if typeof(namecallHook) == "function" then
             print("[Anti-Kick] Protection enabled successfully")
         else
@@ -1218,10 +1144,8 @@ tab:CreateToggle("Anti-Kick", function(enabled)
             return
         end
 
-        -- Store the hook in cleanup table
         cleanup.connections["AntiKick"] = namecallHook
     else
-        -- Disable the hook when toggle is turned off
         if cleanup.connections["AntiKick"] then
             if unhookmetamethod then
                 unhookmetamethod(game.Players.LocalPlayer, "__namecall", cleanup.connections["AntiKick"])
@@ -1235,16 +1159,13 @@ end)
 tab:CreateToggle("Anti-Afk", function(enabled)
     if enabled then
         sendNotification("✅ Anti-AFK", "Anti AFK has been enabled.", 5)
-        
-        -- Disable all existing Idled connections
+
         cleanup.connections["antiAfk"] = {}
 
-        -- Disable all idle connections and store original states
         for _, connection in pairs(getconnections(game.Players.LocalPlayer.Idled)) do
             local originalState = connection.Enabled
             connection:Disable()
-    
-            -- Store in cleanup table with restore information
+
             table.insert(cleanup.connections["antiAfk"], {
                 connection = connection,
                 originalState = originalState
@@ -1257,11 +1178,10 @@ tab:CreateToggle("Anti-Afk", function(enabled)
         if cleanup.connections["antiAfk"] then
             for _, afkData in ipairs(cleanup.connections["antiAfk"]) do
                 if afkData.connection and typeof(afkData.connection) == "userdata" then
-                    -- Restore original enabled state
                     afkData.connection.Enabled = afkData.originalEnabled
                 end
             end
-            cleanup.connections["antiAfk"] = nil  -- Clear the stored connections
+            cleanup.connections["antiAfk"] = nil  
         end
     
     end
@@ -1272,7 +1192,6 @@ tab:CreateButton("Sell Equipped Fruit/Pet", function()
         return tool:FindFirstChild("Age") or tool:FindFirstChild("KG")
     end
 
-    -- Check equipped items first
     local equippedPet = nil
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
@@ -1283,7 +1202,6 @@ tab:CreateButton("Sell Equipped Fruit/Pet", function()
         end
     end
 
-    -- If no pet equipped, check backpack
     if not equippedPet then
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             if item:IsA("Tool") and isPet(item) then
@@ -1293,29 +1211,23 @@ tab:CreateButton("Sell Equipped Fruit/Pet", function()
         end
     end
 
-    -- If we found a pet (equipped or in backpack), sell it
     if equippedPet then
         createColoredNotification("Found pet ("..equippedPet.Name..") - selling...", "Rarity: Common")
-        
-        -- Equip the pet if it's not already equipped
+
         if equippedPet.Parent ~= LocalPlayer.Character then
             equippedPet.Parent = LocalPlayer.Character
-            task.wait(0.5) -- Wait for equip animation
+            task.wait(0.5)
         end
 
-        -- Sell the pet
         local args = { equippedPet }
         game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SellPet_RE"):FireServer(unpack(args))
-        task.wait(0.5) -- Wait for pet to be sold
-        
-        -- Verify pet was sold
+        task.wait(0.5) 
+
         if equippedPet and equippedPet.Parent then
             createColoredNotification("Failed to sell pet!", "Rarity: Common")
             return
         end
     end
-
-    -- Now proceed with fruit selling if we have an equipped fruit
     local equippedFruit = nil
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
@@ -1452,7 +1364,7 @@ progressBar.Parent = frame
 local progressFill = Instance.new("Frame")
 progressFill.Size = UDim2.new(1, 0, 1, 0)
 progressFill.Position = UDim2.new(0, 0, 0, 0)
-progressFill.BackgroundColor3 = Color3.fromRGB(220, 20, 60) -- Crimson
+progressFill.BackgroundColor3 = Color3.fromRGB(220, 20, 60) 
 progressFill.BorderSizePixel = 0
 progressFill.Parent = progressBar
 
@@ -1506,21 +1418,18 @@ end)
 
 local fruits = {}
 local playerPosition = nil
-local isRunning = false -- This flag can be used to prevent both automations from running simultaneously
+local isRunning = false
 local savedTool = nil
 
--- Global helper functions (defined once at the top)
 local function getFruits()
     fruits = {}
     print("getFruits() called: Scanning backpack and character for fruits.")
-    -- Check both backpack and equipped fruits
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
         if item:IsA("Tool") and (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
             table.insert(fruits, item)
             print("Found fruit in backpack: " .. item.Name)
         end
     end
-    -- Check equipped tool
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
             if item:IsA("Tool") and (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
@@ -1532,36 +1441,30 @@ local function getFruits()
     print("Total fruits found: " .. #fruits)
 end
 
--- This submitFruit is specifically for Kitsune's "SubmitToFox" logic
 local function submitFruit(fruit)
     print("Attempting to submit fruit to Kitsune: " .. fruit.Name)
-    -- Equip the fruit first
     fruit.Parent = LocalPlayer.Character
-    task.wait(0.2) -- Give time to equip
+    task.wait(0.2) 
     print("Fruit equipped: " .. fruit.Name)
 
-    -- Submit to Kitsune
     local args = {"SubmitToFox"}
     game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
     print("Fired RemoteEvent: ZenQuestRemoteEvent with args 'SubmitToFox'")
 
-    -- Small delay before next action
     task.wait(0.5)
     print("Kitsune submit fruit delay complete.")
 end
 
--- shouldSkipItem function, which includes the skipPatterns table
 local function shouldSkipItem(itemName)
     local lowerName = itemName:lower()
 
-    -- Skip list (case-insensitive) - THIS IS THE IMPORTANT PART
     local skipPatterns = {
-        "staff",           -- Catches all staff variants
-        "crate",           -- Catches all crates
+        "staff",        
+        "crate",         
         "radar",
-        "spray x%d+ %[",    -- Mutation sprays (x1/x2 with brackets)
-        "corrupted zen",   -- Specific crate type
-        "corrupted kodama", -- Catches "Shiny Corrupted Kodama" and similar
+        "spray x%d+ %[",  
+        "corrupted zen",  
+        "corrupted kodama", 
         "corrupted kitsune",
         "seed",
         "tranquil bloom"
@@ -1569,7 +1472,6 @@ local function shouldSkipItem(itemName)
 
     for _, pattern in ipairs(skipPatterns) do
         if lowerName:find(pattern) then
-            -- print("DEBUG: '" .. itemName .. "' matches skip pattern '" .. pattern .. "'")
             return true
         end
     end
@@ -1577,17 +1479,14 @@ local function shouldSkipItem(itemName)
 end
 
 local function createAutomationToggles()
-    -- Kitsune Toggle
     automationToggles.kitsune = function(state)
         if state then
             print("Toggle ON: Starting Kitsune automation.")
-            -- Prevent simultaneous execution if another automation is running
             if isRunning then
                 createColoredNotification("🚫 Another automation is already running. Please turn it off first.", "Rarity: Common")
                 return
             end
 
-            -- Store currently equipped tool (if not a fruit)
             if LocalPlayer.Character then
                 for _, item in pairs(LocalPlayer.Character:GetChildren()) do
                     if item:IsA("Tool") and not (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
@@ -1599,11 +1498,10 @@ local function createAutomationToggles()
                 end
             end
 
-            isRunning = true -- Set flag to true as this automation starts
+            isRunning = true 
             createColoredNotification("✅ Starting Kitsune fruit submission...", "Rarity: Common")
             createColoredNotification("This Automation will skip favorited fruits", "Rarity: Common")
 
-            -- Store original position
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 playerPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
                 print("Player position saved.")
@@ -1613,11 +1511,10 @@ local function createAutomationToggles()
                 return
             end
 
-            -- Teleport to Kitsune
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-101.82, 3.0, -13.08)
                 print("Teleporting to Kitsune.")
-                task.wait(1) -- Wait for teleport
+                task.wait(1) 
                 print("Teleport wait complete.")
             else
                 createColoredNotification("❌ Character or HumanoidRootPart not found for teleport! Stopping.", "Rarity: Common")
@@ -1625,7 +1522,6 @@ local function createAutomationToggles()
                 return
             end
 
-            -- Get current levels (initial read)
             local TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
             local CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
 
@@ -1638,7 +1534,6 @@ local function createAutomationToggles()
                 createColoredNotification("❌ Invalid level values detected! Cannot proceed.", "Rarity: Common")
                 print("ERROR: Invalid initial levels. Stopping automation.")
                 isRunning = false
-                -- Return to original position before stopping due to error
                 if playerPosition then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = playerPosition
                 end
@@ -1650,32 +1545,27 @@ local function createAutomationToggles()
                 return
             end
 
-            -- Process fruits
-            getFruits() -- Initial population of fruits table
+            getFruits() 
             if #fruits == 0 then
                 createColoredNotification("No fruits found to submit for Kitsune.", "Rarity: Common")
                 print("No fruits found initially for Kitsune. Stopping automation.")
-                isRunning = false -- No fruits, so stop
+                isRunning = false
             end
 
-            -- Loop while running AND there are still fruits AND at least one level is not maxed
             while isRunning and #fruits > 0 and (TranquilLevel < 5 or CorruptLevel < 5) do
-                local fruitsSubmittedInThisPass = 0 -- Track if any fruits were submitted in this iteration
+                local fruitsSubmittedInThisPass = 0 
 
-                -- Re-get fruits at the start of each major pass to ensure list is fresh
                 getFruits()
     
                 if #fruits == 0 then
                     print("No more fruits in inventory after re-scan. Stopping Kitsune loop.")
-                    break -- No fruits left, break out of while loop
+                    break 
                 end
 
-                -- Iterate backwards for safe removal
                 for i = #fruits, 1, -1 do
-                    if not isRunning then break end -- Stop if toggle turned off or max levels reached externally
+                    if not isRunning then break end
 
                     local fruit = fruits[i]
-                    -- Double-check if fruit still exists and is valid
                     if not fruit or not fruit.Parent then
                         print("Kitsune: Fruit no longer exists or has no parent: Removing from list (index " .. i .. ")")
                         table.remove(fruits, i)
@@ -1683,9 +1573,8 @@ local function createAutomationToggles()
                     end
 
                     local fruitName = fruit.Name
-                    if shouldSkipItem(fruit.Name) then -- Uses the global shouldSkipItem
+                    if shouldSkipItem(fruit.Name) then 
                         createColoredNotification("⏭ Skipping Kitsune: "..fruit.Name, "Rarity: Common")
-                        -- table.remove(fruits, i) -- Optional: remove skipped items from the list
                         continue
                     end
 
@@ -1697,7 +1586,6 @@ local function createAutomationToggles()
     
                     local shouldSubmit = false
 
-                    -- REVISED LOGIC FOR KITSUNE
                     if isTranquil and TranquilLevel < 5 then
                         shouldSubmit = true
                     end
@@ -1708,18 +1596,15 @@ local function createAutomationToggles()
                     print(string.format("Kitsune: Decision for %s: shouldSubmit = %s", fruitName, tostring(shouldSubmit)))
 
                     if shouldSubmit then
-                        -- Check for 'd' attribute (favorited/do not submit)
                         if not fruit:GetAttribute("d") then
-                            submitFruit(fruit) -- Uses the Kitsune-specific submitFruit
+                            submitFruit(fruit) 
                             fruitsSubmittedInThisPass = fruitsSubmittedInThisPass + 1
-                            table.remove(fruits, i) -- Remove the fruit from our list after attempting submission
-                            task.wait(1.5) -- Short delay after submission
+                            table.remove(fruits, i)
+                            task.wait(1.5) 
 
-                            -- Re-read levels *immediately* after a successful submission
                             TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
                             CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
 
-                            -- Force validate levels
                             if not (type(TranquilLevel) == "number" and TranquilLevel >= 0 and TranquilLevel <= 5) then
                                 TranquilLevel = 0
                                 print("Kitsune WARNING: TranquilLevel became invalid, resetting to 0.")
@@ -1732,7 +1617,6 @@ local function createAutomationToggles()
                             createColoredNotification(string.format("Updated Kitsune Levels: 🌿%d/5 ☠%d/5", TranquilLevel, CorruptLevel), "Rarity: Common")
                             print(string.format("Kitsune: Levels after submitting %s: Tranquil=%d, Corrupt=%d", fruitName, TranquilLevel, CorruptLevel))
 
-                            -- If both levels are maxed out, break
                             if TranquilLevel == 5 and CorruptLevel == 5 then
                                 createColoredNotification("Kitsune Zen levels are maxed out! Stopping submission.", "Rarity: Common")
                                 isRunning = false
@@ -1744,24 +1628,22 @@ local function createAutomationToggles()
                     else
                         print("Kitsune: Fruit " .. fruitName .. " not submitted because conditions not met.")
                     end
-                end -- End of Kitsune for loop
+                end 
 
                 if isRunning and fruitsSubmittedInThisPass == 0 and (#fruits > 0) then
                     print("Kitsune: No suitable fruits found to submit in this pass. Stopping automation.")
                     isRunning = false
                 end
 
-                if isRunning then task.wait(1) end -- Small wait between passes
+                if isRunning then task.wait(1) end 
 
-            end -- End of Kitsune while loop
+            end 
 
-            -- Return to original position
             if playerPosition then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = playerPosition
                 print("Kitsune: Returned to original position.")
             end
 
-            -- Restore original tool
             if savedTool and savedTool.Parent == LocalPlayer.Backpack then
                 task.wait(0.5)
                 savedTool.Parent = LocalPlayer.Character
@@ -1774,15 +1656,13 @@ local function createAutomationToggles()
             else
                 createColoredNotification("✅ Kitsune fruit submission completed!", "Rarity: Common")
             end
-            isRunning = false -- Ensure flag is false on completion/stop
+            isRunning = false 
             print("Kitsune automation finished.")
 
         else
-            -- Toggle OFF logic
-            if isRunning then -- Only if it was running
-                 isRunning = false -- Signal to stop
+            if isRunning then 
+                 isRunning = false 
                  createColoredNotification("🔴 Stopped Kitsune fruit submission.", "Rarity: Common")
-                 -- Restore tool if we were interrupted mid-process
                  if savedTool and savedTool.Parent == LocalPlayer.Backpack then
                      savedTool.Parent = LocalPlayer.Character
                      savedTool = nil
@@ -1793,17 +1673,14 @@ local function createAutomationToggles()
         end
     end
 
-    -- Tranquil Toggle
     automationToggles.tranquil = function(state)
         if state then
             print("Toggle ON: Starting Tranquil NPC automation.")
-            -- Prevent simultaneous execution if another automation is running
             if isRunning then
                 createColoredNotification("🚫 Another automation is already running. Please turn it off first.", "Rarity: Common")
                 return
             end
 
-            -- Store currently equipped tool (if not a fruit)
             if LocalPlayer.Character then
                 for _, item in pairs(LocalPlayer.Character:GetChildren()) do
                     if item:IsA("Tool") and not (item.Name:find("Tranquil") or item.Name:find("Corrupt")) then
@@ -1815,10 +1692,9 @@ local function createAutomationToggles()
                 end
             end
 
-            isRunning = true -- Set flag to true as this automation starts
+            isRunning = true
             createColoredNotification("✅ Starting Tranquil fruit submission...", "Rarity: Common")
 
-            -- Store original position
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 playerPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
                 print("Player position saved.")
@@ -1828,12 +1704,11 @@ local function createAutomationToggles()
                 return
             end
 
-            -- Teleport to Tranquil NPC
             local tranquilNpcPosition = CFrame.new(-73.59021, 4.3999157, -12.1218204)
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = tranquilNpcPosition
                 print("Teleporting to Tranquil NPC.")
-                task.wait(1) -- Wait for teleport
+                task.wait(1) 
                 print("Teleport wait complete.")
             else
                 createColoredNotification("❌ Character or HumanoidRootPart not found for teleport! Stopping.", "Rarity: Common")
@@ -1841,20 +1716,15 @@ local function createAutomationToggles()
                 return
             end
 
-            -- Main loop for submitting Tranquil fruits
             local submittedFruitCount = 0
 
-            -- Loop indefinitely until no more tranquil fruits or toggle off
             while isRunning do
                 local currentTranquilFruits = {}
-                -- Re-scan for Tranquil fruits specifically in backpack
-                -- Ensure it's only Tranquil, not dual
                 for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                     if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
                         table.insert(currentTranquilFruits, item)
                     end
                 end
-                -- Check equipped tool for Tranquil fruit (and make sure it's not dual)
                 if LocalPlayer.Character then
                     for _, item in pairs(LocalPlayer.Character:GetChildren()) do
                         if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
@@ -1864,10 +1734,9 @@ local function createAutomationToggles()
                 end
                 print("Tranquil NPC: Found " .. #currentTranquilFruits .. " potential Tranquil fruits.")
 
-                -- Filter out any fruits that match the skip patterns or are favorited
                 local submitableTranquilFruits = {}
                 for _, fruit in ipairs(currentTranquilFruits) do
-                    if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") then -- Uses the global shouldSkipItem
+                    if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") then 
                         table.insert(submitableTranquilFruits, fruit)
                     else
                         createColoredNotification("⏭ Skipping Tranquil: "..fruit.Name, "Rarity: Common")
@@ -1880,19 +1749,16 @@ local function createAutomationToggles()
                 if #submitableTranquilFruits == 0 then
                     createColoredNotification("No more suitable Tranquil fruits found to submit.", "Rarity: Common")
                     print("Tranquil NPC: No suitable Tranquil fruits left. Stopping submission loop.")
-                    break -- Exit the while loop
+                    break 
                 end
-    
-                -- Equip and submit the first available tranquil fruit
+   
                 local fruitToSubmit = submitableTranquilFruits[1]
                 print("Tranquil NPC: Attempting to submit fruit: " .. fruitToSubmit.Name)
 
-                -- Equip the fruit
                 fruitToSubmit.Parent = LocalPlayer.Character
-                task.wait(0.2) -- Give time to equip
+                task.wait(0.2)
                 print("Tranquil NPC: Fruit equipped: " .. fruitToSubmit.Name)
 
-                -- Fire the RemoteEvent to submit all plants (which should consume the equipped one)
                 local args = {"SubmitAllPlants"}
                 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("ZenQuestRemoteEvent"):FireServer(unpack(args))
                 print("Tranquil NPC: Fired RemoteEvent: ZenQuestRemoteEvent with args 'SubmitAllPlants'")
@@ -1900,16 +1766,14 @@ local function createAutomationToggles()
                 submittedFruitCount = submittedFruitCount + 1
                 createColoredNotification(string.format("Submitted Tranquil fruit #%d", submittedFruitCount), "Rarity: Common")
 
-                task.wait(1.0) -- Small delay after submission to allow server to process and inventory to update
-            end -- End of Tranquil NPC while loop
+                task.wait(1.0)
+            end
 
-            -- Automation finished, return to original position
             if playerPosition then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = playerPosition
                 print("Tranquil NPC: Returned to original position.")
             end
 
-            -- Restore original tool if it still exists
             if savedTool and savedTool.Parent == LocalPlayer.Backpack then
                 task.wait(0.5)
                 savedTool.Parent = LocalPlayer.Character
@@ -1918,15 +1782,13 @@ local function createAutomationToggles()
             end
 
             createColoredNotification("✅ Tranquil fruit submission completed!", "Rarity: Common")
-            isRunning = false -- Ensure flag is false on completion/stop
+            isRunning = false
             print("Tranquil NPC automation finished.")
 
         else
-            -- Toggle OFF logic
-            if isRunning then -- Only if it was running due to this toggle
-                isRunning = false -- Signal to stop
+            if isRunning then
+                isRunning = false 
                 createColoredNotification("🔴 Stopped Tranquil fruit submission.", "Rarity: Common")
-                -- Restore tool if we were interrupted mid-process
                 if savedTool and savedTool.Parent == LocalPlayer.Backpack then
                     savedTool.Parent = LocalPlayer.Character
                     savedTool = nil
@@ -1937,7 +1799,6 @@ local function createAutomationToggles()
         end
     end
 
-    -- Create the UI toggles (for visual representation)
     tab2:CreateToggle("Auto Give Fruits to Kitsune", function(state)
         automationToggles.kitsune(state)
     end)
@@ -1952,7 +1813,6 @@ createAutomationToggles()
 local selectedMutation = nil
 local autoPickupActive = false
 
--- List of attributes to ignore in the dropdown
 local IGNORED_ATTRIBUTES = {
     "DoneGrowTime",
     "GrowRateMulti",
@@ -1968,7 +1828,6 @@ local IGNORED_ATTRIBUTES = {
     "WaitForPlantGenerated"
 }
 
--- Function to scan farm for all available mutations (excluding ignored ones)
 local function scanForMutations()
     local mutationList = {}
     
@@ -1980,20 +1839,16 @@ local function scanForMutations()
     local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
     if plantsPhysical then
         for _, plant in pairs(plantsPhysical:GetChildren()) do
-            -- Check for Fruits folder
             local fruitsFolder = plant:FindFirstChild("Fruits")
             if fruitsFolder then
                 for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                    -- Get all attributes (mutations)
                     for attrName, _ in pairs(fruit:GetAttributes()) do
-                        -- Only add if not in ignored list
                         if not table.find(IGNORED_ATTRIBUTES, attrName) and not table.find(mutationList, attrName) then
                             table.insert(mutationList, attrName)
                         end
                     end
                 end
             else
-                -- Check the plant itself if no Fruits folder
                 for attrName, _ in pairs(plant:GetAttributes()) do
                     if not table.find(IGNORED_ATTRIBUTES, attrName) and not table.find(mutationList, attrName) then
                         table.insert(mutationList, attrName)
@@ -2006,21 +1861,18 @@ local function scanForMutations()
     return mutationList
 end
 
--- Create the mutation dropdown with filtered mutations
 local mutationDropdown = tab2:CreateDDO("Select Mutation", {}, function(selected)
     selectedMutation = selected
 end)
 
--- Update mutation list initially and when farm changes (with ignored attributes filtered out)
 task.spawn(function()
     while true do
-        local mutations = scanForMutations() -- This now returns only non-ignored attributes
+        local mutations = scanForMutations() 
         mutationDropdown:SetOptions(mutations)
-        wait(30) -- Rescan every 30 seconds
+        wait(30) 
     end
 end)
 
--- Auto pickup function (unchanged)
 local function collectFruitsWithMutation()
     while autoPickupActive and selectedMutation do
         if not playerFarm then
@@ -2031,13 +1883,10 @@ local function collectFruitsWithMutation()
         local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
         if plantsPhysical then
             for _, plant in pairs(plantsPhysical:GetChildren()) do
-                -- Recursive function to scan all fruit parts
                 local function scanFruitModel(model)
                     if model:GetAttribute(selectedMutation) then
-                        -- Find the proximity prompt at any level
                         local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
                         if not prompt then
-                            -- Deep search for prompts in all descendants
                             for _, descendant in pairs(model:GetDescendants()) do
                                 if descendant:IsA("ProximityPrompt") then
                                     prompt = descendant
@@ -2045,23 +1894,18 @@ local function collectFruitsWithMutation()
                                 end
                             end
                         end
-                        
-                        -- If prompt found, collect the fruit
+
                         if prompt then
-                            -- Teleport to fruit
                             local char = LocalPlayer.Character
                             if char and char:FindFirstChild("HumanoidRootPart") then
                                 local hrp = char.HumanoidRootPart
                                 local originalPos = hrp.CFrame
-                                
-                                -- Teleport close to fruit
+
                                 hrp.CFrame = model:GetPivot() * CFrame.new(0, 0, -2)
-                                
-                                -- Fire prompt
+
                                 task.wait(0.2)
                                 fireproximityprompt(prompt)
-                                
-                                -- Return to original position
+
                                 task.wait(0.1)
                                 hrp.CFrame = originalPos
                             end
@@ -2069,11 +1913,9 @@ local function collectFruitsWithMutation()
                     end
                 end
 
-                -- Check both Fruits folder and direct children
                 local fruitsFolder = plant:FindFirstChild("Fruits")
                 if fruitsFolder then
                     for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                        -- Scan the fruit and all its nested children
                         scanFruitModel(fruit)
                         for _, subPart in pairs(fruit:GetDescendants()) do
                             if subPart:IsA("Model") or subPart:IsA("BasePart") then
@@ -2082,17 +1924,15 @@ local function collectFruitsWithMutation()
                         end
                     end
                 else
-                    -- Check the plant itself if no Fruits folder
                     scanFruitModel(plant)
                 end
             end
         end
         
-        task.wait(0.5) -- Delay between scans
+        task.wait(0.5)
     end
 end
 
--- Create the toggle (unchanged)
 tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
     autoPickupActive = state
     if state then
@@ -2117,17 +1957,16 @@ local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple", "L
 local maxBackpackItems = 447
 local fruitAutomationActive = false
 local loopCount = 0
-local blacklistedFruits = {} -- New table to track problematic fruits
+local blacklistedFruits = {} 
 
 local playerBackpackLimits = {
     ["Phynomie"] = 447,
     ["HEZZYOFFICIALE"] = 329,
-    -- Add default capacity for other players
     ["default"] = 100
 }
 
 local function sellAllFruits()
-    if not fruitAutomationActive then return false end -- Early exit if toggled off
+    if not fruitAutomationActive then return false end 
     
     local steven = workspace.NPCS:FindFirstChild("Steven")
     if not steven then
@@ -2154,32 +1993,26 @@ local function sellAllFruits()
     end
     
     local originalCFrame = playerHRP.CFrame
-    
-    -- Teleport to Steven
+
     playerHRP.CFrame = npcHRP.CFrame * CFrame.new(0, 0, -3) 
     task.wait(0.5)
-    
-    -- Sell all fruits
+
     game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("Sell_Inventory"):FireServer()
     createColoredNotification("Sold all remaining fruits", "Rarity: Common")
     task.wait(0.5)
-    
-    -- Return to original position
+
     playerHRP.CFrame = originalCFrame
     return true
 end
 
--- Modified Kitsune submission function with safety checks
 local function safeSubmitToKitsune(fruit)
-    if not fruitAutomationActive then return false end -- Early exit if toggled off
-    
-    -- Check if fruit is blacklisted
+    if not fruitAutomationActive then return false end
+
     if blacklistedFruits[fruit] then
         print("Skipping blacklisted fruit: "..fruit.Name)
         return false
     end
-    
-    -- Check if player is holding more than 1 tool (should never happen)
+
     if LocalPlayer.Character then
         local equippedTools = 0
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
@@ -2189,7 +2022,6 @@ local function safeSubmitToKitsune(fruit)
         end
         
         if equippedTools > 1 then
-            -- Unequip all tools and try again
             for _, item in pairs(LocalPlayer.Character:GetChildren()) do
                 if item:IsA("Tool") then
                     item.Parent = LocalPlayer.Backpack
@@ -2200,61 +2032,53 @@ local function safeSubmitToKitsune(fruit)
         end
     end
     
-    -- Equip the fruit
     fruit.Parent = LocalPlayer.Character
-    task.wait(0.3) -- Give more time to equip
-    
-    -- Verify the fruit was equipped
+    task.wait(0.3) 
+
     if fruit.Parent ~= LocalPlayer.Character then
         print("Failed to equip fruit: "..fruit.Name)
-        blacklistedFruits[fruit] = true -- Add to blacklist
+        blacklistedFruits[fruit] = true
         return false
     end
-    
-    -- Submit to Kitsune
+
     local args = {"SubmitToFox"}
     game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
-    
-    -- Wait and verify if fruit was consumed
+
     local startTime = os.clock()
-    while os.clock() - startTime < 1.2 do -- Wait up to 2 seconds
+    while os.clock() - startTime < 1.2 do 
         if fruit.Parent ~= LocalPlayer.Character then
-            break -- Fruit was consumed
+            break 
         end
         task.wait(0.05)
     end
-    
-    -- If fruit still exists after submission, blacklist it
+
     if fruit.Parent == LocalPlayer.Character then
         print("Fruit not consumed after submission: "..fruit.Name)
         blacklistedFruits[fruit] = true
-        fruit.Parent = LocalPlayer.Backpack -- Put it back
+        fruit.Parent = LocalPlayer.Backpack 
         return false
     end
     
     return true
 end
 
--- Function to set backpack limit based on player
 local function setBackpackLimit()
     local playerName = LocalPlayer.Name
     maxBackpackItems = playerBackpackLimits[playerName] or playerBackpackLimits["default"]
     createColoredNotification(string.format("Backpack limit set to %d for %s", maxBackpackItems, playerName), "Rarity: Common")
 end
 
--- Function to count current backpack items
 local function countBackpackItems()
     local backpack = LocalPlayer:FindFirstChild("Backpack")
     return backpack and #backpack:GetChildren() or 0
 end
 
--- Function to check available space
 local function getAvailableSpace()
     return maxBackpackItems - countBackpackItems()
 end
 
 local function collectTargetFruits()
-    setBackpackLimit() -- Set limit at start
+    setBackpackLimit()
     
     while fruitAutomationActive do
         loopCount = loopCount + 1
@@ -2262,8 +2086,7 @@ local function collectTargetFruits()
         
         createColoredNotification(string.format("Starting AFK loop #%d (%d/%d slots used)", 
             loopCount, countBackpackItems(), maxBackpackItems), "Rarity: Common")
-        
-        -- PHASE 1: CONTINUOUS FRUIT COLLECTION
+
         local originalPos
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
@@ -2282,8 +2105,7 @@ local function collectTargetFruits()
                 local fruitsFolder = plant:FindFirstChild("Fruits") or plant
                 for _, fruit in pairs(fruitsFolder:GetChildren()) do
                     if not fruitAutomationActive or getAvailableSpace() <= 0 then break end
-                    
-                    -- Check if target fruit
+
                     local isTarget = false
                     for _, target in pairs(targetFruits) do
                         if fruit.Name:find(target) and fruit:GetAttribute("DoneGrowTime") then
@@ -2293,7 +2115,6 @@ local function collectTargetFruits()
                     end
                     if not isTarget then continue end
 
-                    -- Find prompt
                     local prompt
                     for _, descendant in pairs(fruit:GetDescendants()) do
                         if descendant:IsA("ProximityPrompt") then
@@ -2303,7 +2124,6 @@ local function collectTargetFruits()
                     end
                     if not prompt then continue end
 
-                    -- Collect fruit
                     local char = LocalPlayer.Character
                     if char and char:FindFirstChild("HumanoidRootPart") then
                         local hrp = char.HumanoidRootPart
@@ -2319,20 +2139,17 @@ local function collectTargetFruits()
             task.wait(0.5)
         end
 
-        if not fruitAutomationActive then break end -- Check if toggled off before next phase
+        if not fruitAutomationActive then break end 
 
-        -- PHASE 2: KITSUNE AUTOMATION
         createColoredNotification("Starting Kitsune submission...", "Rarity: Common")
         if automationToggles.kitsune and fruitAutomationActive then
-            -- Modified Kitsune automation with safety checks
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-101.82, 3.0, -13.08)
-                task.wait(1) -- Wait for teleport to complete
+                task.wait(1) 
             end
 
             local kitsuneSuccess = false
             while fruitAutomationActive and not kitsuneSuccess do
-                -- Get current levels
                 local TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
                 local CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
                 
@@ -2340,8 +2157,7 @@ local function collectTargetFruits()
                     kitsuneSuccess = true
                     break
                 end
-                
-                -- Find suitable fruits
+
                 getFruits()
                 local submittedAny = false
                 
@@ -2367,13 +2183,13 @@ local function collectTargetFruits()
                             submittedAny = true
                             table.remove(fruits, i)
                             task.wait(1)
-                            break -- Submit one at a time with checks
+                            break 
                         end
                     end
                 end
                 
                 if not submittedAny then
-                    kitsuneSuccess = true -- No more fruits to submit
+                    kitsuneSuccess = true
                 end
                 
                 task.wait(1)
@@ -2384,19 +2200,16 @@ local function collectTargetFruits()
             end
         end
 
-        if not fruitAutomationActive then break end -- Check if toggled off before next phase
+        if not fruitAutomationActive then break end 
 
-        -- PHASE 3: TRANQUIL AUTOMATION
         if automationToggles.tranquil and fruitAutomationActive then
-            -- Teleport to Tranquil NPC first
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-73.59021, 4.3999157, -12.1218204)
-                task.wait(1) -- Wait for teleport to complete
+                task.wait(1) 
             end
             
             local tranquilSuccess = false
             while fruitAutomationActive and not tranquilSuccess do
-                -- Find tranquil fruits
                 local currentTranquilFruits = {}
                 for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                     if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
@@ -2411,8 +2224,7 @@ local function collectTargetFruits()
                         end
                     end
                 end
-                
-                -- Filter out skipped/blacklisted fruits
+
                 local submitableTranquilFruits = {}
                 for _, fruit in ipairs(currentTranquilFruits) do
                     if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") and not blacklistedFruits[fruit] then
@@ -2424,26 +2236,22 @@ local function collectTargetFruits()
                     tranquilSuccess = true
                     break
                 end
-                
-                -- Submit one fruit at a time with checks
+
                 local fruitToSubmit = submitableTranquilFruits[1]
                 fruitToSubmit.Parent = LocalPlayer.Character
                 task.wait(0.5)
-                
-                -- Fire the RemoteEvent
+
                 local args = {"SubmitAllPlants"}
                 game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
-                
-                -- Verify submission
+
                 local startTime = os.clock()
                 while os.clock() - startTime < 2 do
                     if fruitToSubmit.Parent ~= LocalPlayer.Character then
-                        break -- Fruit was consumed
+                        break 
                     end
                     task.wait(0.1)
                 end
-                
-                -- If fruit still exists, blacklist it
+
                 if fruitToSubmit.Parent == LocalPlayer.Character then
                     blacklistedFruits[fruitToSubmit] = true
                     fruitToSubmit.Parent = LocalPlayer.Backpack
@@ -2451,8 +2259,7 @@ local function collectTargetFruits()
                 
                 task.wait(1.5)
             end
-            
-            -- Return to original position after Tranquil submission
+
             if originalPos then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
                 task.wait(0.5)
@@ -2461,7 +2268,6 @@ local function collectTargetFruits()
 
         if not fruitAutomationActive then break end
 
-        -- PHASE 4: SELL REMAINING FRUITS
         createColoredNotification("Selling remaining fruits...", "Rarity: Common")
         sellAllFruits()
         
@@ -2470,9 +2276,8 @@ local function collectTargetFruits()
         createColoredNotification(string.format("Completed AFK loop #%d", loopCount), "Rarity: Common")
         task.wait(3)
     end
-    
-    -- Cleanup when loop ends
-    blacklistedFruits = {} -- Reset blacklist
+
+    blacklistedFruits = {} 
     createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
@@ -2489,29 +2294,25 @@ tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state
 end)
 
 local TRANQUIL_NPC_POSITION = CFrame.new(-73.59021, 4.3999157, -12.1218204)
-local SUBMIT_COOLDOWN = 1.5 -- Seconds between submissions
-local MAX_BACKPACK_ITEMS = 447 -- Adjust based on your backpack limit
-local MIN_FREE_SLOTS = 20 -- Start collecting if below this
+local SUBMIT_COOLDOWN = 1.5 
+local MAX_BACKPACK_ITEMS = 447 
+local MIN_FREE_SLOTS = 20 
 
--- Variables
 local tranquilAutomationActive = false
 local lastSubmitTime = 0
 local originalPosition = nil
 
--- Helper Functions
 local function getTranquilFruits()
     local tranquilFruits = {}
-    
-    -- Check Backpack
+
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
         if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-            if not shouldSkipItem(item) then -- Now checks both name AND attributes
+            if not shouldSkipItem(item) then 
                 table.insert(tranquilFruits, item)
             end
         end
     end
-    
-    -- Check Equipped
+
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
             if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
@@ -2528,12 +2329,10 @@ end
 local function submitToTranquil(fruit)
     if not tranquilAutomationActive then return false end
     if os.clock() - lastSubmitTime < SUBMIT_COOLDOWN then return false end
-    
-    -- Equip the fruit
+
     fruit.Parent = LocalPlayer.Character
-    task.wait(0.3) -- Allow time for equip animation
+    task.wait(0.3) 
     
-    -- Submit to Tranquil NPC
     local args = {"SubmitAllPlants"}
     game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
     
@@ -2547,19 +2346,15 @@ local function sellNonTranquilFruits()
     
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return false end
-    
-    -- Save original position
+
     local originalCF = hrp.CFrame
-    
-    -- Teleport to Steven
+
     hrp.CFrame = steven.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
     task.wait(0.5)
-    
-    -- Sell all non-Tranquil fruits
+
     game:GetService("ReplicatedStorage").GameEvents.Sell_Inventory:FireServer()
     task.wait(0.5)
-    
-    -- Return to original position
+
     hrp.CFrame = originalCF
     return true
 end
@@ -2578,12 +2373,10 @@ local function collectTargetFruits2()
         for _, fruit in pairs(fruitsFolder:GetChildren()) do
             if not tranquilAutomationActive then break end
 
-            -- SKIP UNWANTED ITEMS
             if shouldSkipItem(fruit.Name) then
                 continue
             end
 
-            -- Only collect harvestable Tranquil fruits
             if fruit:GetAttribute("DoneGrowTime") and fruit.Name:find("Tranquil") then
                 local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
                 if not prompt then
@@ -2607,9 +2400,7 @@ local function collectTargetFruits2()
     end
 end
 
--- Main Loop
 local function tranquilAFKLoop()
-    -- Teleport to Tranquil NPC first
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         originalPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
         LocalPlayer.Character.HumanoidRootPart.CFrame = TRANQUIL_NPC_POSITION
@@ -2617,31 +2408,26 @@ local function tranquilAFKLoop()
     end
     
     while tranquilAutomationActive do
-        -- 1. Submit existing Tranquil fruits
         local tranquilFruits = getTranquilFruits()
         if #tranquilFruits > 0 then
             submitToTranquil(tranquilFruits[1])
         else
-            -- 2. Collect more if inventory has space
             local availableSpace = MAX_BACKPACK_ITEMS - countBackpackItems()
             if availableSpace >= MIN_FREE_SLOTS then
                 collectTargetFruits2()
             else
-                -- 3. Sell non-Tranquil fruits if almost full
                 sellNonTranquilFruits()
             end
         end
         
-        task.wait(1) -- Prevent lag
+        task.wait(1) 
     end
-    
-    -- Return to original position when stopped
+
     if originalPosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame = originalPosition
     end
 end
 
--- Toggle
 tab4:CreateToggle("AFK Fruit Farm Loop (Tranquil Only)", function(state)
     tranquilAutomationActive = state
     if state then
@@ -2656,36 +2442,30 @@ tab:Show()
 
 library.OnDestroy = function()
     print("Destroying all created instances...")
-    
-    -- Stop all loops
+
     for _, loop in pairs(cleanup.loops) do
         if type(loop) == "thread" then
             coroutine.close(loop)
         end
     end
-    
-    -- Disconnect all connections
+
     for _, connection in ipairs(cleanup.connections) do
         if connection.Connected then
             connection:Disconnect()
         end
     end
-    
-    -- Reset prompts
+
     managePrompts(false)
-    
-    -- Destroy GUI instances
+
     if cleanup.countdownGui then
         cleanup.countdownGui:Destroy()
     end
-    
-    -- Reset variables
+
     enabled = nil
     autoBuyActive = false
     savedPrompts = {}
     playerFarm = nil
-    
-    -- Clear tables
+
     cleanup.connections = {}
     cleanup.loops = {}
 
