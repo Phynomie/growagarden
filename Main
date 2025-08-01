@@ -1563,7 +1563,8 @@ local function shouldSkipItem(itemName)
         "corrupted zen",   -- Specific crate type
         "corrupted kodama", -- Catches "Shiny Corrupted Kodama" and similar
         "corrupted kitsune",
-        "seed"
+        "seed",
+        "tranquil bloom"
     }
 
     for _, pattern in ipairs(skipPatterns) do
