@@ -1948,11 +1948,133 @@ tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
     end
 end)
 
+local function shouldSkipPet(petName)
+    local highTierPets = {
+        "Raccoon", "Dragonfly", "Butterfly", "Spinosaurus", "T-Rex", "Corrupted Kitsune",
+        "Kitsune", "Queen Bee", "Disco Bee", "Red Fox", "Raiju", "Koi", "Kappa",
+        "Mimic Octopus", "Bear Bee", "Pack Bee", "Tanchozuru", "Corrupted Kodama",
+        "Kodama", "Triceratops", "Moon Cat", "Silver Monkey", "Blood Hedgehog",
+        "Bald Eagle", "Mole", "Football", "Hamster", "Chicken Zombie", "Firefly",
+        "Owl", "Golden Bee", "Echo Frog", "Cooked Owl", "Blood Kiwi", "Night Owl",
+        "Hyacinth Macaw", "Axolotl", "Dilophosaurus", "Ankylosaurus", "Pterodactyl",
+        "Brontosaurus", "Fennec Fox", "Blood Owl", "Red Dragon"
+    }
+    
+    for _, highTierPet in ipairs(highTierPets) do
+        if petName:find(highTierPet) then
+            return true
+        end
+    end
+    return false
+end
+
+local function autoSellPets()
+    local hasAnyPets = false
+    local hasUnfavoritedPets = false
+    
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("Age") then
+            hasAnyPets = true
+            if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
+                hasUnfavoritedPets = true
+            end
+        end
+    end
+    
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") and item:FindFirstChild("Age") then
+                hasAnyPets = true
+                if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
+                    hasUnfavoritedPets = true
+                end
+            end
+        end
+    end
+    
+    if not hasAnyPets then
+        createColoredNotification("You don't have any pets to sell!", "Rarity: Common")
+        return
+    end
+    
+    if not hasUnfavoritedPets then
+        createColoredNotification("All your pets are favorited or high-tier! Unfavorite them to sell.", "Rarity: Common")
+        return
+    end
+    
+    local originalPos
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+    end
+
+    local sellNPC = workspace.NPCS:FindFirstChild("Steven")
+    if not sellNPC then
+        createColoredNotification("Couldn't find the sell NPC!", "Rarity: Common")
+        return
+    end
+    
+    local npcHRP = sellNPC:FindFirstChild("HumanoidRootPart")
+    if not npcHRP then
+        createColoredNotification("Sell NPC doesn't have HRP!", "Rarity: Common")
+        return
+    end
+
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = npcHRP.CFrame * CFrame.new(0, 0, -3)
+        task.wait(1)
+    else
+        createColoredNotification("Couldn't teleport to sell NPC!", "Rarity: Common")
+        return
+    end
+
+    local petsSold = 0
+
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") and item:FindFirstChild("Age") then
+                if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
+                    local args = {item}
+                    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SellPet_RE"):FireServer(unpack(args))
+                    petsSold = petsSold + 1
+                    task.wait(0.5)
+                end
+            end
+        end
+    end
+
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("Age") then
+            if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
+                item.Parent = LocalPlayer.Character
+                task.wait(0.5)
+
+                local args = {item}
+                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SellPet_RE"):FireServer(unpack(args))
+                petsSold = petsSold + 1
+                task.wait(0.5)
+            end
+        end
+    end
+    
+    if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+        task.wait(0.5)
+    end
+    
+    if petsSold > 0 then
+        createColoredNotification(string.format("Sold %d pets successfully!", petsSold), "Rarity: Common")
+    else
+        createColoredNotification("No eligible pets were sold.", "Rarity: Common")
+    end
+end
+
+tab2:CreateButton("Auto Sell Unfavorited Pets", function()
+    autoSellPets()
+end)
+
 tab3:CreateButton("Sprinkler Script", function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/Phynomie/tg/refs/heads/main/script.lua"))()
 end)
-
-local tab4 = Main:CreateTab("Fruit Automation")
 
 local targetFruits = {"Serenity", "Zenflare", "Soft Sunshine", "Maple Apple", "Lucky Bamboo", "Sakura Bush"}
 local maxBackpackItems = nil
@@ -2425,7 +2547,7 @@ local function collectTargetFruits()
 end
 
 local function tranquilOnlyLoop()
-    setBackpackLimit() -- Initialize backpack size
+    setBackpackLimit() 
     
     while tranquilAutomationActive do
         loopCount = loopCount + 1
@@ -2434,7 +2556,6 @@ local function tranquilOnlyLoop()
         createColoredNotification(string.format("Starting AFK loop #%d (%d/%d slots used)", 
             loopCount, countBackpackItems(), maxBackpackItems), "Rarity: Common")
 
-        -- PHASE 1: COLLECT FRUITS (IDENTICAL TO KITSUNE VERSION)
         local originalPos
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
@@ -2454,7 +2575,6 @@ local function tranquilOnlyLoop()
                 for _, fruit in pairs(fruitsFolder:GetChildren()) do
                     if not tranquilAutomationActive or getAvailableSpace() <= 0 then break end
 
-                    -- IDENTICAL FRUIT CHECK LOGIC FROM KITSUNE VERSION
                     local isTarget = false
                     for _, target in pairs(targetFruits) do
                         if fruit.Name:find(target) and fruit:GetAttribute("DoneGrowTime") then
@@ -2490,10 +2610,8 @@ local function tranquilOnlyLoop()
 
         if not tranquilAutomationActive then break end
 
-        -- PHASE 2: TRANQUIL SUBMISSION (REPLACES KITSUNE PHASE)
         createColoredNotification("Starting Tranquil submission...", "Rarity: Common")
-        
-        -- Teleport to Tranquil NPC (ONLY CHANGE FROM KITSUNE VERSION)
+
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-73.59021, 4.3999157, -12.1218204)
             task.wait(1)
@@ -2502,8 +2620,7 @@ local function tranquilOnlyLoop()
         local tranquilSuccess = false
         while tranquilAutomationActive and not tranquilSuccess do
             local currentTranquilFruits = {}
-            
-            -- EXACTLY THE SAME INVENTORY SCAN LOGIC AS KITSUNE VERSION
+
             for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                 if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
                     table.insert(currentTranquilFruits, item)
@@ -2517,8 +2634,6 @@ local function tranquilOnlyLoop()
                     end
                 end
             end
-
-            -- IDENTICAL SUBMISSION LOGIC (JUST FOR TRANQUIL INSTEAD OF KITSUNE)
             local submitableTranquilFruits = {}
             for _, fruit in ipairs(currentTranquilFruits) do
                 if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") and not blacklistedFruits[fruit] then
@@ -2554,7 +2669,6 @@ local function tranquilOnlyLoop()
             task.wait(1.5)
         end
 
-        -- Return to original position (SAME AS KITSUNE VERSION)
         if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
             task.wait(0.5)
@@ -2562,13 +2676,10 @@ local function tranquilOnlyLoop()
 
         if not tranquilAutomationActive then break end
 
-        -- PHASE 3: SELL REMAINING (IDENTICAL TO KITSUNE VERSION)
         createColoredNotification("Checking for leftover fruits...", "Rarity: Common")
         
-        -- Wait a moment for server to update inventory
         task.wait(1)  
-        
-        -- Only sell if we have non-Tranquil fruits
+
         local shouldSell = false
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             if item:IsA("Tool") and not item.Name:find("Tranquil") then
@@ -2584,7 +2695,6 @@ local function tranquilOnlyLoop()
             createColoredNotification("No leftover fruits to sell", "Rarity: Common")
         end
 
-        -- Return to original position
         if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
             task.wait(0.5)
@@ -2600,7 +2710,7 @@ local function tranquilOnlyLoop()
     createColoredNotification("Tranquil AFK loop stopped", "Rarity: Common")
 end
 
-tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
+tab3:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
     fruitAutomationActive = state
     if state then
         loopCount = 0
@@ -2613,7 +2723,7 @@ tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state
     end
 end)
 
-tab4:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
+tab3:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
     tranquilAutomationActive = state
     if state then
         task.spawn(tranquilOnlyLoop)
