@@ -1964,16 +1964,17 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local playerBackpackLimits = {
-    ["default"] = 100 
+    ["default"] = nil
 }
 
 local function setBackpackLimit()
-    -- Get current backpack count as default
     local currentCount = countBackpackItems()
-    playerBackpackLimits["default"] = currentCount
-    
-    -- Set the limit (prioritizes player-specific limits)
-    maxBackpackItems = playerBackpackLimits[player.Name] or currentCount
+
+    if playerBackpackLimits["default"] == nil then
+        playerBackpackLimits["default"] = currentCount
+    end
+
+    maxBackpackItems = playerBackpackLimits[player.Name] or playerBackpackLimits["default"]
     
     createColoredNotification(string.format("Backpack slots: %d/%d", countBackpackItems(), maxBackpackItems), "Rarity: Common")
 end
