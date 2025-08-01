@@ -2419,35 +2419,155 @@ local function collectTargetFruits()
 end
 
 local function tranquilOnlyLoop()
-    setBackpackLimit()
-    local originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
-
+    setBackpackLimit() -- Initialize backpack size
+    
     while tranquilAutomationActive do
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-73.59021, 4.3999157, -12.1218204)
-        task.wait(1)
+        loopCount = loopCount + 1
+        local availableSpace = getAvailableSpace()
+        
+        createColoredNotification(string.format("Starting AFK loop #%d (%d/%d slots used)", 
+            loopCount, countBackpackItems(), maxBackpackItems), "Rarity: Common")
 
-        local submitted = false
-        for _, fruit in pairs(getTranquilFruits()) do
-            if not tranquilAutomationActive then break end
-            if submitToTranquil(fruit) then
-                submitted = true
-                task.wait(1.5)
+        -- PHASE 1: COLLECT FRUITS (IDENTICAL TO KITSUNE VERSION)
+        local originalPos
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+        end
+        
+        while tranquilAutomationActive and getAvailableSpace() > 0 do
+            if not playerFarm then playerFarm = findPlayerFarm() end
+            if not playerFarm then task.wait(5); continue end
+
+            local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+            if not plantsPhysical then task.wait(1); continue end
+
+            for _, plant in pairs(plantsPhysical:GetChildren()) do
+                if not tranquilAutomationActive or getAvailableSpace() <= 0 then break end
+                
+                local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+                for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                    if not tranquilAutomationActive or getAvailableSpace() <= 0 then break end
+
+                    -- IDENTICAL FRUIT CHECK LOGIC FROM KITSUNE VERSION
+                    local isTarget = false
+                    for _, target in pairs(targetFruits) do
+                        if fruit.Name:find(target) and fruit:GetAttribute("DoneGrowTime") then
+                            isTarget = true
+                            break
+                        end
+                    end
+                    if not isTarget then continue end
+
+                    local prompt
+                    for _, descendant in pairs(fruit:GetDescendants()) do
+                        if descendant:IsA("ProximityPrompt") then
+                            prompt = descendant
+                            break
+                        end
+                    end
+                    if not prompt then continue end
+
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        local hrp = char.HumanoidRootPart
+                        hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+                        task.wait(0.15)
+                        fireproximityprompt(prompt)
+                        createColoredNotification("Collected "..fruit.Name..string.format(" (%d/%d free)", 
+                            getAvailableSpace(), maxBackpackItems), "Rarity: Common")
+                        task.wait(0.35)
+                    end
+                end
             end
+            task.wait(0.5)
         end
 
-        if not submitted and getAvailableSpace() > 20 then
-            collectTargetFruits() 
+        if not tranquilAutomationActive then break end
+
+        -- PHASE 2: TRANQUIL SUBMISSION (REPLACES KITSUNE PHASE)
+        createColoredNotification("Starting Tranquil submission...", "Rarity: Common")
+        
+        -- Teleport to Tranquil NPC (ONLY CHANGE FROM KITSUNE VERSION)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-73.59021, 4.3999157, -12.1218204)
+            task.wait(1)
         end
 
-        if countBackpackItems() >= (maxBackpackItems - 10) then
-            sellAllFruits()
+        local tranquilSuccess = false
+        while tranquilAutomationActive and not tranquilSuccess do
+            local currentTranquilFruits = {}
+            
+            -- EXACTLY THE SAME INVENTORY SCAN LOGIC AS KITSUNE VERSION
+            for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+                if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                    table.insert(currentTranquilFruits, item)
+                end
+            end
+            
+            if LocalPlayer.Character then
+                for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+                    if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                        table.insert(currentTranquilFruits, item)
+                    end
+                end
+            end
+
+            -- IDENTICAL SUBMISSION LOGIC (JUST FOR TRANQUIL INSTEAD OF KITSUNE)
+            local submitableTranquilFruits = {}
+            for _, fruit in ipairs(currentTranquilFruits) do
+                if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") and not blacklistedFruits[fruit] then
+                    table.insert(submitableTranquilFruits, fruit)
+                end
+            end
+            
+            if #submitableTranquilFruits == 0 then
+                tranquilSuccess = true
+                break
+            end
+
+            local fruitToSubmit = submitableTranquilFruits[1]
+            fruitToSubmit.Parent = LocalPlayer.Character
+            task.wait(0.5)
+
+            local args = {"SubmitAllPlants"}
+            game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
+
+            local startTime = os.clock()
+            while os.clock() - startTime < 2 do
+                if fruitToSubmit.Parent ~= LocalPlayer.Character then
+                    break 
+                end
+                task.wait(0.1)
+            end
+
+            if fruitToSubmit.Parent == LocalPlayer.Character then
+                blacklistedFruits[fruitToSubmit] = true
+                fruitToSubmit.Parent = LocalPlayer.Backpack
+            end
+            
+            task.wait(1.5)
         end
 
-        task.wait(3) 
+        -- Return to original position (SAME AS KITSUNE VERSION)
+        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+            task.wait(0.5)
+        end
+
+        if not tranquilAutomationActive then break end
+
+        -- PHASE 3: SELL REMAINING (IDENTICAL TO KITSUNE VERSION)
+        createColoredNotification("Selling remaining fruits...", "Rarity: Common")
+        sellAllFruits()
+        
+        if not tranquilAutomationActive then break end
+        
+        createColoredNotification(string.format("Completed AFK loop #%d", loopCount), "Rarity: Common")
+        task.wait(3)
     end
-
-    -- Return to original position
-    LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+    
+    blacklistedFruits = {} 
+    createColoredNotification("Tranquil AFK loop stopped", "Rarity: Common")
 end
 
 tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
