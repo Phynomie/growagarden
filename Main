@@ -2487,188 +2487,160 @@ tab4:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state
     end
 end)
 
-local function safeSubmitToTranquil(fruit)
+local TRANQUIL_NPC_POSITION = CFrame.new(-73.59021, 4.3999157, -12.1218204)
+local SUBMIT_COOLDOWN = 1.5 -- Seconds between submissions
+local MAX_BACKPACK_ITEMS = 447 -- Adjust based on your backpack limit
+local MIN_FREE_SLOTS = 20 -- Start collecting if below this
+
+-- Variables
+local tranquilAutomationActive = false
+local lastSubmitTime = 0
+local originalPosition = nil
+
+-- Helper Functions
+local function getTranquilFruits()
+    local tranquilFruits = {}
+    
+    -- Check Backpack
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+            table.insert(tranquilFruits, item)
+        end
+    end
+    
+    -- Check Equipped
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
+                table.insert(tranquilFruits, item)
+            end
+        end
+    end
+    
+    return tranquilFruits
+end
+
+local function submitToTranquil(fruit)
     if not tranquilAutomationActive then return false end
+    if os.clock() - lastSubmitTime < SUBMIT_COOLDOWN then return false end
     
-    if blacklistedFruits[fruit] then
-        print("Skipping blacklisted fruit: "..fruit.Name)
-        return false
-    end
-    
-    -- Equip the fruit (optimized timing)
+    -- Equip the fruit
     fruit.Parent = LocalPlayer.Character
-    task.wait(0.25)
-    
-    if fruit.Parent ~= LocalPlayer.Character then
-        print("Failed to equip fruit: "..fruit.Name)
-        blacklistedFruits[fruit] = true
-        return false
-    end
+    task.wait(0.3) -- Allow time for equip animation
     
     -- Submit to Tranquil NPC
     local args = {"SubmitAllPlants"}
     game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
     
-    -- Faster verification
-    local startTime = os.clock()
-    while os.clock() - startTime < 1 do
-        if fruit.Parent ~= LocalPlayer.Character then
-            return true
-        end
-        task.wait(0.05)
-    end
-    
-    if fruit.Parent == LocalPlayer.Character then
-        print("Fruit not consumed: "..fruit.Name)
-        blacklistedFruits[fruit] = true
-        fruit.Parent = LocalPlayer.Backpack
-        return false
-    end
-    
+    lastSubmitTime = os.clock()
     return true
 end
 
-local tranquilAutomationActive = false
-local TRANQUIL_NPC_POSITION = CFrame.new(-73.59021, 4.3999157, -12.1218204)
-local originalPos1
+local function sellNonTranquilFruits()
+    local steven = workspace.NPCS:FindFirstChild("Steven")
+    if not steven then return false end
+    
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    
+    -- Save original position
+    local originalCF = hrp.CFrame
+    
+    -- Teleport to Steven
+    hrp.CFrame = steven.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+    task.wait(0.5)
+    
+    -- Sell all non-Tranquil fruits
+    game:GetService("ReplicatedStorage").GameEvents.Sell_Inventory:FireServer()
+    task.wait(0.5)
+    
+    -- Return to original position
+    hrp.CFrame = originalCF
+    return true
+end
 
 local function collectTargetFruits2()
-    setBackpackLimit()
+    if not playerFarm then playerFarm = findPlayerFarm() end
+    if not playerFarm then return false end
     
-    while tranquilAutomationActive do
-        loopCount = loopCount + 1
-        local availableSpace = getAvailableSpace()
+    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+    if not plantsPhysical then return false end
+    
+    for _, plant in pairs(plantsPhysical:GetChildren()) do
+        if not tranquilAutomationActive then break end
         
-        createColoredNotification(string.format("Starting AFK loop #%d (%d/%d slots used)", 
-            loopCount, countBackpackItems(), maxBackpackItems), "Rarity: Common")
-        
-        -- PHASE 1: FRUIT COLLECTION
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            originalPos1 = LocalPlayer.Character.HumanoidRootPart.CFrame
-        end
-        
-        while tranquilAutomationActive and getAvailableSpace() > 0 do
-            if not playerFarm then playerFarm = findPlayerFarm() end
-            if not playerFarm then task.wait(5); continue end
-
-            local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-            if not plantsPhysical then task.wait(1); continue end
-
-            for _, plant in pairs(plantsPhysical:GetChildren()) do
-                if not tranquilAutomationActive or getAvailableSpace() <= 0 then break end
-                
-                local fruitsFolder = plant:FindFirstChild("Fruits") or plant
-                for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                    if not tranquilAutomationActive or getAvailableSpace() <= 0 then break end
-                    
-                    local isTarget = false
-                    for _, target in pairs(targetFruits) do
-                        if fruit.Name:find(target) and fruit:GetAttribute("DoneGrowTime") then
-                            isTarget = true
-                            break
-                        end
-                    end
-                    if not isTarget then continue end
-
-                    local prompt
+        local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+        for _, fruit in pairs(fruitsFolder:GetChildren()) do
+            if not tranquilAutomationActive then break end
+            
+            -- Check if fruit is ready and matches target
+            if fruit:GetAttribute("DoneGrowTime") and fruit.Name:find("Tranquil") then
+                -- Find prompt
+                local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                if not prompt then
                     for _, descendant in pairs(fruit:GetDescendants()) do
                         if descendant:IsA("ProximityPrompt") then
                             prompt = descendant
                             break
                         end
                     end
-                    if not prompt then continue end
-
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        local hrp = char.HumanoidRootPart
-                        hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
-                        task.wait(0.5)
-                        fireproximityprompt(prompt)
-                        createColoredNotification("Collected "..fruit.Name..string.format(" (%d/%d free)", 
-                            getAvailableSpace(), maxBackpackItems), "Rarity: Common")
-                        task.wait(0.5)
-                    end
+                end
+                
+                -- Collect fruit
+                if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = LocalPlayer.Character.HumanoidRootPart
+                    hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+                    task.wait(0.15)
+                    fireproximityprompt(prompt)
+                    task.wait(0.35)
                 end
             end
-            task.wait(0.5)
         end
-
-        if not tranquilAutomationActive then break end
-
-        -- PHASE 2: TRANQUIL SUBMISSION
-        createColoredNotification("Starting Tranquil submission...", "Rarity: Common")
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = TRANQUIL_NPC_POSITION
-            task.wait(0.8)
-        end
-
-        local tranquilSuccess = false
-        while tranquilAutomationActive and not tranquilSuccess do
-            local currentTranquilFruits = {}
-            for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-                if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-                    table.insert(currentTranquilFruits, item)
-                end
-            end
-            
-            if LocalPlayer.Character then
-                for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-                    if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-                        table.insert(currentTranquilFruits, item)
-                    end
-                end
-            end
-            
-            local submitableFruits = {}
-            for _, fruit in ipairs(currentTranquilFruits) do
-                if not shouldSkipItem(fruit.Name) and not fruit:GetAttribute("d") and not blacklistedFruits[fruit] then
-                    table.insert(submitableFruits, fruit)
-                end
-            end
-            
-            if #submitableFruits == 0 then
-                tranquilSuccess = true
-                break
-            end
-            
-            local fruitToSubmit = submitableFruits[1]
-            if safeSubmitToTranquil(fruitToSubmit) then
-                createColoredNotification("Submitted: "..fruitToSubmit.Name, "Rarity: Common")
-                task.wait(0.5)
-            end
-        end
-
-        if originalPos1 then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos1
-            task.wait(0.5)
-        end
-
-        if not tranquilAutomationActive then break end
-
-        -- PHASE 3: SELL REMAINING
-        createColoredNotification("Selling remaining fruits...", "Rarity: Common")
-        sellAllFruits()
-        
-        if not tranquilAutomationActive then break end
-        
-        createColoredNotification(string.format("Completed AFK loop #%d", loopCount), "Rarity: Common")
-        task.wait(3)
     end
-    
-    blacklistedFruits = {}
-    createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
-tab4:CreateToggle("AFK Fruit Farm Loop for tranquil only", function(state)
+-- Main Loop
+local function tranquilAFKLoop()
+    -- Teleport to Tranquil NPC first
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        originalPosition = LocalPlayer.Character.HumanoidRootPart.CFrame
+        LocalPlayer.Character.HumanoidRootPart.CFrame = TRANQUIL_NPC_POSITION
+        task.wait(1)
+    end
+    
+    while tranquilAutomationActive do
+        -- 1. Submit existing Tranquil fruits
+        local tranquilFruits = getTranquilFruits()
+        if #tranquilFruits > 0 then
+            submitToTranquil(tranquilFruits[1])
+        else
+            -- 2. Collect more if inventory has space
+            local availableSpace = MAX_BACKPACK_ITEMS - countBackpackItems()
+            if availableSpace >= MIN_FREE_SLOTS then
+                collectTargetFruits2()
+            else
+                -- 3. Sell non-Tranquil fruits if almost full
+                sellNonTranquilFruits()
+            end
+        end
+        
+        task.wait(1) -- Prevent lag
+    end
+    
+    -- Return to original position when stopped
+    if originalPosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = originalPosition
+    end
+end
+
+-- Toggle
+tab4:CreateToggle("AFK Fruit Farm Loop (Tranquil Only)", function(state)
     tranquilAutomationActive = state
     if state then
-        loopCount = 0
-        blacklistedFruits = {}
-        createColoredNotification("Started Tranquil AFK farming loop", "Rarity: Common")
-        task.spawn(collectTargetFruits2)
+        createColoredNotification("🚀 Starting Tranquil AFK Loop...", "Rarity: Common")
+        task.spawn(tranquilAFKLoop)
     else
-        createColoredNotification("Stopping Tranquil AFK loop...", "Rarity: Common")
+        createColoredNotification("🛑 Tranquil AFK Loop Stopped", "Rarity: Common")
     end
 end)
 
