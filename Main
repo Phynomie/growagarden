@@ -1967,7 +1967,7 @@ local playerBackpackLimits = {
 }
 
 local function sellAllFruits()
-    if not fruitAutomationActive then return false end 
+    if not (fruitAutomationActive or tranquilAutomationActive) then return false end 
     
     local steven = workspace.NPCS:FindFirstChild("Steven")
     if not steven then
