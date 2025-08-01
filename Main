@@ -2119,7 +2119,7 @@ local loopCount = 0
 local blacklistedFruits = {} -- New table to track problematic fruits
 
 local playerBackpackLimits = {
-    ["Phynomie"] = 456,
+    ["Phynomie"] = 447,
     ["HEZZYOFFICIALE"] = 329,
     -- Add default capacity for other players
     ["default"] = 100
