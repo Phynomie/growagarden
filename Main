@@ -2557,9 +2557,33 @@ local function tranquilOnlyLoop()
         if not tranquilAutomationActive then break end
 
         -- PHASE 3: SELL REMAINING (IDENTICAL TO KITSUNE VERSION)
-        createColoredNotification("Selling remaining fruits...", "Rarity: Common")
-        sellAllFruits()
+        createColoredNotification("Checking for leftover fruits...", "Rarity: Common")
         
+        -- Wait a moment for server to update inventory
+        task.wait(1)  
+        
+        -- Only sell if we have non-Tranquil fruits
+        local shouldSell = false
+        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+            if item:IsA("Tool") and not item.Name:find("Tranquil") then
+                shouldSell = true
+                break
+            end
+        end
+
+        if shouldSell then
+            createColoredNotification("Selling remaining fruits...", "Rarity: Common")
+            sellAllFruits()
+        else
+            createColoredNotification("No leftover fruits to sell", "Rarity: Common")
+        end
+
+        -- Return to original position
+        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+            task.wait(0.5)
+        end
+
         if not tranquilAutomationActive then break end
         
         createColoredNotification(string.format("Completed AFK loop #%d", loopCount), "Rarity: Common")
