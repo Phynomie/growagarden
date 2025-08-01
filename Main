@@ -2505,7 +2505,7 @@ local function getTranquilFruits()
     -- Check Backpack
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
         if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-            if not shouldSkipItem(item.Name) then -- SKIP UNWANTED ITEMS
+            if not shouldSkipItem(item) then -- Now checks both name AND attributes
                 table.insert(tranquilFruits, item)
             end
         end
@@ -2515,7 +2515,7 @@ local function getTranquilFruits()
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
             if item:IsA("Tool") and item.Name:find("Tranquil") and not item.Name:find("Corrupt") then
-                if not shouldSkipItem(item.Name) then -- SKIP UNWANTED ITEMS
+                if not shouldSkipItem(item) then
                     table.insert(tranquilFruits, item)
                 end
             end
