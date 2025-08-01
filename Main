@@ -1948,7 +1948,27 @@ tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
     end
 end)
 
+local function isPet(tool)
+    -- Check common pet indicators in the name
+    if tool.Name:find("Age") or tool.Name:find("KG") then
+        return true
+    end
+    
+    -- Check for pet-specific attributes
+    if tool:GetAttribute("PetId") or tool:GetAttribute("PetRarity") then
+        return true
+    end
+    
+    -- Check for pet-specific tags
+    if tool:HasTag("Pet") or tool:HasTag("Collectable") then
+        return true
+    end
+    
+    return false
+end
+
 local function shouldSkipPet(petName)
+    -- Check if pet is in the high-tier list
     local highTierPets = {
         "Raccoon", "Dragonfly", "Butterfly", "Spinosaurus", "T-Rex", "Corrupted Kitsune",
         "Kitsune", "Queen Bee", "Disco Bee", "Red Fox", "Raiju", "Koi", "Kappa",
@@ -1971,19 +1991,19 @@ end
 local function autoSellPets()
     local hasAnyPets = false
     local hasUnfavoritedPets = false
-    
+
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") and item:FindFirstChild("Age") then
+        if item:IsA("Tool") and isPet(item) then
             hasAnyPets = true
             if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
                 hasUnfavoritedPets = true
             end
         end
     end
-    
+
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-            if item:IsA("Tool") and item:FindFirstChild("Age") then
+            if item:IsA("Tool") and isPet(item) then
                 hasAnyPets = true
                 if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
                     hasUnfavoritedPets = true
@@ -2001,7 +2021,7 @@ local function autoSellPets()
         createColoredNotification("All your pets are favorited or high-tier! Unfavorite them to sell.", "Rarity: Common")
         return
     end
-    
+
     local originalPos
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
@@ -2028,10 +2048,10 @@ local function autoSellPets()
     end
 
     local petsSold = 0
-
+    
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-            if item:IsA("Tool") and item:FindFirstChild("Age") then
+            if item:IsA("Tool") and isPet(item) then
                 if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
                     local args = {item}
                     game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SellPet_RE"):FireServer(unpack(args))
@@ -2043,8 +2063,9 @@ local function autoSellPets()
     end
 
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") and item:FindFirstChild("Age") then
+        if item:IsA("Tool") and isPet(item) then
             if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
+                -- Equip the pet first
                 item.Parent = LocalPlayer.Character
                 task.wait(0.5)
 
@@ -2055,7 +2076,7 @@ local function autoSellPets()
             end
         end
     end
-    
+
     if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
         task.wait(0.5)
