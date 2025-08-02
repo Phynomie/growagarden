@@ -2806,45 +2806,69 @@ local function cookEventLoop()
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
         end
+
+        local hasSoup = false
+        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+            if item:IsA("Tool") and item.Name:find("Soup") then
+                hasSoup = true
+                break
+            end
+        end
+
+        if hasSoup then
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
+                task.wait(1)
+            end
+
+            if submitSoupToNPC() then
+                createColoredNotification("Submitted existing soup to NPC", "Rarity: Common")
+            else
+                createColoredNotification("Failed to submit existing soup", "Rarity: Common")
+            end
+        end
+
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
             task.wait(1)
         end
 
-        local submittedCount = 0
-        while submittedCount < 5 and cookAutomationActive do
-            local fruits = getHeaviestFruits()
-            if #fruits == 0 then break end
-            
-            if submitToCookingPot(fruits[1].item) then
-                submittedCount = submittedCount + 1
-                createColoredNotification(string.format("Submitted %s (%.2fkg) (%d/5)", 
-                    fruits[1].item.Name, fruits[1].weight, submittedCount), "Rarity: Common")
-            end
-            task.wait(0.5)
-        end
-        
-        if submittedCount > 0 then
-            local args = {"CookBest"}
-            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
-            createColoredNotification("Started cooking best recipe", "Rarity: Common")
-
-            if waitForCooking() then
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                    task.wait(1)
+        if not hasSoup then
+            local submittedCount = 0
+            while submittedCount < 5 and cookAutomationActive do
+                local fruits = getHeaviestFruits()
+                if #fruits == 0 then break end
+                
+                if submitToCookingPot(fruits[1].item) then
+                    submittedCount = submittedCount + 1
+                    createColoredNotification(string.format("Submitted %s (%.2fkg) (%d/5)", 
+                        fruits[1].item.Name, fruits[1].weight, submittedCount), "Rarity: Common")
                 end
+                task.wait(0.5)
+            end
 
-                if submitSoupToNPC() then
-                    createColoredNotification("Submitted soup to NPC", "Rarity: Common")
+            if submittedCount > 0 then
+                local args = {"CookBest"}
+                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
+                createColoredNotification("Started cooking best recipe", "Rarity: Common")
+
+                if waitForCooking() then
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
+                        task.wait(1)
+                    end
+
+                    if submitSoupToNPC() then
+                        createColoredNotification("Submitted new soup to NPC", "Rarity: Common")
+                    else
+                        createColoredNotification("Failed to submit new soup", "Rarity: Common")
+                    end
                 else
-                    createColoredNotification("No soup found to submit", "Rarity: Common")
+                    createColoredNotification("Cooking timed out", "Rarity: Common")
                 end
             else
-                createColoredNotification("Cooking timed out", "Rarity: Common")
+                createColoredNotification("No fruits available to cook", "Rarity: Common")
             end
-        else
-            createColoredNotification("No fruits available to cook", "Rarity: Common")
         end
 
         if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
