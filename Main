@@ -3104,7 +3104,7 @@ local function parseTimeToSeconds(timeStr)
     local minutes, seconds = timeStr:match("(%d+):(%d+)")
     if not minutes then return nil end
     
-    return (tonumber(minutes) * 60 + tonumber(seconds)
+    return (tonumber(minutes) * 60 + tonumber(seconds))
 end
 
 local function getCookingPotStatus()
