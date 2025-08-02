@@ -2104,7 +2104,7 @@ local playerBackpackLimits = {
 }
 
 local function sellAllFruits()
-    if not (fruitAutomationActive or tranquilAutomationActive) then return false end 
+    if not tranquilAutomationActive then return false end 
     
     local steven = workspace.NPCS:FindFirstChild("Steven")
     if not steven then
@@ -2140,63 +2140,6 @@ local function sellAllFruits()
     task.wait(0.5)
 
     playerHRP.CFrame = originalCFrame
-    return true
-end
-
-local function safeSubmitToKitsune(fruit)
-    if not fruitAutomationActive then return false end
-
-    if blacklistedFruits[fruit] then
-        print("Skipping blacklisted fruit: "..fruit.Name)
-        return false
-    end
-
-    if LocalPlayer.Character then
-        local equippedTools = 0
-        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-            if item:IsA("Tool") then
-                equippedTools = equippedTools + 1
-            end
-        end
-        
-        if equippedTools > 1 then
-            for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-                if item:IsA("Tool") then
-                    item.Parent = LocalPlayer.Backpack
-                end
-            end
-            task.wait(0.5)
-            return false
-        end
-    end
-    
-    fruit.Parent = LocalPlayer.Character
-    task.wait(0.3) 
-
-    if fruit.Parent ~= LocalPlayer.Character then
-        print("Failed to equip fruit: "..fruit.Name)
-        blacklistedFruits[fruit] = true
-        return false
-    end
-
-    local args = {"SubmitToFox"}
-    game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer(unpack(args))
-
-    local startTime = os.clock()
-    while os.clock() - startTime < 1.2 do 
-        if fruit.Parent ~= LocalPlayer.Character then
-            break 
-        end
-        task.wait(0.05)
-    end
-
-    if fruit.Parent == LocalPlayer.Character then
-        print("Fruit not consumed after submission: "..fruit.Name)
-        blacklistedFruits[fruit] = true
-        fruit.Parent = LocalPlayer.Backpack 
-        return false
-    end
-    
     return true
 end
 
@@ -2244,11 +2187,11 @@ local function collectTargetFruits()
             if not plantsPhysical then task.wait(1); continue end
 
             for _, plant in pairs(plantsPhysical:GetChildren()) do
-                if not fruitAutomationActive or getAvailableSpace() <= 0 then break end
+                if not getAvailableSpace() <= 0 then break end
                 
                 local fruitsFolder = plant:FindFirstChild("Fruits") or plant
                 for _, fruit in pairs(fruitsFolder:GetChildren()) do
-                    if not fruitAutomationActive or getAvailableSpace() <= 0 then break end
+                    if not getAvailableSpace() <= 0 then break end
 
                     local isTarget = false
                     for _, target in pairs(targetFruits) do
@@ -2285,7 +2228,7 @@ local function collectTargetFruits()
 
         if not tranquilAutomationActive then break end 
 
-        if automationToggles.tranquil and fruitAutomationActive then
+        if automationToggles.tranquil then
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-73.59021, 4.3999157, -12.1218204)
                 task.wait(1) 
@@ -2726,19 +2669,6 @@ local function tranquilOnlyLoop()
     createColoredNotification("Tranquil AFK loop stopped", "Rarity: Common")
 end
 
-tab2:CreateToggle("AFK Fruit Farm Loop for kitsune and tranquil", function(state)
-    fruitAutomationActive = state
-    if state then
-        loopCount = 0
-        blacklistedFruits = {}
-        createColoredNotification("Started optimized AFK farming loop", "Rarity: Common")
-        task.spawn(collectTargetFruits)
-    else
-        createColoredNotification("Stopping AFK farming loop...", "Rarity: Common")
-        playerBackpackLimits["default"] = nil
-    end
-end)
-
 tab2:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
     tranquilAutomationActive = state
     if state then
@@ -2746,6 +2676,196 @@ tab2:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
     else
         createColoredNotification("Stopping AFK farming loop...", "Rarity: Common")
         playerBackpackLimits["default"] = nil
+    end
+end)
+
+local cookAutomationActive = false
+local cookingPotLocation = CFrame.new(-104.675011, 4.40011406, -11.0908785)
+local npcLocation = CFrame.new(-96.2885437, 4.39998388, -9.68481731, -0.031258896, 2.55506354e-08, -0.999511302, -1.01894253e-08, 1, 2.58817927e-08, 0.999511302, 1.09934826e-08, -0.031258896)
+
+local function getFruitWeight(fruitName)
+    local kgPattern = "%[(%d+%.%d+)kg%]"
+    local weight = fruitName:match(kgPattern)
+    return weight and tonumber(weight) or 0
+end
+
+local function getHeaviestFruits()
+    local fruits = {}
+
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and not item:GetAttribute("d") then
+            table.insert(fruits, {
+                item = item,
+                weight = item:FindFirstChild("Weight") and item.Weight.Value or getFruitWeight(item.Name)
+            })
+        end
+    end
+
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") and not item:GetAttribute("d") then
+                table.insert(fruits, {
+                    item = item,
+                    weight = item:FindFirstChild("Weight") and item.Weight.Value or getFruitWeight(item.Name)
+                })
+            end
+        end
+    end
+
+    table.sort(fruits, function(a, b) return a.weight > b.weight end)
+    
+    return fruits
+end
+
+local function submitToCookingPot(fruit)
+    if not fruit or not fruit.Parent then return false end
+    
+    fruit.Parent = LocalPlayer.Character
+    task.wait(0.5)
+    
+    local args = {"SubmitHeldPlant"}
+    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
+    
+    local startTime = os.clock()
+    while os.clock() - startTime < 2 do
+        if fruit.Parent ~= LocalPlayer.Character then
+            return true
+        end
+        task.wait(0.1)
+    end
+    
+    return false
+end
+
+local function submitSoupToNPC()
+    local soup
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and item.Name:find("Soup") then
+            soup = item
+            break
+        end
+    end
+    
+    if not soup then return false end
+    
+    soup.Parent = LocalPlayer.Character
+    task.wait(0.5)
+    
+    local args = {"SubmitHeldFood"}
+    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SubmitFoodService_RE"):FireServer(unpack(args))
+    
+    return true
+end
+
+local function waitForCooking()
+    local cookingPot = workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel
+    if not cookingPot then 
+        createColoredNotification("Cooking pot not found!", "Rarity: Common")
+        return false 
+    end
+    
+    local timerDisplay = cookingPot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame.TimeLabel
+    if not timerDisplay then 
+        createColoredNotification("Timer display not found!", "Rarity: Common")
+        return false 
+    end
+
+    if timerDisplay.Text == "Ready" or timerDisplay.Text == "0:00" then
+        createColoredNotification("Cooking already complete!", "Rarity: Common")
+        return true
+    end
+
+    local minutes, seconds = timerDisplay.Text:match("(%d+):(%d+)")
+    if not minutes then
+        createColoredNotification("Failed to parse timer: " .. timerDisplay.Text, "Rarity: Common")
+        return false
+    end
+
+    minutes = tonumber(minutes)
+    seconds = tonumber(seconds)
+    local totalWaitTime = (minutes * 60) + seconds  
+
+    local startTime = os.clock()
+    while os.clock() - startTime < totalWaitTime + 10 do  
+        if timerDisplay.Text == "Ready" or timerDisplay.Text == "0:00" then
+            createColoredNotification("Cooking finished!", "Rarity: Common")
+            return true
+        end
+        task.wait(1)
+    end
+
+    createColoredNotification("Cooking timer expired (waited " .. totalWaitTime .. "s)", "Rarity: Common")
+    return timerDisplay.Text == "Ready" or timerDisplay.Text == "0:00" 
+end
+
+local function cookEventLoop()
+    setBackpackLimit()
+    
+    while cookAutomationActive do
+        local originalPos
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+        end
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
+            task.wait(1)
+        end
+
+        local submittedCount = 0
+        while submittedCount < 5 and cookAutomationActive do
+            local fruits = getHeaviestFruits()
+            if #fruits == 0 then break end
+            
+            if submitToCookingPot(fruits[1].item) then
+                submittedCount = submittedCount + 1
+                createColoredNotification(string.format("Submitted %s (%.2fkg) (%d/5)", 
+                    fruits[1].item.Name, fruits[1].weight, submittedCount), "Rarity: Common")
+            end
+            task.wait(0.5)
+        end
+        
+        if submittedCount > 0 then
+            local args = {"CookBest"}
+            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
+            createColoredNotification("Started cooking best recipe", "Rarity: Common")
+
+            if waitForCooking() then
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
+                    task.wait(1)
+                end
+
+                if submitSoupToNPC() then
+                    createColoredNotification("Submitted soup to NPC", "Rarity: Common")
+                else
+                    createColoredNotification("No soup found to submit", "Rarity: Common")
+                end
+            else
+                createColoredNotification("Cooking timed out", "Rarity: Common")
+            end
+        else
+            createColoredNotification("No fruits available to cook", "Rarity: Common")
+        end
+
+        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+            task.wait(0.5)
+        end
+
+        if countBackpackItems() < 5 and cookAutomationActive then
+            collectTargetFruits()
+        end
+        
+        task.wait(1)
+    end
+    
+    createColoredNotification("AFK Cook Event loop stopped", "Rarity: Common")
+end
+
+tab2:CreateToggle("AFK Farm Cook Event", function(state)
+    cookAutomationActive = state
+    if state then
+        task.spawn(cookEventLoop)
     end
 end)
 
@@ -2792,7 +2912,7 @@ library.OnDestroy = function()
     end
     petCooldownDisplays = {}
 
-    fruitAutomationActive = false
+    tranquilAutomationActive = false
 
     getgenv().script_loaded = false
     
