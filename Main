@@ -2505,6 +2505,69 @@ local function collectTargetFruits()
     createColoredNotification("AFK farming loop stopped", "Rarity: Common")
 end
 
+local function collectTargetFruits3()
+    if not playerFarm then playerFarm = findPlayerFarm() end
+    if not playerFarm then 
+        createColoredNotification("Farm not found!", "Rarity: Common")
+        return false 
+    end
+
+    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+    if not plantsPhysical then 
+        createColoredNotification("No plants found in farm", "Rarity: Common")
+        return false 
+    end
+
+    local availableFruits = {}
+    for _, plant in pairs(plantsPhysical:GetChildren()) do
+        local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+        for _, fruit in pairs(fruitsFolder:GetChildren()) do
+            if not fruit:GetAttribute("d") and fruit:GetAttribute("DoneGrowTime") then
+                local weight = fruit:FindFirstChild("Weight") and fruit.Weight.Value or 0
+                table.insert(availableFruits, {
+                    fruit = fruit,
+                    weight = weight,
+                    model = fruit
+                })
+            end
+        end
+    end
+
+    table.sort(availableFruits, function(a, b) 
+        return a.weight > b.weight 
+    end)
+
+    local collectedAny = false
+    for _, data in ipairs(availableFruits) do
+        if getAvailableSpace() <= 0 then break end
+
+        local fruit = data.model
+        local prompt
+        for _, descendant in pairs(fruit:GetDescendants()) do
+            if descendant:IsA("ProximityPrompt") then
+                prompt = descendant
+                break
+            end
+        end
+
+        if prompt and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = LocalPlayer.Character.HumanoidRootPart
+            hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+            task.wait(0.15)
+            fireproximityprompt(prompt)
+            createColoredNotification("Collected "..fruit.Name.." ("..string.format("%.2f", data.weight).."kg)", "Rarity: Common")
+            collectedAny = true
+            task.wait(0.35)
+        end
+    end
+
+    if not collectedAny then
+        createColoredNotification("No collectable fruits found", "Rarity: Common")
+    end
+
+    return collectedAny
+end
+
 local function tranquilOnlyLoop()
     setBackpackLimit() 
     
@@ -2680,6 +2743,7 @@ tab2:CreateToggle("AFK Fruit Farm (Tranquil Only)", function(state)
 end)
 
 local cookAutomationActive = false
+local cookingLoopThread = nil
 local cookingPotLocation = CFrame.new(-104.675011, 4.40011406, -11.0908785)
 local npcLocation = CFrame.new(-96.2885437, 4.39998388, -9.68481731, -0.031258896, 2.55506354e-08, -0.999511302, -1.01894253e-08, 1, 2.58817927e-08, 0.999511302, 1.09934826e-08, -0.031258896)
 
@@ -2840,15 +2904,21 @@ local function cookEventLoop()
                 end
             end
         elseif potStatus == "ERROR" then
-            createColoredNotification("Couldn't access cooking pot", "Rarity: Common")
-            task.wait(3)
+            errorCount = (errorCount or 0) + 1
+            if errorCount > 5 then  -- After 5 fails
+                createColoredNotification("Permanently stopped - cooking pot missing!", "Rarity: Common")
+                cookAutomationActive = false
+            end
         end
-
         if potStatus == "READY" and not hasSoup and cookAutomationActive then
             local submittedCount = 0
             while submittedCount < 5 and cookAutomationActive do
                 local fruits = getHeaviestFruits()
-                if #fruits == 0 then break end
+                if #fruits == 0 then
+                    createColoredNotification("Fill backpack with fruits first!", "Rarity: Common")
+                    cookAutomationActive = false
+                    return
+                end
                 
                 if submitToCookingPot(fruits[1].item) then
                     submittedCount = submittedCount + 1
@@ -2877,7 +2947,7 @@ local function cookEventLoop()
         end
 
         if countBackpackItems() < 5 and cookAutomationActive then
-            collectTargetFruits()
+            collectTargetFruits3()
         end
         
         task.wait(1)
@@ -2888,8 +2958,19 @@ end
 
 tab2:CreateToggle("AFK Farm Cook Event", function(state)
     cookAutomationActive = state
+
+    if cookingLoopThread then
+        task.cancel(cookingLoopThread)
+        cookingLoopThread = nil
+    end
+
     if state then
-        task.spawn(cookEventLoop)
+        cookingLoopThread = task.spawn(function()
+            cookEventLoop()
+            cookingLoopThread = nil 
+        end)
+    else
+        createColoredNotification("Cook Event farming stopped", "Rarity: Common")
     end
 end)
 
