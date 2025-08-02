@@ -2905,7 +2905,7 @@ local function cookEventLoop()
             end
         elseif potStatus == "ERROR" then
             errorCount = (errorCount or 0) + 1
-            if errorCount > 5 then  -- After 5 fails
+            if errorCount > 5 then 
                 createColoredNotification("Permanently stopped - cooking pot missing!", "Rarity: Common")
                 cookAutomationActive = false
             end
