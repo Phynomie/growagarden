@@ -1187,6 +1187,32 @@ tab:CreateToggle("Anti-Afk", function(enabled)
     end
 end)
 
+local hiddenFruits = {} 
+
+tab:CreateToggle("Hide All Fruits", function(state)
+    if state then
+        for _, farm in ipairs(workspace.Farm:GetDescendants()) do
+            if farm.Name == "Plants_Physical" then
+                for _, plant in ipairs(farm:GetChildren()) do
+                    if not hiddenFruits[plant] then
+                        hiddenFruits[plant] = plant.Parent
+                        plant.Parent = game:GetService("ReplicatedStorage")
+                    end
+                end
+            end
+        end
+        createColoredNotification("All fruits hidden!", "Rarity: Common")
+    else
+        for plant, originalParent in pairs(hiddenFruits) do
+            if plant and originalParent then
+                plant.Parent = originalParent
+            end
+        end
+        hiddenFruits = {}
+        createColoredNotification("All fruits restored!", "Rarity: Common")
+    end
+end)
+
 tab:CreateButton("Sell Equipped Fruit/Pet", function()
     local function isPet(tool)
         return tool:FindFirstChild("Age") or tool:FindFirstChild("KG")
