@@ -1523,8 +1523,8 @@ local function createAutomationToggles()
                 return
             end
 
-            local TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
-            local CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
+            local TranquilLevel = tonumber(workspace.ZenEvent["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
+            local CorruptLevel = tonumber(workspace.ZenEvent["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
 
             print(string.format("Initial Levels: Tranquil=%s, Corrupt=%s", tostring(TranquilLevel), tostring(CorruptLevel)))
 
@@ -1603,8 +1603,8 @@ local function createAutomationToggles()
                             table.remove(fruits, i)
                             task.wait(1.5) 
 
-                            TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
-                            CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
+                            TranquilLevel = tonumber(workspace.ZenEvent["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
+                            CorruptLevel = tonumber(workspace.ZenEvent["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
 
                             if not (type(TranquilLevel) == "number" and TranquilLevel >= 0 and TranquilLevel <= 5) then
                                 TranquilLevel = 0
@@ -2430,8 +2430,8 @@ local function collectTargetFruits()
 
             local kitsuneSuccess = false
             while fruitAutomationActive and not kitsuneSuccess do
-                local TranquilLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
-                local CorruptLevel = tonumber(workspace.Interaction.UpdateItems["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
+                local TranquilLevel = tonumber(workspace.ZenEvent["Corrupted Zen"].MiddleTree.Tree.TranquilSide.BillBoardPart.BillboardGui.TranquilLevelAmount.Text)
+                local CorruptLevel = tonumber(workspace.ZenEvent["Corrupted Zen"].MiddleTree.Tree.CorruptSide.BillBoardPart.BillboardGui.CorruptionLevelAmount.Text)
                 
                 if TranquilLevel == 5 and CorruptLevel == 5 then
                     kitsuneSuccess = true
