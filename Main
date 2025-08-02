@@ -3247,35 +3247,22 @@ local function cookEventLoop()
 
         if cookingPotExists then
             if currentTime == "Ready" or currentTime == "0:00" then
-                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
-                createColoredNotification("Collected cooked food", "Rarity: Common")
-                task.wait(1)
-                cyclesWithoutProgress = 0
-            elseif not currentTime:find(":") then
-                if countBackpackItems() > 0 then
-                    if cookBestPossible() then
-                        local startTime = os.clock()
-                        if waitForCookingToFinish() then
-                            createColoredNotification(string.format("Cooked in %.1fs", os.clock()-startTime), "Rarity: Common")
-                            cyclesWithoutProgress = 0
-                        end
-                    else
-                        cyclesWithoutProgress = cyclesWithoutProgress + 1
-                        if cyclesWithoutProgress >= MAX_CYCLES_WITHOUT_PROGRESS then
-                            createColoredNotification("Resetting - collecting fruits", "Rarity: Common")
-                            collectTargetFruits3()
-                            cyclesWithoutProgress = 0
-                        end
-                    end
-                else
-                    createColoredNotification("Backpack empty - collecting fruits", "Rarity: Common")
-                    collectTargetFruits3()
+                -- Teleport to cooking pot
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
+                    task.wait(0.5)
                 end
-            else
-                local mins, secs = currentTime:match("(%d+):(%d+)")
-                if mins and secs then
-                    createColoredNotification(string.format("Cooking... (%s:%s left)", mins, secs), "Rarity: Common")
-                    waitForCookingToFinish()
+
+                -- Collect the soup
+                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
+                createColoredNotification("Collected cooked soup", "Rarity: Common")
+                task.wait(0.5)
+
+                -- Teleport to NPC and submit
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
+                    task.wait(0.5)
+                    submitSoup()
                 end
             end
         else
