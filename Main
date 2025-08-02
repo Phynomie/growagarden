@@ -1949,17 +1949,14 @@ tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
 end)
 
 local function isPet(tool)
-    -- Check common pet indicators in the name
     if tool.Name:find("Age") or tool.Name:find("KG") then
         return true
     end
-    
-    -- Check for pet-specific attributes
+
     if tool:GetAttribute("PetId") or tool:GetAttribute("PetRarity") then
         return true
     end
     
-    -- Check for pet-specific tags
     if tool:HasTag("Pet") or tool:HasTag("Collectable") then
         return true
     end
@@ -1968,7 +1965,6 @@ local function isPet(tool)
 end
 
 local function shouldSkipPet(petName)
-    -- Check if pet is in the high-tier list
     local highTierPets = {
         "Raccoon", "Dragonfly", "Butterfly", "Spinosaurus", "T-Rex", "Corrupted Kitsune",
         "Kitsune", "Queen Bee", "Disco Bee", "Red Fox", "Raiju", "Koi", "Kappa",
@@ -2065,7 +2061,6 @@ local function autoSellPets()
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
         if item:IsA("Tool") and isPet(item) then
             if not item:GetAttribute("d") and not shouldSkipPet(item.Name) then
-                -- Equip the pet first
                 item.Parent = LocalPlayer.Character
                 task.wait(0.5)
 
