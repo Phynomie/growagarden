@@ -3140,21 +3140,55 @@ local function parseTimeToSeconds(timeStr)
 end
 
 local function getCookingPotStatus()
-    local success, cookingPot = pcall(function()
-        local pot = workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel
-        if not pot then return nil end
+    local success, result = pcall(function()
+        local pot = workspace:FindFirstChild("Interaction") and
+                   workspace.Interaction:FindFirstChild("UpdateItems") and
+                   workspace.Interaction.UpdateItems:FindFirstChild("CookingEvent") and
+                   workspace.Interaction.UpdateItems.CookingEvent:FindFirstChild("CookingEventModel")
         
-        local timerDisplay = pot:FindFirstChild("IngredientsBoard") and 
-                           pot.IngredientsBoard:FindFirstChild("CookTimeDisplay") and
-                           pot.IngredientsBoard.CookTimeDisplay:FindFirstChild("Face") and
-                           pot.IngredientsBoard.CookTimeDisplay.Face:FindFirstChild("SurfaceGui") and
-                           pot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui:FindFirstChild("TimeDisplayFrame") and
-                           pot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame:FindFirstChild("TimeLabel")
+        if not pot then
+            warn("Cooking pot model not found!")
+            return nil
+        end
         
-        return timerDisplay and timerDisplay.Text or nil
+        local timerGui = pot:FindFirstChild("IngredientsBoard") and
+                        pot.IngredientsBoard:FindFirstChild("CookTimeDisplay") and
+                        pot.IngredientsBoard.CookTimeDisplay:FindFirstChild("Face") and
+                        pot.IngredientsBoard.CookTimeDisplay.Face:FindFirstChild("SurfaceGui") and
+                        pot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui:FindFirstChild("TimeDisplayFrame") and
+                        pot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame:FindFirstChild("TimeLabel")
+        
+        if not timerGui then
+            warn("Timer GUI not found!")
+            return nil
+        end
+        
+        return timerGui.Text
     end)
     
-    return success and cookingPot or nil
+    return success and result or nil
+end
+
+local function teleportToPotIfReady()
+    local status = getCookingPotStatus()
+    
+    if status and (status == "Ready" or status == "0:00") then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+
+            LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
+            task.wait(1.5) 
+
+            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - cookingPotLocation.Position).Magnitude
+            if distance < 10 then
+                print("✅ Successfully teleported to cooking pot!")
+                return true
+            else
+                warn("❌ Failed to teleport! Distance:", distance)
+                return false
+            end
+        end
+    end
+    return false
 end
 
 local function waitForCookingToFinish()
@@ -3219,15 +3253,7 @@ local function cookEventLoop()
         return
     end
 
-    local cyclesWithoutProgress = 0
-    local MAX_CYCLES_WITHOUT_PROGRESS = 20
-    
     while cookAutomationActive do
-        local originalPos
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
-        end
-
         local hasSoup = false
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
             if item:IsA("Tool") and item.Name:find("Soup") then
@@ -3239,56 +3265,30 @@ local function cookEventLoop()
         if hasSoup then
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                task.wait(1.5) 
-                
-                if submitSoup() then
-                    createColoredNotification("Submitted soup to NPC", "Rarity: Common")
-                    cyclesWithoutProgress = 0
-                end
+                task.wait(1.5)
+                submitSoup()
             end
         end
 
-        local currentTime = getCookingPotStatus()
-        local cookingPotExists = currentTime ~= nil
+        local potStatus = getCookingPotStatus()
+        print("Cooking Pot Status:", potStatus) 
 
-        if cookingPotExists then
-            if currentTime == "Ready" or currentTime == "0:00" then
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
-                    task.wait(1.5)
+        if potStatus and (potStatus == "Ready" or potStatus == "0:00") then
+            print("Attempting to teleport to cooking pot...") 
 
-                    if (LocalPlayer.Character.HumanoidRootPart.Position - cookingPotLocation.Position).Magnitude < 10 then
-                        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
-                        createColoredNotification("Collected cooked soup", "Rarity: Common")
-                        task.wait(1)
-                    end
-                end
+            if teleportToPotIfReady() then
+                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
+                createColoredNotification("🍜 Collected cooked soup!", "Rarity: Common")
+                task.wait(1)
             end
         else
-            if countBackpackItems() >= maxBackpackItems then
-                createColoredNotification("Waiting for cooking pot...", "Rarity: Common")
-                task.wait(5)
-            elseif countBackpackItems() < (maxBackpackItems / 2) then
+            if countBackpackItems() < (maxBackpackItems / 2) then
                 collectTargetFruits3()
             end
         end
 
-        if countBackpackItems() < (maxBackpackItems / 2) then
-            if not collectTargetFruits3() then
-                createColoredNotification("No fruits available", "Rarity: Common")
-                task.wait(5)
-            end
-        end
-
-        if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
-            task.wait(0.5)
-        end
-        
-        task.wait(1)
+        task.wait(1) 
     end
-    
-    createColoredNotification("Stopped Cook Event farming", "Rarity: Common")
 end
 
 tab2:CreateToggle("AFK Farm Cook Event", function(state)
