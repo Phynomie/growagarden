@@ -3141,14 +3141,20 @@ end
 
 local function getCookingPotStatus()
     local success, cookingPot = pcall(function()
-        return workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel
+        local pot = workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel
+        if not pot then return nil end
+        
+        local timerDisplay = pot:FindFirstChild("IngredientsBoard") and 
+                           pot.IngredientsBoard:FindFirstChild("CookTimeDisplay") and
+                           pot.IngredientsBoard.CookTimeDisplay:FindFirstChild("Face") and
+                           pot.IngredientsBoard.CookTimeDisplay.Face:FindFirstChild("SurfaceGui") and
+                           pot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui:FindFirstChild("TimeDisplayFrame") and
+                           pot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame:FindFirstChild("TimeLabel")
+        
+        return timerDisplay and timerDisplay.Text or nil
     end)
-    if not success or not cookingPot then return nil end
     
-    local timerDisplay = cookingPot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame.TimeLabel
-    if not timerDisplay then return nil end
-    
-    return timerDisplay.Text
+    return success and cookingPot or nil
 end
 
 local function waitForCookingToFinish()
@@ -3233,7 +3239,7 @@ local function cookEventLoop()
         if hasSoup then
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                task.wait(1.2)
+                task.wait(1.5) 
                 
                 if submitSoup() then
                     createColoredNotification("Submitted soup to NPC", "Rarity: Common")
@@ -3247,22 +3253,15 @@ local function cookEventLoop()
 
         if cookingPotExists then
             if currentTime == "Ready" or currentTime == "0:00" then
-                -- Teleport to cooking pot
                 if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
-                    task.wait(0.5)
-                end
+                    task.wait(1.5)
 
-                -- Collect the soup
-                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
-                createColoredNotification("Collected cooked soup", "Rarity: Common")
-                task.wait(0.5)
-
-                -- Teleport to NPC and submit
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                    task.wait(0.5)
-                    submitSoup()
+                    if (LocalPlayer.Character.HumanoidRootPart.Position - cookingPotLocation.Position).Magnitude < 10 then
+                        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
+                        createColoredNotification("Collected cooked soup", "Rarity: Common")
+                        task.wait(1)
+                    end
                 end
             end
         else
