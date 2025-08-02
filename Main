@@ -1213,80 +1213,51 @@ tab:CreateToggle("Hide All Fruits", function(state)
     end
 end)
 
-local function getFruitPart(plant)
-    local fruitParts = {
-        "Leaf", "Fruit", "Berry", "Apple", 
-        "Peach", "Mango", "Orange", "Model", "Tranquil Bloom"
-    }
-    
-    for _, partName in ipairs(fruitParts) do
-        local fruitPart = plant:FindFirstChild(partName)
-        if fruitPart and (fruitPart:IsA("BasePart") or fruitPart:IsA("Model")) then
-            return fruitPart
-        end
-    end
+local originalCollisionStates = {} 
 
-    local fruitsFolder = plant:FindFirstChild("Fruits")
-    if fruitsFolder then
-        for _, child in ipairs(fruitsFolder:GetChildren()) do
-            if child:IsA("BasePart") or child:IsA("Model") then
-                return child
-            end
-        end
-    end
-    
-    return nil
-end
+local function setFruitsCollision(state)
+    for _, farm in ipairs(workspace.Farm:GetDescendants()) do
+        if farm.Name == "Plants_Physical" then
+            for _, plant in ipairs(farm:GetChildren()) do
+                if plant:IsA("BasePart") then
+                    if state == false then
+                        if not originalCollisionStates[plant] then
+                            originalCollisionStates[plant] = plant.CanCollide
+                        end
+                        plant.CanCollide = false
+                    else
+                        if originalCollisionStates[plant] ~= nil then
+                            plant.CanCollide = originalCollisionStates[plant]
+                        end
+                    end
+                end
 
-tab:CreateToggle("Hide Big Fruits", function(state)
-    if state then
-        for _, farm in ipairs(workspace.Farm:GetDescendants()) do
-            if farm.Name == "Plants_Physical" then
-                for _, plant in ipairs(farm:GetChildren()) do
-                    if plant:FindFirstChild("Weight") and plant.Weight.Value > 50 then
-                        local fruitPart = getFruitPart(plant)
-                        if fruitPart and not hiddenFruitParts[fruitPart] then
-                            hiddenFruitParts[fruitPart] = {
-                                Parent = fruitPart.Parent,
-                                Position = fruitPart:GetPivot(),
-                                Transparency = fruitPart:IsA("BasePart") and fruitPart.Transparency or nil
-                            }
-                            
-                            if fruitPart:IsA("BasePart") then
-                                fruitPart.Transparency = 1
-                                fruitPart.CanCollide = false
-                            else
-                                for _, descendant in ipairs(fruitPart:GetDescendants()) do
-                                    if descendant:IsA("BasePart") then
-                                        descendant.Transparency = 1
-                                        descendant.CanCollide = false
-                                    end
-                                end
+                for _, part in ipairs(plant:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        if state == false then
+                            if not originalCollisionStates[part] then
+                                originalCollisionStates[part] = part.CanCollide
+                            end
+                            part.CanCollide = false
+                        else
+                            if originalCollisionStates[part] ~= nil then
+                                part.CanCollide = originalCollisionStates[part]
                             end
                         end
                     end
                 end
             end
         end
-        createColoredNotification("Big fruits (>50kg) hidden!", "Rarity: Common")
+    end
+end
+
+tab:CreateToggle("No Clip Through Fruits", function(state)
+    setFruitsCollision(not state) 
+    
+    if state then
+        createColoredNotification("No Clip enabled - walk through fruits", "Rarity: Common")
     else
-        for fruitPart, data in pairs(hiddenFruitParts) do
-            if fruitPart and data.Parent then
-                if fruitPart:IsA("BasePart") then
-                    fruitPart.Transparency = data.Transparency or 0
-                    fruitPart.CanCollide = true
-                else
-                    for _, descendant in ipairs(fruitPart:GetDescendants()) do
-                        if descendant:IsA("BasePart") then
-                            descendant.Transparency = 0
-                            descendant.CanCollide = true
-                        end
-                    end
-                end
-            end
-        end
-        hiddenFruitParts = {}
-        createColoredNotification("Big fruits restored!", "Rarity: Common")
+        createColoredNotification("No Clip disabled - normal collision", "Rarity: Common")
     end
 end)
 
