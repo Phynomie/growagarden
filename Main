@@ -2821,61 +2821,334 @@ local cookingLoopThread = nil
 local cookingPotLocation = CFrame.new(-104.675011, 4.40011406, -11.0908785)
 local npcLocation = CFrame.new(-96.2885437, 4.39998388, -9.68481731, -0.031258896, 2.55506354e-08, -0.999511302, -1.01894253e-08, 1, 2.58817927e-08, 0.999511302, 1.09934826e-08, -0.031258896)
 
-local function getFruitWeight(fruitName)
-    local kgPattern = "%[(%d+%.%d+)kg%]"
-    local weight = fruitName:match(kgPattern)
-    return weight and tonumber(weight) or 0
+local RECIPES = {
+    ["Sandwich"] = {
+        ingredients = {"Tomato", "Tomato", "Corn"},
+        rarity = "Uncommon"
+    },
+    ["Pie"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bone Blossom", "Pumpkin"},
+            ["Divine"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Sugar Apple", "Pumpkin"},
+            ["Mythical"] = {"Corn", "Coconut", "Coconut", "Coconut", "Mango"},
+            ["Legendary"] = {"Corn", "Coconut"},
+            ["Rare"] = {"Pumpkin", "Apple"}
+        },
+        rarity = "Varies"
+    },
+    ["Burger"] = {
+        ingredients = {
+            ["Divine"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Corn", "Tomato"},
+            ["Mythical"] = {"Pepper", "Corn", "Tomato", "Bone Blossom", "Beanstalk"},
+            ["Legendary"] = {"Pepper", "Corn", "Tomato"}
+        },
+        rarity = "Varies"
+    },
+    ["Hotdog"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bone Blossom", "Corn"},
+            ["Divine"] = {"Ember Lily", "Ember Lily", "Ember Lily", "Ember Lily", "Corn"},
+            ["Mythical"] = {"Corn", "Ember Lily"},
+            ["Legendary"] = {"Pepper", "Corn"}
+        },
+        rarity = "Varies"
+    },
+    ["Waffle"] = {
+        ingredients = {
+            ["Divine"] = {"Sugar Apple", "Coconut"},
+            ["Mythical"] = {"Tranquil Bloom", "Starfruit", "Coconut"},
+            ["Legendary"] = {"Pumpkin", "Watermelon"},
+            ["Rare"] = {"Pumpkin", "Sugar Apple"}
+        },
+        rarity = "Varies"
+    },
+    ["Salad"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bone Blossom", "Tomato"},
+            ["Divine"] = {"Sugar Apple", "Sugar Apple", "Sugar Apple", "Pepper", "Pineapple"},
+            ["Mythical"] = {"Giant Pinecone", "Tomato"},
+            ["Rare"] = {"Tomato", "Tomato"}
+        },
+        rarity = "Varies"
+    },
+    ["Sushi"] = {
+        ingredients = {
+            ["Divine"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bamboo", "Corn"},
+            ["Mythical"] = {"Sugar Apple", "Sugar Apple", "Sugar Apple", "Bamboo", "Corn"},
+            ["Legendary"] = {"Pepper", "Coconut", "Bamboo", "Corn"},
+            ["Rare"] = {"Bamboo", "Bamboo", "Bamboo", "Bamboo", "Corn"}
+        },
+        rarity = "Varies"
+    },
+    ["Ice Cream"] = {
+        ingredients = {
+            ["Prismatic"] = {"Banana", "Sugar Apple", "Bone Blossom", "Bone Blossom", "Bone Blossom"},
+            ["Legendary"] = {"Banana", "Banana"},
+            ["Mythical"] = {"Banana", "Sugar Apple"},
+            ["Uncommon"] = {"Blueberry", "Corn"}
+        },
+        rarity = "Varies"
+    },
+    ["Donut"] = {
+        ingredients = {
+            ["Uncommon"] = {"Corn", "Blueberry", "Strawberry"},
+            ["Common"] = {"Strawberry", "Tomato", "Apple"}
+        },
+        rarity = "Varies"
+    },
+    ["Pizza"] = {
+        ingredients = {
+            ["Divine"] = {"Sugar Apple", "Bone Blossom", "Corn"},
+            ["Mythical"] = {"Tomato", "Corn", "Pepper", "Sugar Apple", "Sugar Apple"},
+            ["Legendary"] = {"Corn", "Corn", "Apple", "Apple", "Pepper"},
+            ["Rare"] = {"Banana", "Tomato"}
+        },
+        rarity = "Varies"
+    },
+    ["Cake"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Sugar Apple", "Banana"},
+            ["Divine"] = {"Banana", "Kiwi", "Bone Blossom", "Bone Blossom", "Bone Blossom"},
+            ["Mythical"] = {"Sugar Apple", "Sugar Apple", "Corn", "Corn"},
+            ["Legendary"] = {"Kiwi", "Kiwi", "Banana", "Banana"},
+            ["Rare"] = {"Blueberry", "Grape", "Apple", "Corn"},
+            ["Uncommon"] = {"Corn", "Corn", "Strawberry", "Strawberry"}
+        },
+        rarity = "Varies"
+    }
+}
+
+local function getCurrentCraving()
+    local success, cravingBubble = pcall(function()
+        return workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel.PigChefFolder.PigChef.Cravings.CravingThoughtBubblePart
+    end)
+    if not success or not cravingBubble then return nil end
+    
+    local cravingText = cravingBubble.CravingBillboard.BG.CravingTextLabel.Text
+    for foodName in pairs(RECIPES) do
+        if cravingText:lower():find(foodName:lower()) then
+            return foodName
+        end
+    end
+    return nil
 end
 
-local function getHeaviestFruits()
-    local fruits = {}
+local function countInventoryItems()
+    local inventory = {}
 
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") and not item:GetAttribute("d") then
-            table.insert(fruits, {
+        if item:IsA("Tool") then
+            local baseName = item.Name:gsub("%b[]", ""):gsub("%s+$", "")
+            inventory[baseName] = (inventory[baseName] or 0) + 1
+        end
+    end
+
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") then
+                local baseName = item.Name:gsub("%b[]", ""):gsub("%s+$", "")
+                inventory[baseName] = (inventory[baseName] or 0) + 1
+            end
+        end
+    end
+    
+    return inventory
+end
+
+local function getWeightFromName(itemName)
+    local weightStr = itemName:match("%[(.-)kg%]")
+    return weightStr and tonumber(weightStr) or 0
+end
+
+local function getInventoryWithWeights()
+    local inventory = {}
+
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            local baseName = item.Name:gsub("%s*%b[]", ""):gsub("%s+$", "")
+            inventory[baseName] = inventory[baseName] or {}
+            table.insert(inventory[baseName], {
                 item = item,
-                weight = item:FindFirstChild("Weight") and item.Weight.Value or getFruitWeight(item.Name)
+                weight = item:FindFirstChild("Weight") and item.Weight.Value or getWeightFromName(item.Name)
             })
         end
     end
 
     if LocalPlayer.Character then
         for _, item in pairs(LocalPlayer.Character:GetChildren()) do
-            if item:IsA("Tool") and not item:GetAttribute("d") then
-                table.insert(fruits, {
+            if item:IsA("Tool") then
+                local baseName = item.Name:gsub("%s*%b[]", ""):gsub("%s+$", "")
+                inventory[baseName] = inventory[baseName] or {}
+                table.insert(inventory[baseName], {
                     item = item,
-                    weight = item:FindFirstChild("Weight") and item.Weight.Value or getFruitWeight(item.Name)
+                    weight = item:FindFirstChild("Weight") and item.Weight.Value or getWeightFromName(item.Name)
                 })
             end
         end
     end
 
-    table.sort(fruits, function(a, b) return a.weight > b.weight end)
+    for _, items in pairs(inventory) do
+        table.sort(items, function(a, b) return a.weight > b.weight end)
+    end
     
-    return fruits
+    return inventory
 end
 
-local function submitToCookingPot(fruit)
-    if not fruit or not fruit.Parent then return false end
+local function findBestRecipe(foodName)
+    local inventory = getInventoryWithWeights()
+    local recipeData = RECIPES[foodName]
     
-    fruit.Parent = LocalPlayer.Character
-    task.wait(0.5)
+    if not recipeData then return nil end
     
-    local args = {"SubmitHeldPlant"}
-    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
+    local rarities = {"Prismatic", "Divine", "Mythical", "Legendary", "Rare", "Uncommon", "Common"}
     
+    for _, rarity in ipairs(rarities) do
+        local ingredients = recipeData.ingredients[rarity] or (rarity == "Common" and recipeData.ingredients)
+        if ingredients then
+            local canMake = true
+            local selectedItems = {}
+
+            for _, ing in ipairs(ingredients) do
+                if not inventory[ing] or #inventory[ing] == 0 then
+                    canMake = false
+                    break
+                end
+            end
+            
+            if canMake then
+                for _, ing in ipairs(ingredients) do
+                    table.insert(selectedItems, inventory[ing][1].item)
+                end
+                
+                return {
+                    items = selectedItems,
+                    rarity = rarity,
+                    priority = recipeData.priority
+                }
+            end
+        end
+    end
+    
+    return nil
+end
+
+local function submitItems(items)
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") then
+                item.Parent = LocalPlayer.Backpack
+                task.wait(0.1)
+            end
+        end
+    end
+
+    for _, item in ipairs(items) do
+        if not item or not item.Parent then return false end
+        
+        item.Parent = LocalPlayer.Character
+        task.wait(0.3)
+        
+        local args = {"SubmitHeldPlant"}
+        game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
+        task.wait(0.5)
+        
+        if item.Parent == LocalPlayer.Character then
+            item.Parent = LocalPlayer.Backpack
+        end
+    end
+    
+    return true
+end
+
+local function cookBestPossible()
+    local currentCraving = getCurrentCraving()
+    if not currentCraving then
+        createColoredNotification("No valid craving detected!", "Rarity: Common")
+        return false
+    end
+    
+    createColoredNotification("Current craving: "..currentCraving, "Rarity: Common")
+    
+    local bestRecipe = findBestRecipe(currentCraving)
+    if not bestRecipe then
+        createColoredNotification("No matching ingredients for "..currentCraving, "Rarity: Common")
+        return false
+    end
+    
+    createColoredNotification(string.format("Making %s (%s) with heaviest available fruits", 
+        currentCraving, bestRecipe.rarity), "Rarity: Common")
+    
+    if submitItems(bestRecipe.items) then
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+        createColoredNotification("Started cooking "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
+        return true
+    else
+        createColoredNotification("Failed to submit ingredients!", "Rarity: Common")
+        return false
+    end
+end
+
+local function getCurrentCookingTime()
+    local cookingPot = workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel
+    if not cookingPot then return nil end
+    
+    local timerDisplay = cookingPot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame.TimeLabel
+    if not timerDisplay then return nil end
+    
+    return timerDisplay.Text
+end
+
+local function parseTimeToSeconds(timeStr)
+    if timeStr == "Ready" or timeStr == "0:00" then return 0 end
+    
+    local minutes, seconds = timeStr:match("(%d+):(%d+)")
+    if not minutes then return nil end
+    
+    return (tonumber(minutes) * 60 + tonumber(seconds)
+end
+
+local function getCookingPotStatus()
+    local success, cookingPot = pcall(function()
+        return workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel
+    end)
+    if not success or not cookingPot then return nil end
+    
+    local timerDisplay = cookingPot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame.TimeLabel
+    if not timerDisplay then return nil end
+    
+    return timerDisplay.Text
+end
+
+local function waitForCookingToFinish()
     local startTime = os.clock()
-    while os.clock() - startTime < 2 do
-        if fruit.Parent ~= LocalPlayer.Character then
+    local lastTime = nil
+    
+    while cookAutomationActive do
+        local currentTimeStr = getCurrentCookingTime()
+        if not currentTimeStr then
+            createColoredNotification("Failed to read cooking time!", "Rarity: Common")
+            return false
+        end
+
+        if currentTimeStr == "Ready" or currentTimeStr == "0:00" then
             return true
         end
-        task.wait(0.1)
+
+        if lastTime and lastTime == currentTimeStr then
+            if os.clock() - startTime > 300 then 
+                createColoredNotification("Cooking timer stuck! Resetting...", "Rarity: Common")
+                return false
+            end
+        end
+        
+        lastTime = currentTimeStr
+        task.wait(1)
     end
     
     return false
 end
 
-local function submitSoupToNPC()
+local function submitSoup()
     local soup
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
         if item:IsA("Tool") and item.Name:find("Soup") then
@@ -2890,54 +3163,26 @@ local function submitSoupToNPC()
     task.wait(0.5)
     
     local args = {"SubmitHeldFood"}
-    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SubmitFoodService_RE"):FireServer(unpack(args))
+    game:GetService("ReplicatedStorage").GameEvents.SubmitFoodService_RE:FireServer(unpack(args))
+    
+    if soup.Parent == LocalPlayer.Character then
+        soup.Parent = LocalPlayer.Backpack
+    end
     
     return true
 end
 
-local function waitForCooking()
-    local cookingPot = workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel
-    if not cookingPot then 
-        createColoredNotification("Cooking pot not found!", "Rarity: Common")
-        return false 
-    end
-    
-    local timerDisplay = cookingPot.IngredientsBoard.CookTimeDisplay.Face.SurfaceGui.TimeDisplayFrame.TimeLabel
-    if not timerDisplay then 
-        createColoredNotification("Timer display not found!", "Rarity: Common")
-        return false 
-    end
-
-    if timerDisplay.Text == "Ready" or timerDisplay.Text == "0:00" then
-        createColoredNotification("Cooking already complete!", "Rarity: Common")
-        return true
-    end
-
-    local minutes, seconds = timerDisplay.Text:match("(%d+):(%d+)")
-    if not minutes then
-        createColoredNotification("Failed to parse timer: " .. timerDisplay.Text, "Rarity: Common")
-        return false
-    end
-
-    minutes = tonumber(minutes)
-    seconds = tonumber(seconds)
-    local totalWaitTime = (minutes * 60) + seconds  
-
-    local startTime = os.clock()
-    while os.clock() - startTime < totalWaitTime + 10 do  
-        if timerDisplay.Text == "Ready" or timerDisplay.Text == "0:00" then
-            createColoredNotification("Cooking finished!", "Rarity: Common")
-            return true
-        end
-        task.wait(1)
-    end
-
-    createColoredNotification("Cooking timer expired (waited " .. totalWaitTime .. "s)", "Rarity: Common")
-    return timerDisplay.Text == "Ready" or timerDisplay.Text == "0:00" 
-end
-
 local function cookEventLoop()
     setBackpackLimit()
+
+    if countBackpackItems() == 0 then
+        createColoredNotification("Backpack empty! Fill with fruits first.", "Rarity: Common")
+        cookAutomationActive = false
+        return
+    end
+
+    local cyclesWithoutProgress = 0
+    local MAX_CYCLES_WITHOUT_PROGRESS = 20
     
     while cookAutomationActive do
         local originalPos
@@ -2956,72 +3201,70 @@ local function cookEventLoop()
         if hasSoup then
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                task.wait(1.2) 
-                submitSoupToNPC()
-            end
-        end
-
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
-            task.wait(1)
-        end
-
-        local potStatus = getCookingPotStatus()
-
-        if potStatus == "COOKING" then
-            createColoredNotification("Waiting for existing cooking to finish...", "Rarity: Common")
-            if waitForCooking() then
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                    task.wait(1)
-                    submitSoupToNPC()
-                end
-            end
-        elseif potStatus == "ERROR" then
-            errorCount = (errorCount or 0) + 1
-            if errorCount > 5 then 
-                createColoredNotification("Permanently stopped - cooking pot missing!", "Rarity: Common")
-                cookAutomationActive = false
-            end
-        end
-        if potStatus == "READY" and not hasSoup and cookAutomationActive then
-            local submittedCount = 0
-            while submittedCount < 5 and cookAutomationActive do
-                local fruits = getHeaviestFruits()
-                if #fruits == 0 then
-                    createColoredNotification("Fill backpack with fruits first!", "Rarity: Common")
-                    cookAutomationActive = false
-                    return
-                end
+                task.wait(1.2)
                 
-                if submitToCookingPot(fruits[1].item) then
-                    submittedCount = submittedCount + 1
-                    createColoredNotification(string.format("Cooked %s (%.2fkg) (%d/5)", 
-                        fruits[1].item.Name, fruits[1].weight, submittedCount), "Rarity: Common")
-                    task.wait(0.35) 
+                if submitSoup() then
+                    createColoredNotification("Submitted soup to NPC", "Rarity: Common")
+                    cyclesWithoutProgress = 0
                 end
             end
-            
-            if submittedCount > 0 then
-                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+        end
 
-                if waitForCooking() then
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                        task.wait(1)
-                        submitSoupToNPC()
+        local currentTime = getCookingPotStatus()
+        local cookingPotExists = currentTime ~= nil
+
+        if cookingPotExists then
+            if currentTime == "Ready" or currentTime == "0:00" then
+                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
+                createColoredNotification("Collected cooked food", "Rarity: Common")
+                task.wait(1)
+                cyclesWithoutProgress = 0
+            elseif not currentTime:find(":") then
+                if countBackpackItems() > 0 then
+                    if cookBestPossible() then
+                        local startTime = os.clock()
+                        if waitForCookingToFinish() then
+                            createColoredNotification(string.format("Cooked in %.1fs", os.clock()-startTime), "Rarity: Common")
+                            cyclesWithoutProgress = 0
+                        end
+                    else
+                        cyclesWithoutProgress = cyclesWithoutProgress + 1
+                        if cyclesWithoutProgress >= MAX_CYCLES_WITHOUT_PROGRESS then
+                            createColoredNotification("Resetting - collecting fruits", "Rarity: Common")
+                            collectTargetFruits3()
+                            cyclesWithoutProgress = 0
+                        end
                     end
+                else
+                    createColoredNotification("Backpack empty - collecting fruits", "Rarity: Common")
+                    collectTargetFruits3()
                 end
+            else
+                local mins, secs = currentTime:match("(%d+):(%d+)")
+                if mins and secs then
+                    createColoredNotification(string.format("Cooking... (%s:%s left)", mins, secs), "Rarity: Common")
+                    waitForCookingToFinish()
+                end
+            end
+        else
+            if countBackpackItems() >= maxBackpackItems then
+                createColoredNotification("Waiting for cooking pot...", "Rarity: Common")
+                task.wait(5)
+            elseif countBackpackItems() < (maxBackpackItems / 2) then
+                collectTargetFruits3()
+            end
+        end
+
+        if countBackpackItems() < (maxBackpackItems / 2) then
+            if not collectTargetFruits3() then
+                createColoredNotification("No fruits available", "Rarity: Common")
+                task.wait(5)
             end
         end
 
         if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
             task.wait(0.5)
-        end
-
-        if countBackpackItems() < 5 and cookAutomationActive then
-            collectTargetFruits3()
         end
         
         task.wait(1)
@@ -3031,6 +3274,11 @@ local function cookEventLoop()
 end
 
 tab2:CreateToggle("AFK Farm Cook Event", function(state)
+    if state and countBackpackItems() == 0 then
+        createColoredNotification("Fill your backpack with fruits first!", "Rarity: Common")
+        return
+    end
+
     cookAutomationActive = state
 
     if cookingLoopThread then
