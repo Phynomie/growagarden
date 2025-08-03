@@ -3409,16 +3409,14 @@ local function cookNewSoup()
     local bestRecipe = findBestRecipe(currentCraving)
 if not bestRecipe then
     createColoredNotification("No matching ingredients for "..currentCraving.." - submitting random fruits", "Rarity: Common")
-    
-    -- Get all available fruits from backpack
+
     local availableFruits = {}
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") and not item:FindFirstChild("Age") then -- Exclude pets
+        if item:IsA("Tool") and not item:FindFirstChild("Age") then 
             table.insert(availableFruits, item)
         end
     end
-    
-    -- Sort by weight (heaviest first)
+
     table.sort(availableFruits, function(a, b)
         local aWeight = a:FindFirstChild("Weight") and a.Weight.Value or 0
         local bWeight = b:FindFirstChild("Weight") and b.Weight.Value or 0
@@ -3465,51 +3463,64 @@ end
     return true
 end
 
+local function cookCompleteMeal()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
+        task.wait(1.5)
+    end
+
+    local ingredientsInPot = getIngredientsInPot()
+    
+    if ingredientsInPot < 5 then
+        local currentCraving = getCurrentCraving()
+        if currentCraving then
+            local bestRecipe = findBestRecipe(currentCraving)
+            if bestRecipe then
+                createColoredNotification("Making "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
+                for _, item in ipairs(bestRecipe.items) do
+                    if not submitIngredientToPot(item) then break end
+                end
+            else
+                createColoredNotification("No recipe match - using random fruits", "Rarity: Common")
+                submitFruitsToPot()
+            end
+        else
+            submitFruitsToPot()
+        end
+    end
+
+    if getIngredientsInPot() >= 5 then
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+        createColoredNotification("Cooking started...", "Rarity: Common")
+
+        local startTime = os.time()
+        while not isSoupReady() do
+            if os.time() - startTime > 60 then 
+                createColoredNotification("Cooking timeout!", "Rarity: Common")
+                return false
+            end
+            task.wait(1)
+        end
+
+        collectReadySoup()
+        task.wait(0.5)
+
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
+            task.wait(1.5)
+        end
+
+        submitSoupToNPC()
+        return true
+    end
+    
+    return false
+end
+
 local function cookEventLoop()
     while cookAutomationActive do
-        local now = os.clock()
-        if now - lastActionTime < actionCooldown then
-            task.wait(actionCooldown - (now - lastActionTime))
-            continue
-        end
-
-        if currentState == "IDLE" then
-            if hasSoupInBackpack() then
-                currentState = "SUBMITTING"
-            elseif isSoupReady() then
-                currentState = "COLLECTING"
-            elseif hasIngredientsForCooking() and isCookingPotAvailable() then
-                currentState = "COOKING"
-            else
-                task.wait(2)
-            end
-
-        elseif currentState == "SUBMITTING" then
-            if submitSoupToNPC() then
-                currentState = "COOKING"
-            else
-                currentState = "IDLE" 
-            end
-            lastActionTime = os.clock()
-
-        elseif currentState == "COOKING" then
-            if cookNewSoup() then
-                currentState = "IDLE" 
-            else
-                currentState = "IDLE" 
-            end
-            lastActionTime = os.clock()
-
-        elseif currentState == "COLLECTING" then
-            if collectReadySoup() then
-                currentState = "SUBMITTING" 
-            else
-                currentState = "IDLE" 
-            end
-            lastActionTime = os.clock()
-        end
-
-        task.wait(0.1)
+        cookCompleteMeal()
+        task.wait(2)
     end
 end
 
