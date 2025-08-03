@@ -3267,6 +3267,7 @@ local function cookEventLoop()
                 LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
                 task.wait(1.5)
                 submitSoup()
+                task.wait(1)
             end
         end
 
