@@ -3211,25 +3211,51 @@ local function cookBestPossible()
         createColoredNotification("No valid craving detected!", "Rarity: Common")
         return false
     end
-    
-    createColoredNotification("Current craving: "..currentCraving, "Rarity: Common")
-    
+
     local bestRecipe = findBestRecipe(currentCraving)
-    if not bestRecipe then
-        createColoredNotification("No matching ingredients for "..currentCraving, "Rarity: Common")
-        return false
-    end
     
-    createColoredNotification(string.format("Making %s (%s) with heaviest available fruits", 
-        currentCraving, bestRecipe.rarity), "Rarity: Common")
-    
-    if submitItems(bestRecipe.items) then
-        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
-        createColoredNotification("Started cooking "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
-        return true
+    if bestRecipe then
+        createColoredNotification(string.format("Making %s (%s) with heaviest available fruits", 
+            currentCraving, bestRecipe.rarity), "Rarity: Common")
+        
+        if submitItems(bestRecipe.items) then
+            game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+            return true
+        end
     else
-        createColoredNotification("Failed to submit ingredients!", "Rarity: Common")
-        return false
+        createColoredNotification("No matching ingredients - using random heaviest fruits", "Rarity: Common")
+        
+        local inventory = getInventoryWithWeights()
+        local heaviestFruits = {}
+        for itemName, items in pairs(inventory) do
+            if not itemName:find("Pet") and not itemName:find("Egg") then
+                for _, itemData in ipairs(items) do
+                    table.insert(heaviestFruits, itemData.item)
+                end
+            end
+        end
+
+        table.sort(heaviestFruits, function(a, b)
+            local aWeight = a:FindFirstChild("Weight") and a.Weight.Value or 0
+            local bWeight = b:FindFirstChild("Weight") and b.Weight.Value or 0
+            return aWeight > bWeight
+        end)
+
+        local submitted = {}
+        for i = 1, math.min(5, #heaviestFruits) do
+            if submitIngredientToPot(heaviestFruits[i]) then
+                table.insert(submitted, heaviestFruits[i].Name)
+            end
+        end
+        
+        if #submitted > 0 then
+            createColoredNotification("Submitted: " .. table.concat(submitted, ", "), "Rarity: Common")
+            game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+            return true
+        else
+            createColoredNotification("Failed to submit any fruits!", "Rarity: Common")
+            return false
+        end
     end
 end
 
@@ -3260,12 +3286,12 @@ end
 local function submitFruitsToPot()
     local ingredientsInPot = getIngredientsInPot()
     if ingredientsInPot >= 5 then
-        return false -- Pot is already full
+        return false
     end
 
     local fruits = {}
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") and not item:FindFirstChild("Age") then -- Exclude pets
+        if item:IsA("Tool") and not item:FindFirstChild("Age") then
             table.insert(fruits, item)
         end
     end
@@ -3292,7 +3318,7 @@ local function submitFruitsToPot()
         task.wait(0.5)
         
         if fruit.Parent == LocalPlayer.Character then
-            fruit.Parent = LocalPlayer.Backpack -- Failed to submit
+            fruit.Parent = LocalPlayer.Backpack 
         else
             submittedCount = submittedCount + 1
         end
