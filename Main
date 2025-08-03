@@ -2917,6 +2917,34 @@ local function collectReadySoup()
     return true
 end
 
+local function cookBestPossible()
+    local currentCraving = getCurrentCraving()
+    if not currentCraving then
+        createColoredNotification("No valid craving detected!", "Rarity: Common")
+        return false
+    end
+    
+    createColoredNotification("Current craving: "..currentCraving, "Rarity: Common")
+    
+    local bestRecipe = findBestRecipe(currentCraving)
+    if not bestRecipe then
+        createColoredNotification("No matching ingredients for "..currentCraving, "Rarity: Common")
+        return false
+    end
+    
+    createColoredNotification(string.format("Making %s (%s) with heaviest available fruits", 
+        currentCraving, bestRecipe.rarity), "Rarity: Common")
+    
+    if submitItems(bestRecipe.items) then
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+        createColoredNotification("Started cooking "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
+        return true
+    else
+        createColoredNotification("Failed to submit ingredients!", "Rarity: Common")
+        return false
+    end
+end
+
 local function cookNewSoup()
     if not hasIngredientsForCooking() then
         createColoredNotification("No ingredients to cook with!", "Rarity: Common")
