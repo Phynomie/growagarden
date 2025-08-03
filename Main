@@ -3029,6 +3029,76 @@ local function getCurrentCraving()
     return nil
 end
 
+local function findBestRecipe(foodName)
+    local inventory = getInventoryWithWeights()
+    local recipeData = RECIPES[foodName]
+    
+    if not recipeData then 
+        return nil 
+    end
+
+    local function getBaseName(fullName)
+        return fullName:gsub("%s*%b[]", ""):gsub("%s+$", "")
+    end
+
+    local rarities = {"Prismatic", "Divine", "Mythical", "Legendary", "Rare", "Uncommon", "Common"}
+    
+    for _, rarity in ipairs(rarities) do
+        local ingredients = recipeData.ingredients[rarity] or (rarity == "Common" and recipeData.ingredients)
+        if ingredients then
+            local canMake = true
+            local selectedItems = {}
+
+            for _, ing in ipairs(ingredients) do
+                local hasIngredient = false
+                for itemName, items in pairs(inventory) do
+                    if getBaseName(itemName) == ing then
+                        hasIngredient = true
+                        break
+                    end
+                end
+                if not hasIngredient then
+                    canMake = false
+                    break
+                end
+            end
+
+            if canMake then
+                for _, ing in ipairs(ingredients) do
+                    local heaviestItem = nil
+                    local maxWeight = 0
+
+                    for itemName, items in pairs(inventory) do
+                        if getBaseName(itemName) == ing then
+                            if items[1].weight > maxWeight then
+                                heaviestItem = items[1].item
+                                maxWeight = items[1].weight
+                            end
+                        end
+                    end
+
+                    if heaviestItem then
+                        table.insert(selectedItems, heaviestItem)
+                    else
+                        canMake = false
+                        break
+                    end
+                end
+            end
+
+            if canMake then
+                return {
+                    items = selectedItems,
+                    rarity = rarity,
+                    priority = recipeData.priority
+                }
+            end
+        end
+    end
+    
+    return nil 
+end
+
 local function cookBestPossible()
     local currentCraving = getCurrentCraving()
     if not currentCraving then
