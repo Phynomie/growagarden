@@ -3277,6 +3277,8 @@ local function cookEventLoop()
                 game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
                 createColoredNotification("🍜 Collected cooked soup!", "Rarity: Common")
                 task.wait(1)
+                local args = {"GetFoodFromPot"}
+	            game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
             end
         else
             if countBackpackItems() < (maxBackpackItems / 2) then
