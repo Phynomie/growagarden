@@ -3138,6 +3138,34 @@ local function findBestRecipe(foodName)
     return nil 
 end
 
+local function submitItems(items)
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") then
+                item.Parent = LocalPlayer.Backpack
+                task.wait(0.1)
+            end
+        end
+    end
+
+    for _, item in ipairs(items) do
+        if not item or not item.Parent then return false end
+        
+        item.Parent = LocalPlayer.Character
+        task.wait(0.3)
+        
+        local args = {"SubmitHeldPlant"}
+        game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
+        task.wait(0.5)
+        
+        if item.Parent == LocalPlayer.Character then
+            item.Parent = LocalPlayer.Backpack
+        end
+    end
+    
+    return true
+end
+
 local function cookBestPossible()
     local currentCraving = getCurrentCraving()
     if not currentCraving then
