@@ -2917,6 +2917,21 @@ local function collectReadySoup()
     return true
 end
 
+local function getCurrentCraving()
+    local success, cravingBubble = pcall(function()
+        return workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel.PigChefFolder.PigChef.Cravings.CravingThoughtBubblePart
+    end)
+    if not success or not cravingBubble then return nil end
+    
+    local cravingText = cravingBubble.CravingBillboard.BG.CravingTextLabel.Text
+    for foodName in pairs(RECIPES) do
+        if cravingText:lower():find(foodName:lower()) then
+            return foodName
+        end
+    end
+    return nil
+end
+
 local function cookBestPossible()
     local currentCraving = getCurrentCraving()
     if not currentCraving then
