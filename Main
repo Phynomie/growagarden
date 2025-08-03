@@ -3407,10 +3407,48 @@ local function cookNewSoup()
     end
     
     local bestRecipe = findBestRecipe(currentCraving)
-    if not bestRecipe then
-        createColoredNotification("No matching ingredients for "..currentCraving, "Rarity: Common")
+if not bestRecipe then
+    createColoredNotification("No matching ingredients for "..currentCraving.." - submitting random fruits", "Rarity: Common")
+    
+    -- Get all available fruits from backpack
+    local availableFruits = {}
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and not item:FindFirstChild("Age") then -- Exclude pets
+            table.insert(availableFruits, item)
+        end
+    end
+    
+    -- Sort by weight (heaviest first)
+    table.sort(availableFruits, function(a, b)
+        local aWeight = a:FindFirstChild("Weight") and a.Weight.Value or 0
+        local bWeight = b:FindFirstChild("Weight") and b.Weight.Value or 0
+        return aWeight > bWeight
+    end)
+
+    local submittedCount = 0
+    for i = 1, math.min(5, #availableFruits) do
+        local fruit = availableFruits[i]
+        fruit.Parent = LocalPlayer.Character
+        task.wait(0.3)
+        
+        local args = {"SubmitHeldPlant"}
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer(unpack(args))
+        task.wait(0.5)
+        
+        if fruit.Parent ~= LocalPlayer.Character then
+            submittedCount = submittedCount + 1
+        end
+    end
+    
+    if submittedCount > 0 then
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+        createColoredNotification("Cooked with "..submittedCount.." random fruits", "Rarity: Common")
+        return true
+    else
+        createColoredNotification("Failed to submit any fruits!", "Rarity: Common")
         return false
     end
+end
 
     createColoredNotification(string.format("Making %s (%s) with heaviest available fruits", 
         currentCraving, bestRecipe.rarity), "Rarity: Common")
