@@ -2958,10 +2958,19 @@ end
 
 local function getIngredientsInPot()
     local potGui = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("CookingIngredientGui")
-    if potGui and potGui.Background.InsidePotFrame then
-        return #potGui.Background.InsidePotFrame:GetChildren()
+    if not potGui or not potGui:FindFirstChild("Background") then return 0 end
+    
+    local insidePotFrame = potGui.Background:FindFirstChild("InsidePotFrame")
+    if not insidePotFrame then return 0 end
+    
+    local count = 0
+    for _, child in ipairs(insidePotFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            count = count + 1
+        end
     end
-    return 0
+    
+    return count
 end
 
 local function isPotFull()
@@ -3248,6 +3257,56 @@ local function cookNewSoup()
     return success
 end
 
+local function submitFruitsToPot()
+    local ingredientsInPot = getIngredientsInPot()
+    if ingredientsInPot >= 5 then
+        return false -- Pot is already full
+    end
+
+    local fruits = {}
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and not item:FindFirstChild("Age") then -- Exclude pets
+            table.insert(fruits, item)
+        end
+    end
+    
+    if #fruits == 0 then
+        createColoredNotification("No fruits in backpack to submit!", "Rarity: Common")
+        return false
+    end
+
+    table.sort(fruits, function(a, b)
+        local aWeight = a:FindFirstChild("Weight") and a.Weight.Value or 0
+        local bWeight = b:FindFirstChild("Weight") and b.Weight.Value or 0
+        return aWeight > bWeight
+    end)
+
+    local submittedCount = 0
+    for i = 1, math.min(5 - ingredientsInPot, #fruits) do
+        local fruit = fruits[i]
+        fruit.Parent = LocalPlayer.Character
+        task.wait(0.3)
+        
+        local args = {"SubmitHeldPlant"}
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer(unpack(args))
+        task.wait(0.5)
+        
+        if fruit.Parent == LocalPlayer.Character then
+            fruit.Parent = LocalPlayer.Backpack -- Failed to submit
+        else
+            submittedCount = submittedCount + 1
+        end
+    end
+    
+    if submittedCount > 0 then
+        createColoredNotification(string.format("Submitted %d fruits to pot (%d/5)", submittedCount, ingredientsInPot + submittedCount), "Rarity: Common")
+        return true
+    else
+        createColoredNotification("Failed to submit any fruits to pot", "Rarity: Common")
+        return false
+    end
+end
+
 local function cookNewSoup()
     if not hasIngredientsForCooking() then
         createColoredNotification("No ingredients to cook with!", "Rarity: Common")
@@ -3270,12 +3329,11 @@ local function cookNewSoup()
 
     local ingredientsInPot = getIngredientsInPot()
     if ingredientsInPot > 0 and ingredientsInPot < 5 then
-        createColoredNotification("Pot has "..ingredientsInPot.."/5 ingredients - can't cook yet", "Rarity: Common")
-        return false
+        createColoredNotification("Pot has "..ingredientsInPot.."/5 ingredients - adding more...", "Rarity: Common")
+        submitFruitsToPot() 
     elseif ingredientsInPot == 5 then
         game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
-        createColoredNotification("Started cooking with existing ingredients", "Rarity: Common")
-        return true
+        createColoredNotification("Cooking started with 5 ingredients!", "Rarity: Common")
     end
 
     local currentCraving = getCurrentCraving()
