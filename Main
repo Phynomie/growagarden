@@ -2930,7 +2930,7 @@ end
 
 local function isSoupReady()
     local timerText = getCookingTimer()
-    return timerText == "Ready" 
+    return timerText == "Ready"
 end
 
 local function hasSoupInBackpack()
@@ -2954,6 +2954,18 @@ end
 
 local function hasIngredientsForCooking()
     return countBackpackItems() > 0
+end
+
+local function getIngredientsInPot()
+    local potGui = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("CookingIngredientGui")
+    if potGui and potGui.Background.InsidePotFrame then
+        return #potGui.Background.InsidePotFrame:GetChildren()
+    end
+    return 0
+end
+
+local function isPotFull()
+    return getIngredientsInPot() >= 5
 end
 
 local function isCookingPotAvailable()
@@ -3011,6 +3023,24 @@ local function collectReadySoup()
 
     game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("GetFoodFromPot")
     createColoredNotification("Collected cooked soup", "Rarity: Common")
+    return true
+end
+
+local function submitIngredientToPot(item)
+    if not item or not item.Parent then return false end
+    
+    item.Parent = LocalPlayer.Character
+    task.wait(0.3)
+    
+    local args = {"SubmitHeldPlant"}
+    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
+    task.wait(0.5)
+    
+    if item.Parent == LocalPlayer.Character then
+        item.Parent = LocalPlayer.Backpack
+        return false
+    end
+    
     return true
 end
 
@@ -3218,6 +3248,63 @@ local function cookNewSoup()
     return success
 end
 
+local function cookNewSoup()
+    if not hasIngredientsForCooking() then
+        createColoredNotification("No ingredients to cook with!", "Rarity: Common")
+        return false
+    end
+
+    if not isCookingPotAvailable() then 
+        createColoredNotification("Cooking pot not available!", "Rarity: Common")
+        return false 
+    end
+
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local currentPos = LocalPlayer.Character.HumanoidRootPart.Position
+        local potPos = cookingPotLocation.Position
+        if (currentPos - potPos).Magnitude > 10 then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
+            task.wait(1.5)
+        end
+    end
+
+    local ingredientsInPot = getIngredientsInPot()
+    if ingredientsInPot > 0 and ingredientsInPot < 5 then
+        createColoredNotification("Pot has "..ingredientsInPot.."/5 ingredients - can't cook yet", "Rarity: Common")
+        return false
+    elseif ingredientsInPot == 5 then
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+        createColoredNotification("Started cooking with existing ingredients", "Rarity: Common")
+        return true
+    end
+
+    local currentCraving = getCurrentCraving()
+    if not currentCraving then
+        createColoredNotification("No valid craving detected!", "Rarity: Common")
+        return false
+    end
+    
+    local bestRecipe = findBestRecipe(currentCraving)
+    if not bestRecipe then
+        createColoredNotification("No matching ingredients for "..currentCraving, "Rarity: Common")
+        return false
+    end
+
+    createColoredNotification(string.format("Making %s (%s) with heaviest available fruits", 
+        currentCraving, bestRecipe.rarity), "Rarity: Common")
+    
+    for _, item in ipairs(bestRecipe.items) do
+        if not submitIngredientToPot(item) then
+            createColoredNotification("Failed to submit ingredients!", "Rarity: Common")
+            return false
+        end
+    end
+
+    game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+    createColoredNotification("Started cooking "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
+    return true
+end
+
 local function cookEventLoop()
     while cookAutomationActive do
         local now = os.clock()
@@ -3239,9 +3326,9 @@ local function cookEventLoop()
 
         elseif currentState == "SUBMITTING" then
             if submitSoupToNPC() then
-                currentState = "COOKING" 
+                currentState = "COOKING"
             else
-                currentState = "IDLE"
+                currentState = "IDLE" 
             end
             lastActionTime = os.clock()
 
@@ -3257,7 +3344,7 @@ local function cookEventLoop()
             if collectReadySoup() then
                 currentState = "SUBMITTING" 
             else
-                currentState = "IDLE"
+                currentState = "IDLE" 
             end
             lastActionTime = os.clock()
         end
