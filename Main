@@ -2247,22 +2247,55 @@ end
 local function cookCompleteMeal()
     if not cookAutomationActive then return false end
 
+    local debugInventory = {}
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            table.insert(debugInventory, item.Name)
+        end
+    end
+    createColoredNotification("Inventory: "..table.concat(debugInventory, ", "), "Rarity: Common")
+
     if not moveToLocation(LOCATIONS.cookingPot) then
         createColoredNotification("Failed to move to cooking pot", "Rarity: Common")
         return false
     end
 
     local ingredientsInPot = getIngredientsInPot()
+    createColoredNotification(string.format("Pot has %d/%d ingredients", ingredientsInPot, CONFIG.MAX_INGREDIENTS), "Rarity: Common")
+
     if ingredientsInPot < CONFIG.MAX_INGREDIENTS then
         local currentCraving = getCurrentCraving()
         if currentCraving then
+            createColoredNotification("Current craving: "..currentCraving, "Rarity: Common")
+
+            if RECIPES[currentCraving] then
+                local recipeInfo = {}
+                for rarity, ingredients in pairs(RECIPES[currentCraving].ingredients) do
+                    table.insert(recipeInfo, rarity..": "..table.concat(ingredients, ", "))
+                end
+                createColoredNotification("Possible recipes:\n"..table.concat(recipeInfo, "\n"), "Rarity: Common")
+            end
+
             local bestRecipe = findBestRecipe(currentCraving)
             if bestRecipe then
-                createColoredNotification("Making "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
+                createColoredNotification("Attempting to make "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
+                createColoredNotification("Required: "..table.concat(bestRecipe.items, ", "), "Rarity: Common")
+
+                local failedSubmission = false
                 for _, item in ipairs(bestRecipe.items) do
-                    if not submitIngredientToPot(item) then 
-                        createColoredNotification("Missing ingredients for recipe, using random fruits", "Rarity: Common")
-                        break 
+                    if not submitIngredientToPot(item) then
+                        createColoredNotification("Failed to submit: "..tostring(item), "Rarity: Common")
+                        failedSubmission = true
+                        break
+                    end
+                    safeWait(0.5)
+                end
+
+                if failedSubmission then
+                    createColoredNotification("Falling back to heaviest fruits", "Rarity: Common")
+                    if not submitFruitsToPot() then
+                        createColoredNotification("No fruits available to cook with!", "Rarity: Common")
+                        return false
                     end
                 end
             else
@@ -2273,6 +2306,7 @@ local function cookCompleteMeal()
                 end
             end
         else
+            createColoredNotification("No craving detected - using heaviest fruits", "Rarity: Common")
             if not submitFruitsToPot() then
                 createColoredNotification("No fruits available to cook with!", "Rarity: Common")
                 return false
