@@ -2826,6 +2826,103 @@ local currentState = "IDLE"
 local lastActionTime = 0
 local actionCooldown = 1 
 
+local RECIPES = {
+    ["Sandwich"] = {
+        ingredients = {"Tomato", "Tomato", "Corn"},
+        rarity = "Uncommon"
+    },
+    ["Pie"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bone Blossom", "Pumpkin"},
+            ["Divine"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Sugar Apple", "Pumpkin"},
+            ["Mythical"] = {"Corn", "Coconut", "Coconut", "Coconut", "Mango"},
+            ["Legendary"] = {"Corn", "Coconut"},
+            ["Rare"] = {"Pumpkin", "Apple"}
+        },
+        rarity = "Varies"
+    },
+    ["Burger"] = {
+        ingredients = {
+            ["Divine"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Corn", "Tomato"},
+            ["Mythical"] = {"Pepper", "Corn", "Tomato", "Bone Blossom", "Beanstalk"},
+            ["Legendary"] = {"Pepper", "Corn", "Tomato"}
+        },
+        rarity = "Varies"
+    },
+    ["Hotdog"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bone Blossom", "Corn"},
+            ["Divine"] = {"Ember Lily", "Ember Lily", "Ember Lily", "Ember Lily", "Corn"},
+            ["Mythical"] = {"Corn", "Ember Lily"},
+            ["Legendary"] = {"Pepper", "Corn"}
+        },
+        rarity = "Varies"
+    },
+    ["Waffle"] = {
+        ingredients = {
+            ["Divine"] = {"Sugar Apple", "Coconut"},
+            ["Mythical"] = {"Tranquil Bloom", "Starfruit", "Coconut"},
+            ["Legendary"] = {"Pumpkin", "Watermelon"},
+            ["Rare"] = {"Pumpkin", "Sugar Apple"}
+        },
+        rarity = "Varies"
+    },
+    ["Salad"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bone Blossom", "Tomato"},
+            ["Divine"] = {"Sugar Apple", "Sugar Apple", "Sugar Apple", "Pepper", "Pineapple"},
+            ["Mythical"] = {"Giant Pinecone", "Tomato"},
+            ["Rare"] = {"Tomato", "Tomato"}
+        },
+        rarity = "Varies"
+    },
+    ["Sushi"] = {
+        ingredients = {
+            ["Divine"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Bamboo", "Corn"},
+            ["Mythical"] = {"Sugar Apple", "Sugar Apple", "Sugar Apple", "Bamboo", "Corn"},
+            ["Legendary"] = {"Pepper", "Coconut", "Bamboo", "Corn"},
+            ["Rare"] = {"Bamboo", "Bamboo", "Bamboo", "Bamboo", "Corn"}
+        },
+        rarity = "Varies"
+    },
+    ["Ice Cream"] = {
+        ingredients = {
+            ["Prismatic"] = {"Banana", "Sugar Apple", "Bone Blossom", "Bone Blossom", "Bone Blossom"},
+            ["Legendary"] = {"Banana", "Banana"},
+            ["Mythical"] = {"Banana", "Sugar Apple"},
+            ["Uncommon"] = {"Blueberry", "Corn"}
+        },
+        rarity = "Varies"
+    },
+    ["Donut"] = {
+        ingredients = {
+            ["Uncommon"] = {"Corn", "Blueberry", "Strawberry"},
+            ["Common"] = {"Strawberry", "Tomato", "Apple"}
+        },
+        rarity = "Varies"
+    },
+    ["Pizza"] = {
+        ingredients = {
+            ["Divine"] = {"Sugar Apple", "Bone Blossom", "Corn"},
+            ["Mythical"] = {"Tomato", "Corn", "Pepper", "Sugar Apple", "Sugar Apple"},
+            ["Legendary"] = {"Corn", "Corn", "Apple", "Apple", "Pepper"},
+            ["Rare"] = {"Banana", "Tomato"}
+        },
+        rarity = "Varies"
+    },
+    ["Cake"] = {
+        ingredients = {
+            ["Prismatic"] = {"Bone Blossom", "Bone Blossom", "Bone Blossom", "Sugar Apple", "Banana"},
+            ["Divine"] = {"Banana", "Kiwi", "Bone Blossom", "Bone Blossom", "Bone Blossom"},
+            ["Mythical"] = {"Sugar Apple", "Sugar Apple", "Corn", "Corn"},
+            ["Legendary"] = {"Kiwi", "Kiwi", "Banana", "Banana"},
+            ["Rare"] = {"Blueberry", "Grape", "Apple", "Corn"},
+            ["Uncommon"] = {"Corn", "Corn", "Strawberry", "Strawberry"}
+        },
+        rarity = "Varies"
+    }
+}
+
 local function getCookingTimer()
     local timerGui = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("CookingTimerBB")
     return timerGui and timerGui:FindFirstChild("Timer") and timerGui.Timer.Text or nil
