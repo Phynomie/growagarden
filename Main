@@ -2820,6 +2820,8 @@ local cookAutomationActive = false
 local cookingLoopThread = nil
 local cookingPotLocation = CFrame.new(-104.675011, 4.40011406, -11.0908785)
 local npcLocation = CFrame.new(-96.2885437, 4.39998388, -9.68481731, -0.031258896, 2.55506354e-08, -0.999511302, -1.01894253e-08, 1, 2.58817927e-08, 0.999511302, 1.09934826e-08, -0.031258896)
+local originalCFrame = nil
+local originalLocationStored = false
 
 local RECIPES = {
     ["Sandwich"] = {
