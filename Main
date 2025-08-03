@@ -3131,7 +3131,7 @@ local function getCurrentCookingTime()
 end
 
 local function parseTimeToSeconds(timeStr)
-    if timeStr == "Ready" or timeStr == "0:00" then return 0 end
+    if (timeStr == "Ready" or timeStr:find("00:00")) then return 0 end
     
     local minutes, seconds = timeStr:match("(%d+):(%d+)")
     if not minutes then return nil end
@@ -3172,7 +3172,7 @@ end
 local function teleportToPotIfReady()
     local status = getCookingPotStatus()
     
-    if status and (status == "Ready" or status == "0:00") then
+    if status and (status == "Ready" or status:find("00:00")) then
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
 
             LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
@@ -3202,7 +3202,7 @@ local function waitForCookingToFinish()
             return false
         end
 
-        if currentTimeStr == "Ready" or currentTimeStr == "0:00" then
+        if (currentTimeStr == "Ready" or currentTimeStr:find("00:00")) then
             return true
         end
 
@@ -3271,11 +3271,8 @@ local function cookEventLoop()
         end
 
         local potStatus = getCookingPotStatus()
-        print("Cooking Pot Status:", potStatus) 
 
-        if potStatus and (potStatus == "Ready" or potStatus == "0:00") then
-            print("Attempting to teleport to cooking pot...") 
-
+        if potStatus and (potStatus:find("00:00") or potStatus == "Ready") then
             if teleportToPotIfReady() then
                 game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
                 createColoredNotification("🍜 Collected cooked soup!", "Rarity: Common")
