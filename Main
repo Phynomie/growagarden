@@ -2522,7 +2522,7 @@ local function getInventoryWithWeights()
     local inventory = {}
 
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") then
+        if item:IsA("Tool") and not item:GetAttribute("d") then 
             local baseName = item.Name:gsub("%s*%b[]", ""):gsub("%s+$", "")
             inventory[baseName] = inventory[baseName] or {}
             table.insert(inventory[baseName], {
@@ -2599,12 +2599,13 @@ end
 local function submitFruitsToPot()
     local ingredientsInPot = getIngredientsInPot()
     if ingredientsInPot >= CONFIG.MAX_INGREDIENTS then
+        createColoredNotification("Pot is already full!", "Rarity: Common")
         return false
     end
 
     local fruits = {}
     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") and not item:FindFirstChild("Age") then
+        if item:IsA("Tool") and not item:FindFirstChild("Age") and not item:GetAttribute("d") then
             table.insert(fruits, {
                 item = item,
                 weight = item:FindFirstChild("Weight") and item.Weight.Value or getWeightFromName(item.Name)
@@ -2613,7 +2614,7 @@ local function submitFruitsToPot()
     end
     
     if #fruits == 0 then
-        createColoredNotification("No fruits in backpack to submit!", "Rarity: Common")
+        createColoredNotification("No available fruits in backpack!", "Rarity: Common")
         return false
     end
 
@@ -2627,9 +2628,13 @@ local function submitFruitsToPot()
     end
     
     if submittedCount > 0 then
-        createColoredNotification(string.format("Submitted %d fruits to pot (%d/5)", submittedCount, ingredientsInPot + submittedCount), "Rarity: Common")
+        createColoredNotification(string.format("Submitted %d heaviest fruits to pot (%d/%d)", 
+            submittedCount, ingredientsInPot + submittedCount, CONFIG.MAX_INGREDIENTS), 
+            "Rarity: Common")
         return true
     end
+    
+    createColoredNotification("Failed to submit any fruits!", "Rarity: Common")
     return false
 end
 
@@ -2649,14 +2654,23 @@ local function cookCompleteMeal()
             if bestRecipe then
                 createColoredNotification("Making "..currentCraving.." ("..bestRecipe.rarity..")", "Rarity: Common")
                 for _, item in ipairs(bestRecipe.items) do
-                    if not submitIngredientToPot(item) then break end
+                    if not submitIngredientToPot(item) then 
+                        createColoredNotification("Missing ingredients for recipe, using random fruits", "Rarity: Common")
+                        break 
+                    end
                 end
             else
-                createColoredNotification("No recipe match - using random fruits", "Rarity: Common")
-                submitFruitsToPot()
+                createColoredNotification("No recipe match - using heaviest available fruits", "Rarity: Common")
+                if not submitFruitsToPot() then
+                    createColoredNotification("No fruits available to cook with!", "Rarity: Common")
+                    return false
+                end
             end
         else
-            submitFruitsToPot()
+            if not submitFruitsToPot() then
+                createColoredNotification("No fruits available to cook with!", "Rarity: Common")
+                return false
+            end
         end
     end
 
@@ -2687,13 +2701,91 @@ local function cookCompleteMeal()
     return false
 end
 
+local function collectTargetFruits()
+    setBackpackLimit()
+    createColoredNotification("Starting fruit collection...", "Rarity: Common")
+
+    local playerFarm = findPlayerFarm()
+    if not playerFarm then
+        createColoredNotification("Couldn't find your farm!", "Rarity: Common")
+        return false
+    end
+
+    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+    if not plantsPhysical then
+        createColoredNotification("No plants found in farm!", "Rarity: Common")
+        return false
+    end
+
+    local originalPos
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+    end
+
+    local collectedCount = 0
+    while cookAutomationActive and getAvailableSpace() > (maxBackpackItems * 0.3) do
+        for _, plant in pairs(plantsPhysical:GetChildren()) do
+            if not cookAutomationActive then break end
+            
+            local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+            for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                if not cookAutomationActive or getAvailableSpace() <= 0 then break end
+
+                if not fruit:GetAttribute("DoneGrowTime") then continue end
+
+                if fruit:GetAttribute("d") then continue end
+
+                local prompt
+                for _, descendant in pairs(fruit:GetDescendants()) do
+                    if descendant:IsA("ProximityPrompt") then
+                        prompt = descendant
+                        break
+                    end
+                end
+                if not prompt then continue end
+
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    local hrp = char.HumanoidRootPart
+                    hrp.CFrame = fruit:GetPivot() * CFrame.new(0, 0, -2.5)
+                    safeWait(0.15)
+                    fireproximityprompt(prompt)
+                    collectedCount = collectedCount + 1
+                    createColoredNotification(string.format("Collected %s (%d/%d)", 
+                        fruit.Name, countBackpackItems(), maxBackpackItems), "Rarity: Common")
+                    safeWait(0.35)
+                end
+            end
+        end
+        safeWait(0.5)
+    end
+
+    if originalPos and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+    end
+
+    createColoredNotification(string.format("Finished collecting %d fruits", collectedCount), "Rarity: Common")
+    return collectedCount > 0
+end
+
+local function ensureIngredientsForCooking()
+    if hasIngredientsForCooking() then return true end
+    
+    createColoredNotification("Backpack empty - collecting fruits...", "Rarity: Common")
+    local success = collectTargetFruits()
+    
+    if not success then
+        createColoredNotification("Failed to collect fruits! Stopping automation.", "Rarity: Common")
+        cookAutomationActive = false
+        return false
+    end
+    
+    return hasIngredientsForCooking()
+end
+
 local function cookEventLoop()
     while cookAutomationActive do
-        if not hasIngredientsForCooking() then
-            createColoredNotification("No more ingredients left!", "Rarity: Common")
-            cookAutomationActive = false
-            break
-        end
+        if not ensureIngredientsForCooking() then break end
         
         if not cookCompleteMeal() then
             safeWait(CONFIG.ACTION_COOLDOWN)
