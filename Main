@@ -3195,8 +3195,14 @@ end
 
 local function getCookingTimer()
     local timerGui = game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("CookingTimerBB")
-    if timerGui and timerGui:FindFirstChild("Timer") then
-        return timerGui.Timer.Text
+    return timerGui and timerGui:FindFirstChild("Timer") and timerGui.Timer.Text or nil
+end
+
+local function hasSoupInBackpack()
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") and item.Name:find("Soup") then
+            return item
+        end
     end
     return nil
 end
@@ -3235,87 +3241,75 @@ local function waitForCookingToFinish()
     return false
 end
 
-local function submitSoup()
-    local soup
-    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-        if item:IsA("Tool") and item.Name:find("Soup") then
-            soup = item
-            break
-        end
-    end
-    
+local function submitSoupToNPC()
+    local soup = hasSoupInBackpack()
     if not soup then return false end
-    
-    soup.Parent = LocalPlayer.Character
-    task.wait(0.5)
-    
-    local args = {
-	"SubmitHeldFood"
-}
-game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SubmitFoodService_RE"):FireServer(unpack(args))
 
-    
-    if soup.Parent == LocalPlayer.Character then
-        soup.Parent = LocalPlayer.Backpack
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
+        task.wait(1.5) 
     end
-    
-    return true
+
+    soup.Parent = LocalPlayer.Character
+    task.wait(0.8) 
+
+    local currentTool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+    if currentTool and currentTool.Name:find("Soup") then
+        game:GetService("ReplicatedStorage").GameEvents.SubmitFoodService_RE:FireServer("SubmitHeldFood")
+        task.wait(0.5)
+
+        if currentTool.Parent == LocalPlayer.Character then
+            currentTool.Parent = LocalPlayer.Backpack
+        end
+        return true
+    end
+    return false
+end
+
+local function collectReadySoup()
+    local timerText = getCookingTimer()
+    if timerText ~= "Ready" then return false end
+
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
+        task.wait(1.5)
+
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
+        task.wait(0.5)
+
+        game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("GetFoodFromPot")
+        return true
+    end
+    return false
 end
 
 local function cookEventLoop()
-    setBackpackLimit()
-
-    if countBackpackItems() == 0 then
-        createColoredNotification("Backpack empty! Fill with fruits first.", "Rarity: Common")
-        cookAutomationActive = false
-        return
-    end
-
     while cookAutomationActive do
-        local hasSoup = false
-        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if item:IsA("Tool") and item.Name:find("Soup") then
-                hasSoup = true
-                break
+        local soup = hasSoupInBackpack()
+        if soup then
+            if submitSoupToNPC() then
+                createColoredNotification("Successfully submitted soup to NPC", "Rarity: Common")
+            else
+                createColoredNotification("Failed to submit soup", "Rarity: Common")
             end
+            task.wait(1)
         end
 
-        if hasSoup then
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = npcLocation
-                task.wait(1.5)
-
-                if submitSoup() then
-                    createColoredNotification("Submitted soup to NPC", "Rarity: Common")
-                    task.wait(1)
-                end
+        if getCookingTimer() == "Ready" then
+            if collectReadySoup() then
+                createColoredNotification("Collected cooked soup", "Rarity: Common")
             end
+            task.wait(1)
         end
 
-        if isSoupReady() then
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = cookingPotLocation
-                task.wait(1.5)
-
-                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CollectCookedFood")
-                createColoredNotification("🍜 Collected cooked soup!", "Rarity: Common")
-                task.wait(1)
-
-                local args = {"GetFoodFromPot"}
-                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
-                task.wait(1)
-            end
-        else
-            if countBackpackItems() < (maxBackpackItems / 2) then
-                collectTargetFruits3()
-            end
-
-            if not hasSoup then
+        if not soup and getCookingTimer() ~= "Ready" then
+            if countBackpackItems() > 0 then
                 cookBestPossible()
-                task.wait(2)
+            else
+                createColoredNotification("No ingredients available", "Rarity: Common")
             end
         end
-
+        
         task.wait(1)
     end
 end
@@ -3327,38 +3321,22 @@ tab2:CreateToggle("AFK Farm Cook Event", function(state)
     if state then
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             originalCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
-            originalLocationStored = true
         end
-
-        if countBackpackItems() == 0 then
-            createColoredNotification("Fill your backpack with fruits first!", "Rarity: Common")
-            return
-        end
-
-        cookAutomationActive = state
-
-        if cookingLoopThread then
-            task.cancel(cookingLoopThread)
-        end
+        
+        cookAutomationActive = true
         cookingLoopThread = task.spawn(cookEventLoop)
+        createColoredNotification("Started cooking automation", "Rarity: Common")
     else
         cookAutomationActive = false
-
         if cookingLoopThread then
             task.cancel(cookingLoopThread)
-            cookingLoopThread = nil
         end
 
-        if originalLocationStored and originalCFrame then
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
-                task.wait(1)
-            end
-            originalLocationStored = false
-            originalCFrame = nil
+        if originalCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
         end
-
-        createColoredNotification("Cook Event farming stopped", "Rarity: Common")
+        
+        createColoredNotification("Stopped cooking automation", "Rarity: Common")
     end
 end)
 
