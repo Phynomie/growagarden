@@ -3029,6 +3029,45 @@ local function getCurrentCraving()
     return nil
 end
 
+local function getWeightFromName(itemName)
+    local weightStr = itemName:match("%[(.-)kg%]")
+    return weightStr and tonumber(weightStr) or 0
+end
+
+local function getInventoryWithWeights()
+    local inventory = {}
+
+    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            local baseName = item.Name:gsub("%s*%b[]", ""):gsub("%s+$", "")
+            inventory[baseName] = inventory[baseName] or {}
+            table.insert(inventory[baseName], {
+                item = item,
+                weight = item:FindFirstChild("Weight") and item.Weight.Value or getWeightFromName(item.Name)
+            })
+        end
+    end
+
+    if LocalPlayer.Character then
+        for _, item in pairs(LocalPlayer.Character:GetChildren()) do
+            if item:IsA("Tool") then
+                local baseName = item.Name:gsub("%s*%b[]", ""):gsub("%s+$", "")
+                inventory[baseName] = inventory[baseName] or {}
+                table.insert(inventory[baseName], {
+                    item = item,
+                    weight = item:FindFirstChild("Weight") and item.Weight.Value or getWeightFromName(item.Name)
+                })
+            end
+        end
+    end
+
+    for _, items in pairs(inventory) do
+        table.sort(items, function(a, b) return a.weight > b.weight end)
+    end
+    
+    return inventory
+end
+
 local function findBestRecipe(foodName)
     local inventory = getInventoryWithWeights()
     local recipeData = RECIPES[foodName]
