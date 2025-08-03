@@ -3234,8 +3234,11 @@ local function submitSoup()
     soup.Parent = LocalPlayer.Character
     task.wait(0.5)
     
-    local args = {"SubmitHeldFood"}
-    game:GetService("ReplicatedStorage").GameEvents.SubmitFoodService_RE:FireServer(unpack(args))
+    local args = {
+	"SubmitHeldFood"
+}
+game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("SubmitFoodService_RE"):FireServer(unpack(args))
+
     
     if soup.Parent == LocalPlayer.Character then
         soup.Parent = LocalPlayer.Backpack
