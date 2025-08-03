@@ -3291,25 +3291,49 @@ local function cookEventLoop()
     end
 end
 
+local originalCFrame = nil
+local originalLocationStored = false
+
 tab2:CreateToggle("AFK Farm Cook Event", function(state)
-    if state and countBackpackItems() == 0 then
-        createColoredNotification("Fill your backpack with fruits first!", "Rarity: Common")
-        return
-    end
-
-    cookAutomationActive = state
-
-    if cookingLoopThread then
-        task.cancel(cookingLoopThread)
-        cookingLoopThread = nil
-    end
-
     if state then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            originalCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+            originalLocationStored = true
+        end
+        
+        if countBackpackItems() == 0 then
+            createColoredNotification("Fill your backpack with fruits first!", "Rarity: Common")
+            return
+        end
+
+        cookAutomationActive = state
+
+        if cookingLoopThread then
+            task.cancel(cookingLoopThread)
+            cookingLoopThread = nil
+        end
+
         cookingLoopThread = task.spawn(function()
             cookEventLoop()
             cookingLoopThread = nil 
         end)
     else
+        cookAutomationActive = false
+
+        if cookingLoopThread then
+            task.cancel(cookingLoopThread)
+            cookingLoopThread = nil
+        end
+
+        if originalLocationStored and originalCFrame then
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = originalCFrame
+                task.wait(1) 
+            end
+            originalLocationStored = false
+            originalCFrame = nil
+        end
+
         createColoredNotification("Cook Event farming stopped", "Rarity: Common")
     end
 end)
