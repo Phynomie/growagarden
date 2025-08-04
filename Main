@@ -2248,6 +2248,16 @@ end
 
 local function handleCookingPot()
     local potState = getPotState()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not hrp then return end
+
+    local potPos = LOCATIONS.cookingPot.Position
+    if (hrp.Position - potPos).Magnitude > 10 then
+        hrp.CFrame = LOCATIONS.cookingPot
+        task.wait(1.5) -- Wait for teleport
+    end
     
     if potState == "READY" then
         if getAvailableSpace() == 0 then
