@@ -2375,7 +2375,7 @@ local function CookEventLoop()
             collectFruitsFromGarden()
         end
         
-        handleSoupSubmission()
+        submitSoupToNPC()
         
         createColoredNotification(string.format("Loop %d | Slots: %d/%d | Next rescan: %ds", 
             loopCount, countBackpackItems(), maxBackpackItems, 
