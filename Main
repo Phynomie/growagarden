@@ -2002,6 +2002,61 @@ local function hasSoupInBackpack()
     return nil
 end
 
+local function sellLightestFruit()
+    local fruits = getFruits()
+    if #fruits == 0 then return false end
+
+    table.sort(fruits, function(a, b) return a.weight < b.weight end)
+    
+    local fruitToSell = nil
+    for _, fruit in ipairs(fruits) do
+        if not fruit.isFavorited then
+            fruitToSell = fruit.item
+            break
+        end
+    end
+
+    if not fruitToSell then return false end
+
+    local steven = workspace.NPCS:FindFirstChild("Steven")
+    if not steven then
+        warn("Steven NPC not found!")
+        return false
+    end
+    
+    local npcHRP = steven:FindFirstChild("HumanoidRootPart")
+    if not npcHRP then
+        warn("Steven doesn't have HumanoidRootPart!")
+        return false
+    end
+    
+    local playerChar = LocalPlayer.Character
+    if not playerChar then
+        warn("Player character not found!")
+        return false
+    end
+    
+    local playerHRP = playerChar:FindFirstChild("HumanoidRootPart")
+    if not playerHRP then
+        warn("Player doesn't have HumanoidRootPart!")
+        return false
+    end
+    
+    local originalCFrame = playerHRP.CFrame
+
+    fruitToSell.Parent = playerChar
+    task.wait(0.3)
+
+    playerHRP.CFrame = npcHRP.CFrame * CFrame.new(0, 0, -3) 
+    task.wait(0.5)
+
+    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("Sell_Item"):FireServer()
+    task.wait(0.5)
+
+    playerHRP.CFrame = originalCFrame
+    return true
+end
+
 local function submitSoupToNPC()
     local soup = hasSoupInBackpack()
     if not soup then return end
@@ -2189,61 +2244,6 @@ local function shouldSellFruit()
     local potState = getPotState()
     return (potState == "READY" and getAvailableSpace() == 0) or
            (loopCount == 1 and countBackpackItems() == maxBackpackItems and (potState == "COOKING" or potState == "READY"))
-end
-
-local function sellLightestFruit()
-    local fruits = getFruits()
-    if #fruits == 0 then return false end
-
-    table.sort(fruits, function(a, b) return a.weight < b.weight end)
-    
-    local fruitToSell = nil
-    for _, fruit in ipairs(fruits) do
-        if not fruit.isFavorited then
-            fruitToSell = fruit.item
-            break
-        end
-    end
-
-    if not fruitToSell then return false end
-
-    local steven = workspace.NPCS:FindFirstChild("Steven")
-    if not steven then
-        warn("Steven NPC not found!")
-        return false
-    end
-    
-    local npcHRP = steven:FindFirstChild("HumanoidRootPart")
-    if not npcHRP then
-        warn("Steven doesn't have HumanoidRootPart!")
-        return false
-    end
-    
-    local playerChar = LocalPlayer.Character
-    if not playerChar then
-        warn("Player character not found!")
-        return false
-    end
-    
-    local playerHRP = playerChar:FindFirstChild("HumanoidRootPart")
-    if not playerHRP then
-        warn("Player doesn't have HumanoidRootPart!")
-        return false
-    end
-    
-    local originalCFrame = playerHRP.CFrame
-
-    fruitToSell.Parent = playerChar
-    task.wait(0.3)
-
-    playerHRP.CFrame = npcHRP.CFrame * CFrame.new(0, 0, -3) 
-    task.wait(0.5)
-
-    game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("Sell_Item"):FireServer()
-    task.wait(0.5)
-
-    playerHRP.CFrame = originalCFrame
-    return true
 end
 
 local function handleCookingPot()
