@@ -2196,7 +2196,7 @@ local function handleCookingPot()
     
     if potState == "READY" then
         if getAvailableSpace() == 0 then
-            if not shouldSellFruit() then  -- Only sell if we really need to
+            if not shouldSellFruit() then 
                 createColoredNotification("Waiting for backpack space...", "Rarity: Common")
                 return
             end
@@ -2356,7 +2356,7 @@ local function collectFruitsFromGarden()
 end
 
 local lastGardenScan = 0
-local GARDEN_RESCAN_INTERVAL = 30 -- seconds
+local GARDEN_RESCAN_INTERVAL = 30 
 
 local function shouldRescanGarden()
     return os.time() - lastGardenScan > GARDEN_RESCAN_INTERVAL
