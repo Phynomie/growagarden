@@ -2057,14 +2057,101 @@ local function sellLightestFruit()
     return true
 end
 
+local function collectBestAvailableFruit()
+    local craving = getCurrentCraving()
+    local fruitsToCollect = {}
+    
+    if not playerFarm then
+        playerFarm = findPlayerFarm()
+        if not playerFarm then return false end
+    end
+
+    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
+    if not plantsPhysical then return false end
+
+    for _, plant in pairs(plantsPhysical:GetChildren()) do
+        local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+        for _, fruit in pairs(fruitsFolder:GetChildren()) do
+            if fruit:GetAttribute("DoneGrowTime") and not fruit:GetAttribute("d") then
+                local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt")
+                if not prompt then
+                    for _, descendant in pairs(fruit:GetDescendants()) do
+                        if descendant:IsA("ProximityPrompt") then
+                            prompt = descendant
+                            break
+                        end
+                    end
+                end
+
+                if prompt then
+                    local weight = 0
+                    local weightValue = fruit:FindFirstChild("Weight")
+                    if weightValue and weightValue:IsA("NumberValue") then
+                        weight = weightValue.Value
+                    end
+
+                    table.insert(fruitsToCollect, {
+                        model = fruit,
+                        prompt = prompt,
+                        weight = weight,
+                        isCraving = isFruitForCraving(fruit.Name, craving),
+                        position = fruit:GetPivot()
+                    })
+                end
+            end
+        end
+    end
+
+    table.sort(fruitsToCollect, function(a, b)
+        if a.isCraving ~= b.isCraving then
+            return a.isCraving
+        end
+        return a.weight > b.weight
+    end)
+
+    if #fruitsToCollect > 0 then
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            local originalPos = hrp.CFrame
+            
+            hrp.CFrame = fruitsToCollect[1].position * CFrame.new(0, 0, -2.5)
+            task.wait(0.15)
+            
+            fireproximityprompt(fruitsToCollect[1].prompt)
+            task.wait(0.35)
+            
+            hrp.CFrame = originalPos
+            return true
+        end
+    end
+    
+    return false
+end
+
 local function submitSoupToNPC()
     local soup = hasSoupInBackpack()
     if not soup then return end
 
     if getAvailableSpace() == 0 then
-        if not sellLightestFruit() then
-            createColoredNotification("Couldn't make space for soup submission!", "Rarity: Common")
-            return
+        local collected = false
+        local startTime = os.time()
+        
+        while os.time() - startTime < 5 and not collected do
+            collected = collectBestAvailableFruit() 
+            if not collected then
+                task.wait(1)
+            end
+        end
+
+        if getAvailableSpace() == 0 then
+            if not sellLightestFruit() then
+                setBackpackLimit()
+                if getAvailableSpace() == 0 then
+                    createColoredNotification("Backpack is completely full!", "Rarity: Common")
+                    return
+                end
+            end
         end
     end
 
@@ -2256,7 +2343,7 @@ local function handleCookingPot()
     local potPos = LOCATIONS.cookingPot.Position
     if (hrp.Position - potPos).Magnitude > 10 then
         hrp.CFrame = LOCATIONS.cookingPot
-        task.wait(1.5) -- Wait for teleport
+        task.wait(1.5) 
     end
     
     if potState == "READY" then
