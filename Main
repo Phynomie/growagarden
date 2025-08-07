@@ -2041,39 +2041,39 @@ local function cookEventLoop()
             if not plantsPhysical then task.wait(1); continue end
 
             local function harvestHeaviestMatching(filterFunc)
-    local bestFruit, maxWeight = nil, 0
-    local nearestReadyTime = math.huge
+            local bestFruit, maxWeight = nil, 0
+            local nearestReadyTime = math.huge
 
-    for _, plant in pairs(plantsPhysical:GetChildren()) do
-        local fruitsFolder = plant:FindFirstChild("Fruits") or plant
-        for _, fruit in pairs(fruitsFolder:GetChildren()) do
-            if not fruit:GetAttribute("d") then  
-                if fruit:GetAttribute("DoneGrowTime") then
-                    if filterFunc(fruit) or 
-                       (isAcceptableSubstitute(fruit.Name, craving) and filterFunc({Name = "Bone Blossom"})) then
-                        local weight = getFruitWeight(fruit)
-                        if weight > maxWeight then
-                            bestFruit = fruit
-                            maxWeight = weight
+            for _, plant in pairs(plantsPhysical:GetChildren()) do
+                local fruitsFolder = plant:FindFirstChild("Fruits") or plant
+                for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                    if not fruit:GetAttribute("d") then  
+                        if fruit:GetAttribute("DoneGrowTime") then
+                            if filterFunc(fruit) or 
+                               (isAcceptableSubstitute(fruit.Name, craving) and filterFunc({Name = "Bone Blossom"})) then
+                                local weight = getFruitWeight(fruit)
+                                if weight > maxWeight then
+                                    bestFruit = fruit
+                                    maxWeight = weight
+                                end
+                            end
+                        else
+                            local growTime = fruit:GetAttribute("GrowTimeRemaining") or math.huge
+                            nearestReadyTime = math.min(nearestReadyTime, growTime)
                         end
                     end
-                else
-                    local growTime = fruit:GetAttribute("GrowTimeRemaining") or math.huge
-                    nearestReadyTime = math.min(nearestReadyTime, growTime)
                 end
             end
+
+            if not bestFruit and nearestReadyTime < math.huge then
+                local waitTime = math.min(nearestReadyTime + 2, 30) 
+                createColoredNotification(("Waiting %.0fs for fruits to become ready..."):format(waitTime), "Rarity: Common")
+                task.wait(waitTime)
+                return false  
+            end
+
+            return bestFruit ~= nil  
         end
-    end
-
-    if not bestFruit and nearestReadyTime < math.huge then
-        local waitTime = math.min(nearestReadyTime + 2, 30) 
-        createColoredNotification(("Waiting %.0fs for fruits to become ready..."):format(waitTime), "Rarity: Common")
-        task.wait(waitTime)
-        return false  
-    end
-
-    return bestFruit ~= nil  
-end
 
             if not harvestHeaviestMatching(function(fruit) 
                 return fruit.Name:find(craving) 
