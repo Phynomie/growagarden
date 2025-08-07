@@ -1994,6 +1994,8 @@ local function harvestFruit(fruit)
     return false
 end
 
+local phase = 0
+
 local function cookEventLoop()
     if not cookAutomationActive then return end
 
@@ -2014,17 +2016,17 @@ local function cookEventLoop()
 
         if hasSoupInInventory() then
             createColoredNotification("Found existing soup - delivering...", "Rarity: Divine")
-            goto deliver_soup
+            phase = 4
         end
 
         if isPotCooking() then
             createColoredNotification("Resuming cooking in progress...", "Rarity: Common")
-            goto monitor_pot
+            phase = 3
         end
 
+        phase = (phase + 1) % 5
 
-        ::harvest::
-        while cookAutomationActive and getAvailableSpace() > 0 do
+        while cookAutomationActive and getAvailableSpace() > 0 and phase == 1 do
             setBackpackLimit()
 
             local fruitCount = 0
@@ -2088,7 +2090,9 @@ local function cookEventLoop()
             task.wait(0.5)
         end
 
-        if cookAutomationActive then
+        phase = (phase + 1) % 5
+
+        if cookAutomationActive and phase == 2 then
             LocalPlayer.Character.HumanoidRootPart.CFrame = LOCATIONS.cookingPot
             task.wait(1)
 
@@ -2137,9 +2141,9 @@ local function cookEventLoop()
             end
         end
 
+        phase = (phase + 1) % 5
 
-        ::monitor_pot::
-        if cookAutomationActive then
+        if cookAutomationActive and phase == 3 then
             task.wait(3)
             
             local timerText = LocalPlayer.PlayerGui.CookingTimerBB.Timer.Text
@@ -2164,8 +2168,9 @@ local function cookEventLoop()
             end
         end
 
-        ::deliver_soup::
-        if cookAutomationActive then
+        phase = (phase + 1) % 5
+
+        if cookAutomationActive and phase == 4 then
             LocalPlayer.Character.HumanoidRootPart.CFrame = LOCATIONS.npc
             task.wait(1)
             
@@ -2195,6 +2200,11 @@ local function cookEventLoop()
 
         if cookAutomationActive and countBackpackItems() >= 5 then
             task.wait(1) 
+        end
+
+        if phase == 4 then
+            task.wait(3)
+            phase = 0
         end
     end
 end
