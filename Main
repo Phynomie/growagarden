@@ -2193,7 +2193,7 @@ local function cookEventLoop()
             task.wait(3) 
         end
 
-        if cookAutomationActive and countBackpackFruits() >= 5 then
+        if cookAutomationActive and countBackpackItems() >= 5 then
             task.wait(1) 
         end
     end
