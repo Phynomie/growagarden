@@ -2012,7 +2012,7 @@ local function cookEventLoop()
     end
     
     while cookAutomationActive do
-        local craving = workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel.PigChefFolder.PigChef.Cravings.CravingThoughtBubblePart.Text
+        local craving = workspace.Interaction.UpdateItems.CookingEvent.CookingEventModel.PigChefFolder.PigChef.Cravings.CravingThoughtBubblePart.CravingBillboard.BG.CravingTextLabel.Text
 
         if hasSoupInInventory() then
             createColoredNotification("Found existing soup - delivering...", "Rarity: Divine")
