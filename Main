@@ -2024,10 +2024,11 @@ local function cookEventLoop()
             phase = 3
         end
 
+        setBackpackLimit()
+
         phase = (phase + 1) % 5
 
         while cookAutomationActive and getAvailableSpace() > 0 and phase == 1 do
-            setBackpackLimit()
 
             local fruitCount = 0
             for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
