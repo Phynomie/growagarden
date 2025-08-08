@@ -2138,7 +2138,7 @@ local function cookEventLoop()
         local potStatus = LocalPlayer.PlayerGui.CookingTimerBB.Timer.Text
         if potStatus == "Ready" then
             local args = {
-	"CookBest"
+	"GetFoodFromPot"
 }
 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("CookingPotService_RE"):FireServer(unpack(args))
             createColoredNotification("Collected cooked soup!", "Rarity: Divine")
