@@ -2018,12 +2018,14 @@ local function cookEventLoop()
             createColoredNotification("Found existing soup - delivering...", "Rarity: Divine")
             print("phase: ", phase)
             phase = 4
+            continue
         end
 
         if isPotCooking() then
             createColoredNotification("Resuming cooking in progress...", "Rarity: Common")
             print("phase: ", phase)
             phase = 3
+            continue
         end
 
         setBackpackLimit()
