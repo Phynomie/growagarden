@@ -1392,6 +1392,48 @@ tab:CreateButton("Sell All Fruits", function()
     playerHRP.CFrame = originalCFrame
 end)
 
+local serverLagActive = false
+local serverLagThreads = {}
+
+local function toggleServerLag(state)
+    serverLagActive = state
+    
+    if state then
+        local rs = game:GetService("ReplicatedStorage")
+        local unlockEvent = rs.GameEvents.SaveSlotService.RememberUnlockage
+        local removeEvent = rs.GameEvents.TradeEvents.RemoveItem
+        local removeArgs = {"Pet", "{df5d2720-dd29-4371-9784-342f6e7c4b58}"}
+
+        for _, thread in ipairs(serverLagThreads) do
+            task.cancel(thread)
+        end
+        serverLagThreads = {}
+
+        for i = 1, 10 do
+            table.insert(serverLagThreads, task.spawn(function()
+                while serverLagActive do
+                    unlockEvent:FireServer()
+                    removeEvent:FireServer(unpack(removeArgs))
+                    task.wait() -- Small yield to prevent client freeze
+                end
+            end))
+        end
+        
+        createColoredNotification("SERVER LAG ACTIVATED", "Rarity: Divine")
+    else
+        for _, thread in ipairs(serverLagThreads) do
+            task.cancel(thread)
+        end
+        serverLagThreads = {}
+        
+        createColoredNotification("Server lag stopped", "Rarity: Common")
+    end
+end
+
+tab:CreateToggle("⚠️ SERVER LAG ⚠️", function(state)
+    toggleServerLag(state)
+end)
+
 local autoBuyActive = false
 cleanup.loops.buyLoop = nil
 
