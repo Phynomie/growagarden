@@ -2110,126 +2110,113 @@ local phase = 0
 
 local function cookEventLoop()
     if not cookAutomationActive then return end
-
-    local function hasSoupInInventory()
-        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if item.Name:find("Soup") then return true end
-        end
-        return false
-    end
-
-    local function isPotCooking()
-        local timerText = LocalPlayer.PlayerGui.CookingTimerBB.Timer.Text
-        return timerText:match("%d+ minutes %d+ seconds") or timerText == "Ready"
-    end
     
+    -- Strict phase control
     while cookAutomationActive do
-        -- PHASE 1: Check for existing soup (highest priority)
-        if hasSoupInInventory() then
-            createColoredNotification("Found existing soup - delivering...", "Rarity: Divine")
+        -- PHASE 1: Check backpack for soup (highest priority)
+        local hasSoup = false
+        local soupItem = nil
+        for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+            if item.Name:find("Soup") then
+                hasSoup = true
+                soupItem = item
+                break
+            end
+        end
+
+        if hasSoup then
+            createColoredNotification("Delivering soup to NPC...", "Rarity: Divine")
             
             -- Teleport to NPC
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = LOCATIONS.npc
+                local hrp = LocalPlayer.Character.HumanoidRootPart
+                local originalPos = hrp.CFrame
+                
+                hrp.CFrame = LOCATIONS.npc
+                task.wait(1) -- Wait for teleport
+                
+                -- Equip soup if not already equipped
+                if soupItem.Parent ~= LocalPlayer.Character then
+                    soupItem.Parent = LocalPlayer.Character
+                    task.wait(0.5)
+                end
+                
+                -- Deliver soup
+                game:GetService("ReplicatedStorage").GameEvents.SubmitFoodService_RE:FireServer("SubmitHeldFood")
+                createColoredNotification("Delivered: "..soupItem.Name, "Rarity: Divine")
+                
+                -- Return to original position
+                hrp.CFrame = originalPos
                 task.wait(1)
-                
-                -- Find and deliver soup
-                local soup
-                for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-                    if item.Name:find("Soup") then soup = item break end
-                end
-                
-                if soup then
-                    -- Equip soup if not already equipped
-                    if soup.Parent ~= LocalPlayer.Character then
-                        soup.Parent = LocalPlayer.Character
-                        task.wait(0.5)
-                    end
-                    
-                    -- Deliver soup
-                    game:GetService("ReplicatedStorage").GameEvents.SubmitFoodService_RE:FireServer("SubmitHeldFood")
-                    createColoredNotification("Delivered: "..soup.Name, "Rarity: Divine")
-                end
             end
-            task.wait(3)
-            continue
+            continue -- Restart loop
         end
 
-        -- PHASE 2: Check cooking status
-        if isPotCooking() then
+        -- PHASE 2: Check cooking pot status
+        local potStatus = LocalPlayer.PlayerGui.CookingTimerBB.Timer.Text
+        if potStatus == "Ready" then
+            -- Collect cooked soup
+            game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
+            createColoredNotification("Collected cooked soup!", "Rarity: Divine")
+            task.wait(1)
+            continue -- Restart loop
+        elseif potStatus:match("%d+ minutes %d+ seconds") then
+            -- Pot is cooking, wait until done
             createColoredNotification("Waiting for cooking to finish...", "Rarity: Common")
-            
-            -- Wait for cooking to complete
-            local timerText = LocalPlayer.PlayerGui.CookingTimerBB.Timer.Text
-            while cookAutomationActive and timerText ~= "Ready" do
-                timerText = LocalPlayer.PlayerGui.CookingTimerBB.Timer.Text
-                if timerText:match("%d+ minutes %d+ seconds") then
-                    local mins, secs = timerText:match("(%d+) minutes (%d+) seconds")
-                    createColoredNotification(("Cooking... %dm %ds remaining"):format(mins, secs), "Rarity: Common")
-                    task.wait(5)
-                else
-                    task.wait(1)
-                end
-            end
-            
-            -- Collect when ready
-            if cookAutomationActive and timerText == "Ready" then
-                game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
-                createColoredNotification("Collected cooked soup!", "Rarity: Divine")
-            end
-            continue
+            repeat
+                task.wait(5) -- Check every 5 seconds
+                potStatus = LocalPlayer.PlayerGui.CookingTimerBB.Timer.Text
+            until potStatus == "Ready" or not cookAutomationActive
+            continue -- Restart loop
         end
 
-        -- PHASE 3: Collect fruits if needed
-        setBackpackLimit()
+        -- PHASE 3: Check fruit count in backpack
         local fruitCount = 0
         for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if isFruit(item) then fruitCount = fruitCount + 1 end
+            if isFruit(item) then
+                fruitCount = fruitCount + 1
+            end
         end
 
         if fruitCount < 5 then
-    createColoredNotification("Collecting fruits...", "Rarity: Common")
-    
-    if not playerFarm then playerFarm = findPlayerFarm() end
-    if not playerFarm then 
-        task.wait(5)
-        continue
-    end
-
-    local plantsPhysical = playerFarm:FindFirstChild("Important"):FindFirstChild("Plants_Physical")
-    if not plantsPhysical then 
-        task.wait(1)
-        continue
-    end
-
-    -- Keep trying to harvest until we have 5 fruits
-    while cookAutomationActive and fruitCount < 5 and getAvailableSpace() > 0 do
-        if harvestBestFruit() then
-            -- Update fruit count after successful harvest
-            fruitCount = 0
-            for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-                if isFruit(item) then fruitCount = fruitCount + 1 end
+            -- Collect fruits until we have 5
+            createColoredNotification("Collecting fruits... ("..fruitCount.."/5)", "Rarity: Common")
+            
+            if not playerFarm then playerFarm = findPlayerFarm() end
+            if playerFarm then
+                while fruitCount < 5 and cookAutomationActive do
+                    if harvestBestFruit() then
+                        fruitCount = fruitCount + 1
+                        createColoredNotification("Collected fruit ("..fruitCount.."/5)", "Rarity: Common")
+                    else
+                        createColoredNotification("No fruits available to collect", "Rarity: Common")
+                        task.wait(5) -- Wait before retrying
+                    end
+                    task.wait(0.5)
+                end
+            else
+                createColoredNotification("Couldn't find your farm!", "Rarity: Common")
+                task.wait(5)
             end
-        else
-            createColoredNotification("No fruits available right now", "Rarity: Common")
-            break
+            continue -- Restart loop
         end
-        task.wait(0.5)
-    end
-end
 
-        -- PHASE 4: Cook if we have enough fruits
-        if fruitCount >= 5 and cookAutomationActive then
-            createColoredNotification("Cooking soup...", "Rarity: Common")
+        -- PHASE 4: Submit fruits to pot (only if we have exactly 5 and pot is empty)
+        if fruitCount >= 5 and potStatus == "" then -- Empty pot status
+            createColoredNotification("Submitting fruits to cooking pot...", "Rarity: Common")
             
             -- Teleport to cooking pot
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = LOCATIONS.cookingPot
-                task.wait(1)
+                local hrp = LocalPlayer.Character.HumanoidRootPart
+                local originalPos = hrp.CFrame
+                
+                hrp.CFrame = LOCATIONS.cookingPot
+                task.wait(1) -- Wait for teleport
 
+                -- Submit exactly 5 fruits
                 local submitted = 0
                 while submitted < 5 and cookAutomationActive do
-                    -- Find heaviest fruit in backpack
+                    -- Find heaviest fruit remaining
                     local bestFruit, maxWeight = nil, 0
                     for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                         if isFruit(item) then
@@ -2252,33 +2239,27 @@ end
                         
                         -- Submit to pot
                         game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("SubmitHeldPlant")
-
-                        -- Wait for submission to complete
-                        local newCount = 0
-                        repeat 
-                            task.wait(0.1)
-                            newCount = #LocalPlayer.PlayerGui.CookingIngredientGui.Background.InsidePotFrame:GetChildren() - 2
-                        until newCount > submitted or not cookAutomationActive
-                        
-                        submitted = newCount
-                        createColoredNotification(string.format("Submitted %s (%dkg) - %d/5", bestFruit.Name, maxWeight, submitted), "Rarity: Common")
+                        submitted = submitted + 1
+                        createColoredNotification("Submitted "..submitted.."/5 fruits ("..bestFruit.Name..")", "Rarity: Common")
+                        task.wait(0.5)
                     else
-                        warn("No fruits left to submit!")
-                        break
+                        break -- No more fruits found
                     end
                 end
 
-                -- Start cooking if we submitted 5 fruits
+                -- Start cooking if we submitted 5
                 if submitted >= 5 then
                     game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("CookBest")
-                    createColoredNotification("Started cooking!", "Rarity: Divine")
+                    createColoredNotification("Started cooking 5 fruits!", "Rarity: Divine")
                 end
+                
+                -- Return to original position
+                hrp.CFrame = originalPos
+                task.wait(1)
             end
-            
-            task.wait(3)
         end
         
-        task.wait(1) -- Small delay between full cycles
+        task.wait(1) -- Small delay between checks
     end
 end
 
