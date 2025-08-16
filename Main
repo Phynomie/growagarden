@@ -345,6 +345,46 @@ local function autoBuyTM()
     return madePurchase
 end
 
+local function autoBuyEventShopItems()
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
+    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    if sheckles < 10000000000 then
+        createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
+        return
+    end
+
+    local eventShop = LocalPlayer.PlayerGui:FindFirstChild("EventShop_UI")
+    if not eventShop then
+        createColoredNotification("Event shop not open!", "Rarity: Common")
+        return
+    end
+
+    local scrollingFrame = eventShop.Frame.ScrollingFrame
+    if not scrollingFrame then return end
+
+    for _, frame in ipairs(scrollingFrame:GetChildren()) do
+        if frame:FindFirstChild("Main_Frame") then
+            local mainFrame = frame.Main_Frame
+            local stockText = mainFrame.Stock_Text
+            local rarityText = mainFrame.Rarity_Text and mainFrame.Rarity_Text.Text or "Rarity: Common"
+            
+            if stockText and stockText.Text ~= "X0 Stock" then
+                local stockNum = tonumber(stockText.Text:match("X(%d+)"))
+                if stockNum and stockNum > 0 then
+                    for i = 1, stockNum do
+                        local args = {frame.Name}
+                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock"):FireServer(unpack(args))
+                        task.wait(0.1)
+                    end
+                    createColoredNotification("Bought "..stockNum.." "..frame.Name.."!", rarityText)
+                end
+            end
+        end
+    end
+end
+
 tab:CreateToggle("Anti Collect Fruits", function(a)
     if a then
         managePrompts(true)
@@ -1502,6 +1542,7 @@ local function startBuyLoop()
             autoBuyGears()
             autoBuyEggs()
             autoBuyTM()
+            autoBuyEventShopItems()
             
             for i = 60, 1, -1 do
                 if not autoBuyActive then break end
