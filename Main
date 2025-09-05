@@ -1723,7 +1723,7 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             local handItem = Character:FindFirstChildWhichIsA("Tool")
             if handItem then
                 local toolName = handItem.Name
-                if (toolName:match("^Medium Pet Toy %d+%[Passive Boost%]$") or toolName:match("^Small Pet Toy %d+%[Passive Boost%]$")) then
+                if (toolName:match("^Medium Pet Toy %d+ %[Passive Boost%]$") or toolName:match("^Small Pet Toy %d+ %[Passive Boost%]$")) then
                     return handItem, true
                 end
             end
@@ -1731,7 +1731,7 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             for _, item in ipairs(Backpack:GetChildren()) do
                 if item:IsA("Tool") then
                     local toolName = item.Name
-                    if (toolName:match("^Medium Pet Toy %d+%[Passive Boost%]$") or toolName:match("^Small Pet Toy %d+%[Passive Boost%]$")) then
+                    if (toolName:match("^Medium Pet Toy %d+ %[Passive Boost%]$") or toolName:match("^Small Pet Toy %d+ %[Passive Boost%]$")) then
                         return item, false 
                     end
                 end
