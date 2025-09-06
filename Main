@@ -1723,62 +1723,45 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             local handItem = Character:FindFirstChildWhichIsA("Tool")
             if handItem then
                 local toolName = handItem.Name
-                print("Checking hand item:", toolName)
                 if (toolName:match("^Medium Pet Toy x%d+%[Passive Boost%]$") or toolName:match("^Small Pet Toy x%d+%[Passive Boost%]$")) then
-                    print("Found pet toy in hand:", toolName)
-                    return handItem, true 
-                else
-                    print("Hand item is not a pet toy (pattern mismatch)")
+                    return handItem, true
                 end
-            else
-                print("No tool found in hand")
             end
 
-            print("Checking backpack for pet toys...")
             for _, item in ipairs(Backpack:GetChildren()) do
                 if item:IsA("Tool") then
                     local toolName = item.Name
-                    print("Backpack item:", toolName)
                     if (toolName:match("^Medium Pet Toy x%d+%[Passive Boost%]$") or toolName:match("^Small Pet Toy x%d+%[Passive Boost%]$")) then
-                        print("Found pet toy in backpack:", toolName)
-                        return item, false 
-                    else
-                        print("Item pattern check failed for:", toolName)
-                        print("Medium pattern match:", toolName:match("^Medium Pet Toy x%d+%[Passive Boost%]$"))
-                        print("Small pattern match:", toolName:match("^Small Pet Toy x%d+%[Passive Boost%]$"))
+                        return item, false
                     end
                 end
             end
             
-            print("No pet toys found in backpack after checking all items")
-            return nil, false 
+            return nil, false
         end
 
         local function equipPetToy(toy)
             local currentTool = Character:FindFirstChildWhichIsA("Tool")
             if currentTool then
-                print("Unequipping current tool:", currentTool.Name)
                 currentTool.Parent = Backpack
             end
 
-            print("Equipping pet toy:", toy.Name)
             toy.Parent = Character
         end
 
         local function getPlayerPets()
             local pets = {}
-            local petMovers = workspace.PetsPhysical:GetChildren()
-            
-            for _, petMover in ipairs(petMovers) do
-                if petMover.Name == "PetMover" and petMover:IsA("Part") then
-                    local owner = petMover:GetAttribute("OWNER")
+
+            for _, child in ipairs(workspace.PetsPhysical:GetChildren()) do
+                if child.Name == "PetMover" and child:IsA("Part") then
+                    local owner = child:GetAttribute("OWNER")
                     if owner == LocalPlayer.Name then
-                        for _, child in ipairs(petMover:GetChildren()) do
-                            if child:IsA("Model") and child.Name:match("^{[a-fA-F0-9%-]+}$") then
+                        for _, model in ipairs(child:GetChildren()) do
+                            if model:IsA("Model") and model.Name:match("^{[a-fA-F0-9%-]+}$") then
                                 table.insert(pets, {
-                                    uuid = child.Name,
-                                    mover = petMover,
-                                    model = child
+                                    uuid = model.Name,
+                                    mover = child,
+                                    model = model
                                 })
                                 break
                             end
@@ -1794,17 +1777,13 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             local petToy, alreadyInHand = findPetToy()
             if not petToy then
                 createColoredNotification("No pet toy found in inventory!", "Common")
-                print("REASON: Could not find any tool matching the pet toy pattern in hand or backpack")
-                print("Make sure your pet toy names follow this exact format:")
-                print("Medium Pet Toy x535[Passive Boost] OR Small Pet Toy x100[Passive Boost]")
-                print("(NO space between number and bracket)")
                 task.wait(5)
                 break
             end
 
             if not alreadyInHand then
                 equipPetToy(petToy)
-                task.wait(1) 
+                task.wait(1)
             end
 
             local playerPets = getPlayerPets()
@@ -1817,16 +1796,15 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             local startTime = os.time()
             local originalPets = {}
             for _, pet in ipairs(playerPets) do
-                originalPets[pet.uuid] = true
+                originalPets[pet.uuid] = pet.mover 
             end
             
             local petsStillExist = true
             while os.time() - startTime < 60 and petsStillExist do
                 petsStillExist = false
-                for uuid in pairs(originalPets) do
-                    if workspace.PetsPhysical:FindFirstChild("PetMover") then
-                        local petMover = workspace.PetsPhysical.PetMover
-                        if petMover:FindFirstChild(uuid) and petMover:GetAttribute("OWNER") == LocalPlayer.Name then
+                for uuid, originalMover in pairs(originalPets) do
+                    if originalMover and originalMover.Parent and originalMover:FindFirstChild(uuid) then
+                        if originalMover:GetAttribute("OWNER") == LocalPlayer.Name then
                             petsStillExist = true
                             break
                         end
@@ -1854,7 +1832,7 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
                     pet.uuid
                 }
                 game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetBoostService"):FireServer(unpack(args))
-                task.wait(0.5) 
+                task.wait(0.5)
             end
             
             createColoredNotification("Applied boost to all pets!", "Common")
