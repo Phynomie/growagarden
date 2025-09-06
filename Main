@@ -1826,6 +1826,7 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             if not state then break end
 
             for _, pet in ipairs(playerPets) do
+                print(pet.uuid)
                 local args = {
                     "ApplyBoost",
                     pet.uuid  
