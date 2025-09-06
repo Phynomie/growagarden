@@ -1718,7 +1718,7 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
         local Backpack = LocalPlayer.Backpack
         local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         local Humanoid = Character:WaitForChild("Humanoid")
-
+        
         local function findPetToy()
             local handItem = Character:FindFirstChildWhichIsA("Tool")
             if handItem then
@@ -1758,7 +1758,6 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
                     if owner == LocalPlayer.Name then
                         for _, model in ipairs(child:GetChildren()) do
                             if model:IsA("Model") and model.Name:match("^{[a-fA-F0-9%-]+}$") then
-                                print("Found pet with UUID:", model.Name)
                                 table.insert(pets, {
                                     uuid = model.Name,
                                     mover = child,
@@ -1781,7 +1780,6 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
                 task.wait(5)
                 break
             end
-
             if not alreadyInHand then
                 equipPetToy(petToy)
                 task.wait(1)
@@ -1827,37 +1825,13 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             
             if not state then break end
 
-            print("Attempting to apply boosts to", #playerPets, "pets...")
             for _, pet in ipairs(playerPets) do
                 local args = {
                     "ApplyBoost",
-                    pet.uuid
+                    pet.uuid  
                 }
-                
-                print("Firing PetBoostService with args:", unpack(args))
-
-                local petBoostService = game:GetService("ReplicatedStorage"):FindFirstChild("GameEvents")
-                if petBoostService then
-                    petBoostService = petBoostService:FindFirstChild("PetBoostService")
-                    if petBoostService then
-                        print("Remote event found, firing...")
-                        local success, errorMsg = pcall(function()
-                            petBoostService:FireServer(unpack(args))
-                        end)
-                        
-                        if success then
-                            print("Successfully fired remote event for pet:", pet.uuid)
-                        else
-                            print("ERROR firing remote event:", errorMsg)
-                        end
-                    else
-                        print("ERROR: PetBoostService remote event not found!")
-                    end
-                else
-                    print("ERROR: GameEvents folder not found!")
-                end
-                
-                task.wait(0.5)
+                game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("PetBoostService"):FireServer(unpack(args))
+                task.wait(0.5) 
             end
             
             createColoredNotification("Applied boost to all pets!", "Common")
