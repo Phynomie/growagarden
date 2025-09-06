@@ -1723,29 +1723,45 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             local handItem = Character:FindFirstChildWhichIsA("Tool")
             if handItem then
                 local toolName = handItem.Name
-                if (toolName:match("^Medium Pet Toy %d+ %[Passive Boost%]$") or toolName:match("^Small Pet Toy %d+ %[Passive Boost%]$")) then
-                    return handItem, true
+                print("Checking hand item:", toolName)
+                if (toolName:match("^Medium Pet Toy x%d+%[Passive Boost%]$") or toolName:match("^Small Pet Toy x%d+%[Passive Boost%]$")) then
+                    print("Found pet toy in hand:", toolName)
+                    return handItem, true 
+                else
+                    print("Hand item is not a pet toy (pattern mismatch)")
                 end
+            else
+                print("No tool found in hand")
             end
 
+            print("Checking backpack for pet toys...")
             for _, item in ipairs(Backpack:GetChildren()) do
                 if item:IsA("Tool") then
                     local toolName = item.Name
-                    if (toolName:match("^Medium Pet Toy %d+ %[Passive Boost%]$") or toolName:match("^Small Pet Toy %d+ %[Passive Boost%]$")) then
+                    print("Backpack item:", toolName)
+                    if (toolName:match("^Medium Pet Toy x%d+%[Passive Boost%]$") or toolName:match("^Small Pet Toy x%d+%[Passive Boost%]$")) then
+                        print("Found pet toy in backpack:", toolName)
                         return item, false 
+                    else
+                        print("Item pattern check failed for:", toolName)
+                        print("Medium pattern match:", toolName:match("^Medium Pet Toy x%d+%[Passive Boost%]$"))
+                        print("Small pattern match:", toolName:match("^Small Pet Toy x%d+%[Passive Boost%]$"))
                     end
                 end
             end
             
+            print("No pet toys found in backpack after checking all items")
             return nil, false 
         end
 
         local function equipPetToy(toy)
             local currentTool = Character:FindFirstChildWhichIsA("Tool")
             if currentTool then
+                print("Unequipping current tool:", currentTool.Name)
                 currentTool.Parent = Backpack
             end
 
+            print("Equipping pet toy:", toy.Name)
             toy.Parent = Character
         end
 
@@ -1778,6 +1794,10 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             local petToy, alreadyInHand = findPetToy()
             if not petToy then
                 createColoredNotification("No pet toy found in inventory!", "Common")
+                print("REASON: Could not find any tool matching the pet toy pattern in hand or backpack")
+                print("Make sure your pet toy names follow this exact format:")
+                print("Medium Pet Toy x535[Passive Boost] OR Small Pet Toy x100[Passive Boost]")
+                print("(NO space between number and bracket)")
                 task.wait(5)
                 break
             end
@@ -1822,7 +1842,7 @@ tab2:CreateToggle("Auto Toy Pet", function(state)
             end
 
             local boostTime = os.time()
-            while os.time() - boostTime < 300 and state do 
+            while os.time() - boostTime < 300 and state do
                 task.wait(1)
             end
             
