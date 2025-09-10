@@ -152,8 +152,34 @@ local function sendNotification(title, text, duration)
     })
 end
 
+local function parseShecklesValue(shecklesText)
+    local multipliers = {
+        ["PS"] = 1e24,  -- 1000000000000000000000000
+        ["SX"] = 1e21,  -- 1000000000000000000000
+        ["QI"] = 1e18,  -- 1000000000000000000
+        ["QA"] = 1e15,  -- 1000000000000000
+        ["T"] = 1e12,   -- 1000000000000
+        ["B"] = 1e9     -- 1000000000
+    }
+
+    local numericPart, suffix = shecklesText:match("([%d%.]+)([A-Za-z]*)")
+    
+    if not numericPart then
+        return 0 
+    end
+    
+    local numberValue = tonumber(numericPart)
+
+    if suffix and multipliers[suffix:upper()] then
+        numberValue = numberValue * multipliers[suffix:upper()]
+    end
+    
+    return numberValue
+end
+
 local function autoBuySeeds()
-    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    local shecklesText = LocalPlayer.leaderstats.Sheckles.Value
+    local sheckles = parseShecklesValue(shecklesText)
     if sheckles < 10000000000 then
         createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
@@ -193,7 +219,8 @@ local function autoBuySeeds()
 end
 
 local function autoBuyGears()
-    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    local shecklesText = LocalPlayer.leaderstats.Sheckles.Value
+    local sheckles = parseShecklesValue(shecklesText)
     if sheckles < 10000000000 then
         createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
@@ -230,7 +257,8 @@ local function autoBuyGears()
 end
 
 local function autoBuyEggs()
-    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    local shecklesText = LocalPlayer.leaderstats.Sheckles.Value
+    local sheckles = parseShecklesValue(shecklesText)
     if sheckles < 10000000000 then 
         createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
@@ -326,7 +354,8 @@ local function autoBuyTM()
                             createColoredNotification("You need "..price.." honey to buy "..frame.Name, "Rarity: Common")
                         end
                     else
-                        local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+                        local shecklesText = LocalPlayer.leaderstats.Sheckles.Value
+                        local sheckles = parseShecklesValue(shecklesText)
                         if sheckles >= 10000000000 then 
                             for i = 1, stockNum do
                                 local args = {frame.Name}
@@ -352,7 +381,8 @@ local function autoBuyEventShopItems()
     local LocalPlayer = game:GetService("Players").LocalPlayer
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     
-    local sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    local shecklesText = LocalPlayer.leaderstats.Sheckles.Value
+    local sheckles = parseShecklesValue(shecklesText)
     if sheckles < 10000000000 then
         createColoredNotification("You can only use this if you have more than 10B sheckles!", "Rarity: Common")
         return
