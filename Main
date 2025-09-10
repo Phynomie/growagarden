@@ -178,8 +178,11 @@ local function autoBuySeeds()
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
                 if stockNum and stockNum > 0 then
                     for i = 1, stockNum do
-                        local args = {frame.Name}
-                        ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(unpack(args))
+                        local args = {
+                        "Tier 1", 
+                        frame.Name 
+                        }
+                        game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("BuySeedStock"):FireServer(unpack(args))
                         task.wait(0.1)
                     end
                     createColoredNotification("Bought "..stockNum.." "..frame.Name.." seeds!", rarityText)
