@@ -38,10 +38,337 @@ local RARITY_COLORS = {
     Transcendent = "#000000"  
 }
 
-local automationToggles = {
-    kitsune = nil,
-    tranquil = nil
+local PLANTS = {
+    Berry = {
+        Rarity = {
+            Prismatic = { "Elder Strawberry" },
+            Divine = { "Grape" },
+            Mythical = { "Celestiberry" },
+            Legendary = { "Cranberry", "White Mulberry", "Lingonberry", "Willowberry" },
+            Rare = { "Raspberry", "Sunbulb" },
+            Uncommon = { "Blueberry" },
+            Common = { "Strawberry" }
+        }
+    },
+    Flower = {
+        Rarity = {
+            Transcendent = { "Bone Blossom" },
+            Prismatic = { "Burning Bud", "Tranquil Bloom", "Ember Lily" },
+            Divine = { "Sunflower", "Lotus", "Candy Blossom", "Grand Volcania", "Urchin Plant" },
+            Mythical = { "Pink Lily", "Moon Blossom", "Kniphofia", "Purple Dahlia", "Parasol Flower", "Rosy Delight", "Lily Of The Valley", "Honeysuckle" },
+            Legendary = { "Taro Flower", "Cherry Blossom", "Lilac", "Moonflower", "Noble Flower", "Monoblooma", "Soft Sunshine", "Hinomai", "Zenflare", "Veinpetal", "Firework Flower" },
+            Rare = { "Bee Balm", "Daffodil", "Foxglove", "Paradise Petal", "Rafflesia", "Stonebite", "Liberty Lily", "Serenity", "Succulent", "Candy Sunflower" },
+            Uncommon = { "Rose", "Artichoke", "Orange Tulip", "Pink Tulip", "Flare Daisy", "Lavender", "Manuka Flower", "Crocus" }
+        }
+    },
+    Fruit = {
+        Rarity = {
+            Prismatic = { "Sugar Apple", "Mangrove", "Elder Strawberry" },
+            Divine = { "Hive Fruit", "Loquat", "Maple Apple", "Traveler's Fruit", "Grape", "Grand Tomato", "Golden Peach" },
+            Mythical = { "Dragon Fruit", "Mango", "Pineapple", "Coconut", "Kiwi", "Lemon", "Lime", "Passionfruit", "Blood Banana", "Moon Melon", "Moon Mango", "Celestiberry", "Nectarine" },
+            Legendary = { "Apple", "Green Apple", "Carnival Pumpkin", "Banana", "Mangosteen", "Papaya", "Cranberry", "Durian", "White Mulberry", "Lingonberry", "Crown Melon", "Canary Melon", "Starfruit" },
+            Rare = { "Pricklefruit", "Pear", "Meyer Lemon", "Tomato" },
+            Uncommon = { "Blueberry" },
+            Common = { "Strawberry" }
+        }
+    },
+    Leafy = {
+        Rarity = {
+            Transcendent = { "Maple Resin" },
+            Prismatic = { "Sugar Apple", "Beanstalk", "Romanesco" },
+            Divine = { "Hive Fruit", "Maple Apple", "Traveler's Fruit", "Grape", "Cacao", "Princess Thorn", "Grand Tomato" },
+            Mythical = { "Dragon Fruit", "Peach", "Mango", "Pineapple", "Coconut", "Moonglow", "Blood Banana", "Celestiberry", "Nectarine", "Kiwi", "Moon Melon", "Moon Mango" },
+            Legendary = { "Mangosteen", "Apple", "Green Apple", "Banana", "Pumpkin", "Cranberry", "Papaya", "White Mulberry", "Lingonberry", "Crown Melon", "Moonflower", "Starfruit", "Watermelon", "Cantaloupe", "Canary Melon" },
+            Rare = { "Raspberry", "Tomato", "Mint" },
+            Uncommon = { "Parsley", "Blueberry" },
+            Common = { "Strawberry" }
+        }
+    },
+    Sweet = {
+        Rarity = {
+            Prismatic = { "Sugar Apple", "Romanesco" },
+            Divine = { "Grape", "Candy Blossom", "Golden Peach" },
+            Mythical = { "Pineapple", "Mango", "Peach", "Sugarglaze", "Easter Egg", "Spiked Mango" },
+            Legendary = { "Banana", "Watermelon", "Cranberry", "Carnival Pumpkin", "Moonflower", "Starfruit", "Crown Melon", "Mangosteen", "Canary Melon", "Nectar Thorn" },
+            Rare = { "Red Lollipop", "Candy Sunflower", "Raspberry", "Pear", "Blue Lollipop" },
+            Uncommon = { "Blueberry" },
+            Common = { "Strawberry", "Chocolate Carrot" }
+        }
+    },
+    Tropical = {
+        Rarity = {
+            Mythical = { "Coconut", "Cocovine", "Dragon Fruit", "Mango", "Parasol Flower", "Passionfruit", "Pineapple" },
+            Legendary = { "Banana", "Durian", "Papaya", "Watermelon", "Starfruit" }
+        }
+    },
+    Vegetable = {
+        Rarity = {
+            Prismatic = { "Beanstalk", "Romanesco" },
+            Divine = { "Pepper", "Dragon Pepper", "King Cabbage", "Grand Tomato", "Snaparino Beanarini" },
+            Mythical = { "Bell Pepper", "Eggplant", "Tall Asparagus", "Potato" },
+            Legendary = { "Badlands Pepper", "Pumpkin", "Taro Flower", "Carnival Pumpkin", "Violet Corn" },
+            Rare = { "Corn", "Mutant Carrot", "Cauliflower", "Mint", "Jalapeno", "Log Pumpkin", "Mandrake", "Purple Cabbage", "Tomato" },
+            Uncommon = { "Wild Carrot", "Parsley", "Onion", "Rhubarb", "Artichoke" },
+            Common = { "Carrot", "Chocolate Carrot", "Turnip" }
+        }
+    },
+    Prickly = {
+        Rarity = {
+            Divine = { "Princess Thorn", "Venus Fly Trap" },
+            Mythical = { "Dragon Fruit", "Cactus", "Spiked Mango", "Pineapple", "Celestiberry", "Prickly Pear" },
+            Legendary = { "Aloe Vera", "Durian", "Horned Dinoshroom", "Nectar Thorn", "Glowthorn" },
+            Rare = { "Pricklefruit", "Twisted Tangle" },
+            Uncommon = { "Crown Of Thorns" }
+        }
+    },
+    Woody = {
+        Rarity = {
+            Transcendent = { "Maple Resin" },
+            Prismatic = { "Giant Pinecone", "Sugar Apple", "Mangrove" },
+            Divine = { "Cacao", "Feijoa", "Moon Blossom", "Hive Fruit", "Traveler's Fruit", "Maple Apple", "Spiked Mango" },
+            Mythical = { "Mango", "Peach", "Coconut", "Moon Mango", "Nectarine", "Cocovine", "Amberheart", "Kiwi", "Gleamroot" },
+            Legendary = { "Apple", "Mangosteen", "Avocado", "Papaya", "Dragon Sapling", "Sakura Bush" },
+            Rare = { "Duskpuff", "Pear" }
+        }
+    },
+    Stalky = {
+        Rarity = {
+            Prismatic = { "Beanstalk", "Burning Bud", "Mangrove", "Elephant Ears" },
+            Divine = { "Brussels Sprout", "Grand Volcania", "Lotus", "Mega Mushroom", "Mushroom", "Pitcher Plant", "Urchin Plant" },
+            Mythical = { "Bendboo", "Cocovine", "Kniphofia", "Firefly Fern", "Hinomai", "Lily Of The Valley", "Poseidon Plant", "Sugarglaze", "Tall Asparagus", "Untold Bell" },
+            Legendary = { "Bamboo", "Boneboo", "Horned Dinoshroom", "Lucky Bamboo", "Pricklefruit", "Pyracantha", "Veinpetal", "Violet Corn" },
+            Rare = { "Corn", "Dandelion", "Flare Melon", "Glowshroom", "Lightshoot", "Mutant Carrot" },
+            Uncommon = { "Stonebite", "Parsley" },
+            Common = { "Spring Onion" }
+        }
+    }
 }
+
+local function getProgressText()
+    local interaction = workspace:FindFirstChild("Interaction")
+    local updateItems = interaction and interaction:FindFirstChild("UpdateItems")
+    local fallFestival = updateItems and updateItems:FindFirstChild("Fall Festival")
+    local fallPlatform = fallFestival and fallFestival:FindFirstChild("FallPlatform")
+    local mrOakaly = fallPlatform and fallPlatform:FindFirstChild("MrOakaly")
+    local progressPart = mrOakaly and mrOakaly:FindFirstChild("ProgressPart")
+    local billboard = progressPart and progressPart:FindFirstChild("ProgressBilboard")
+    local upgradeBar = billboard and billboard:FindFirstChild("UpgradeBar")
+    local progressLabel = upgradeBar and upgradeBar:FindFirstChild("ProgressionLabel")
+    
+    return progressLabel and progressLabel.Text or "0/0"
+end
+
+local function getEventText()
+    local interaction = workspace:FindFirstChild("Interaction")
+    if not interaction then return nil end
+    
+    local updateItems = interaction:FindFirstChild("UpdateItems")
+    if not updateItems then return nil end
+    
+    local fallFestival = updateItems:FindFirstChild("Fall Festival")
+    if not fallFestival then return nil end
+
+    local fallPlatform = fallFestival:FindFirstChild("FallPlatform")
+    if not fallPlatform then return nil end
+
+    local mrOakaly = fallPlatform:FindFirstChild("MrOakaly")
+    if not mrOakaly then return nil end
+
+    local bubblePart = mrOakaly:FindFirstChild("BubblePart")
+    if not bubblePart then return nil end
+
+    local billboard = bubblePart:FindFirstChild("FallMarketBillboard")
+    if not billboard then return nil end
+
+    local bg = billboard:FindFirstChild("BG")
+    if not bg then return nil end
+
+    local textLabel = bg:FindFirstChild("TraitTextLabel")
+    if not textLabel then return nil end
+
+    return textLabel.Text
+end
+
+local function getRequiredPlantType()
+    local eventText = getEventText()
+    if not eventText then return nil end
+
+    local pattern = "looking for.-<font color=\"#FFFFFF\">(.-)</font>"
+    local plantType = eventText:match(pattern)
+    
+    if plantType then
+        plantType = plantType:gsub(" Plants", ""):gsub(" ", "")
+        return plantType
+    end
+    
+    return nil
+end
+
+local RARITY_ORDER = {
+    "Transcendent", "Prismatic", "Divine", "Mythical", 
+    "Legendary", "Rare", "Uncommon", "Common"
+}
+
+local function getBestPlantsForType(plantType)
+    if not plantType or not PLANTS[plantType] then return {} end
+    
+    local bestPlants = {}
+    local plantCategory = PLANTS[plantType].Rarity
+
+    for _, rarity in ipairs(RARITY_ORDER) do
+        if plantCategory[rarity] then
+            for _, plantName in ipairs(plantCategory[rarity]) do
+                table.insert(bestPlants, plantName)
+            end
+        end
+    end
+    
+    return bestPlants
+end
+
+local function getInventoryCount()
+    local player = game:GetService("Players").LocalPlayer
+    if not player then return 0 end
+    
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return 0 end
+    
+    return #backpack:GetChildren()
+end
+
+local maxInv = getInventoryCount()
+
+local function EventLoop()
+    running = true
+    
+    while running do
+        local player = game.Players.LocalPlayer
+        if not player or not player.Character then 
+            task.wait(1)
+            continue 
+        end
+        
+        local currentItems = getInventoryCount()
+        local progress = getProgressText()
+
+        if progress == "500/500" then
+            print("Event completed!")
+            task.wait(5)
+            continue
+        end
+
+        local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
+        if humanoidRootPart then
+            humanoidRootPart.CFrame = CFrame.new(-68.53002166748047, 3.4930171966552734, -14.314860343933105)
+        end
+
+        if currentItems >= maxInv then
+            local submitEvent = game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("FallMarketEvent"):WaitForChild("SubmitAllPlants")
+            submitEvent:FireServer()
+            task.wait(1)
+            continue
+        end
+
+        local requiredType = getRequiredPlantType()
+        if not requiredType then 
+            task.wait(2)
+            continue 
+        end
+        
+        local bestPlants = getBestPlantsForType(requiredType)
+        if #bestPlants == 0 then 
+            task.wait(2)
+            continue 
+        end
+
+        local playerFarm = findPlayerFarm()
+        if not playerFarm then 
+            task.wait(2)
+            continue
+        end
+
+        local plantsPhysical = playerFarm:FindFirstChild("Important") and playerFarm.Important:FindFirstChild("Plants_Physical")
+        if not plantsPhysical then 
+            task.wait(2)
+            continue
+        end
+        
+        local foundHarvestable = false
+        local inventoryFull = false
+        
+        for _, plant in pairs(plantsPhysical:GetChildren()) do
+            if not running then break end 
+            
+            if plant:GetAttribute("DoneGrowTime") then
+                local plantName = plant.Name
+
+                if table.find(bestPlants, plantName) then
+                    foundHarvestable = true
+                    
+                    local function scanFruitModel(model)
+                        if not running then return true end 
+                        if model.Name == plantName then
+                            local prompt = model:FindFirstChildWhichIsA("ProximityPrompt")
+                            if not prompt then
+                                for _, descendant in pairs(model:GetDescendants()) do
+                                    if descendant:IsA("ProximityPrompt") then
+                                        prompt = descendant
+                                        break
+                                    end
+                                end
+                            end
+
+                            if prompt and player.Character then
+                                local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+                                if hrp then
+                                    local originalPos = hrp.CFrame
+                                    hrp.CFrame = model:GetPivot() * CFrame.new(0, 0, -2)
+                                    task.wait(0.2)
+                                    fireproximityprompt(prompt)
+                                    task.wait(0.1)
+                                    hrp.CFrame = originalPos
+
+                                    if getInventoryCount() >= maxInv then
+                                        inventoryFull = true
+                                        return true
+                                    end
+                                end
+                            end
+                        end
+                        return false
+                    end
+
+                    if inventoryFull then
+                        break
+                    end
+
+                    local fruitsFolder = plant:FindFirstChild("Fruits")
+                    if fruitsFolder then
+                        for _, fruit in pairs(fruitsFolder:GetChildren()) do
+                            if scanFruitModel(fruit) or inventoryFull then
+                                break 
+                            end
+                        end
+                    else
+                        if scanFruitModel(plant) or inventoryFull then
+                            break 
+                        end
+                    end
+
+                    if inventoryFull then
+                        break
+                    end
+                end
+            end
+        end
+
+        if not foundHarvestable and not inventoryFull then
+            task.wait(5) 
+        else
+            task.wait(1) 
+        end
+    end
+end
 
 local function getRarityColor(rarityText)
     local rarity = rarityText:gsub("Rarity: ", ""):gsub("%s+", "")
@@ -85,7 +412,6 @@ local function findPlayerFarm()
 
     for _, farmFolder in ipairs(farms:GetDescendants()) do
         if farmFolder.Name == "Owner" and farmFolder:IsA("StringValue") and farmFolder.Value == username then
-            print("Found Your Farm! " .. username)
             return farmFolder.Parent.Parent.Parent
         end
     end
@@ -154,12 +480,12 @@ end
 
 local function parseShecklesValue(shecklesText)
     local multipliers = {
-        ["PS"] = 1e24,  -- 1000000000000000000000000
-        ["SX"] = 1e21,  -- 1000000000000000000000
-        ["QI"] = 1e18,  -- 1000000000000000000
-        ["QA"] = 1e15,  -- 1000000000000000
-        ["T"] = 1e12,   -- 1000000000000
-        ["B"] = 1e9     -- 1000000000
+        ["PS"] = 1e24,  
+        ["SX"] = 1e21,  
+        ["QI"] = 1e18,  
+        ["QA"] = 1e15, 
+        ["T"] = 1e12,  
+        ["B"] = 1e9    
     }
 
     local numericPart, suffix = shecklesText:match("([%d%.]+)([A-Za-z]*)")
@@ -1741,6 +2067,19 @@ tab2:CreateToggle("Auto Pickup Fruits with mutation", function(state)
         sendNotification("Auto Pickup", "Started collecting "..selectedMutation, 5)
     else
         sendNotification("Auto Pickup", "Stopped collecting", 3)
+    end
+end)
+
+local running = false
+
+tab2:CreateToggle("Auto Afk Event (must have full inventory first!)", function(state)
+    if state then
+        running = true
+        task.spawn(EventLoop)
+        sendNotification("Auto Afk Event", "Started the afk farm...", 5)
+    else
+        running = false
+        sendNotification("Auto Pickup", "Stopped the afk farm", 3)
     end
 end)
 
