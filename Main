@@ -242,68 +242,86 @@ local function EventLoop()
     running = true
     
     while running do
+        if not running then break end
+        
         local player = game.Players.LocalPlayer
         if not player or not player.Character then 
-            task.wait(1)
+            task.wait(2)
             continue 
         end
         
         local currentItems = getInventoryCount()
         local progress = getProgressText()
-
+        
+        -- Check if event is already complete
         if progress == "500/500" then
-            print("Event completed!")
-            task.wait(5)
+            print("Event completed! Waiting...")
+            task.wait(10)
             continue
         end
-
+        
+        -- Teleport to event location
         local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
         if humanoidRootPart then
             humanoidRootPart.CFrame = CFrame.new(-68.53002166748047, 3.4930171966552734, -14.314860343933105)
+            task.wait(1)
         end
 
+        -- Submit plants if inventory is full
         if currentItems >= maxInv then
+            print("Inventory full! Submitting plants...")
             local submitEvent = game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("FallMarketEvent"):WaitForChild("SubmitAllPlants")
             submitEvent:FireServer()
-            task.wait(1)
+            task.wait(3)
+            
+            print("Submitted! Waiting 30 seconds for plants to grow...")
+            local waitTime = 30
+            while waitTime > 0 and running do
+                if not running then break end
+                task.wait(1)
+                waitTime -= 1
+            end
             continue
         end
 
         local requiredType = getRequiredPlantType()
         if not requiredType then 
-            task.wait(2)
-            continue 
+            task.wait(5)
+            continue
         end
+        
+        print("Looking for: " .. requiredType .. " plants")
         
         local bestPlants = getBestPlantsForType(requiredType)
         if #bestPlants == 0 then 
-            task.wait(2)
-            continue 
+            task.wait(5)
+            continue
         end
 
         local playerFarm = findPlayerFarm()
         if not playerFarm then 
-            task.wait(2)
+            task.wait(5)
             continue
         end
 
         local plantsPhysical = playerFarm:FindFirstChild("Important") and playerFarm.Important:FindFirstChild("Plants_Physical")
         if not plantsPhysical then 
-            task.wait(2)
+            task.wait(5)
             continue
         end
         
         local foundHarvestable = false
-        local inventoryFull = false
+        local inventoryFull = false -- ADD THIS VARIABLE
         
         for _, plant in pairs(plantsPhysical:GetChildren()) do
-            if not running then break end 
+            if not running then break end
             
             if plant:GetAttribute("DoneGrowTime") then
                 local plantName = plant.Name
 
                 if table.find(bestPlants, plantName) then
                     foundHarvestable = true
+                    print("Harvesting: " .. plantName)
                     
                     local function scanFruitModel(model)
                         if not running then return true end 
@@ -328,9 +346,10 @@ local function EventLoop()
                                     task.wait(0.1)
                                     hrp.CFrame = originalPos
 
+                                    -- Check if inventory became full
                                     if getInventoryCount() >= maxInv then
                                         inventoryFull = true
-                                        return true
+                                        return true -- Stop harvesting
                                     end
                                 end
                             end
@@ -338,6 +357,7 @@ local function EventLoop()
                         return false
                     end
 
+                    -- Break if inventory became full
                     if inventoryFull then
                         break
                     end
@@ -355,6 +375,7 @@ local function EventLoop()
                         end
                     end
 
+                    -- Break outer loop if inventory full
                     if inventoryFull then
                         break
                     end
@@ -362,10 +383,20 @@ local function EventLoop()
             end
         end
 
+        -- MOVE THE WAITING LOGIC HERE (OUTSIDE THE FOR LOOP)
         if not foundHarvestable and not inventoryFull then
-            task.wait(5) 
+            print("No harvestable plants found. Waiting 15 seconds...")
+            local waitTime = 15
+            while waitTime > 0 and running do
+                if not running then break end
+                task.wait(1)
+                waitTime -= 1
+            end
+        elseif inventoryFull then
+            print("Inventory filled during harvesting! Going to submit...")
+            -- The loop will continue and hit the submission check at the top
         else
-            task.wait(1) 
+            task.wait(1) -- Short wait after successful harvesting
         end
     end
 end
