@@ -271,22 +271,19 @@ local function EventLoop()
         
         local currentItems = getInventoryCount()
         local progress = getProgressText()
-        
-        -- Check if event is already complete
+
         if progress == "500/500" then
             print("Event completed! Waiting...")
             task.wait(10)
             continue
         end
-        
-        -- Teleport to event location
+
         local humanoidRootPart = player.Character:FindFirstChild("HumanoidRootPart")
         if humanoidRootPart then
             humanoidRootPart.CFrame = CFrame.new(-68.53002166748047, 3.4930171966552734, -14.314860343933105)
             task.wait(1)
         end
 
-        -- Submit plants if inventory is full
         if currentItems >= maxInv then
             print("Inventory full! Submitting plants...")
             local submitEvent = game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("FallMarketEvent"):WaitForChild("SubmitAllPlants")
@@ -330,7 +327,7 @@ local function EventLoop()
         end
         
         local foundHarvestable = false
-        local inventoryFull = false -- ADD THIS VARIABLE
+        local inventoryFull = false 
         
         for _, plant in pairs(plantsPhysical:GetChildren()) do
             if not running then break end
@@ -365,10 +362,9 @@ local function EventLoop()
                                     task.wait(0.1)
                                     hrp.CFrame = originalPos
 
-                                    -- Check if inventory became full
                                     if getInventoryCount() >= maxInv then
                                         inventoryFull = true
-                                        return true -- Stop harvesting
+                                        return true 
                                     end
                                 end
                             end
@@ -376,7 +372,6 @@ local function EventLoop()
                         return false
                     end
 
-                    -- Break if inventory became full
                     if inventoryFull then
                         break
                     end
@@ -394,7 +389,6 @@ local function EventLoop()
                         end
                     end
 
-                    -- Break outer loop if inventory full
                     if inventoryFull then
                         break
                     end
@@ -402,7 +396,6 @@ local function EventLoop()
             end
         end
 
-        -- MOVE THE WAITING LOGIC HERE (OUTSIDE THE FOR LOOP)
         if not foundHarvestable and not inventoryFull then
             print("No harvestable plants found. Waiting 15 seconds...")
             local waitTime = 15
@@ -413,9 +406,8 @@ local function EventLoop()
             end
         elseif inventoryFull then
             print("Inventory filled during harvesting! Going to submit...")
-            -- The loop will continue and hit the submission check at the top
         else
-            task.wait(1) -- Short wait after successful harvesting
+            task.wait(1)
         end
     end
 end
@@ -755,20 +747,36 @@ local function autoBuyEventShopItems()
     if not scrollingFrame then return end
 
     for _, frame in ipairs(scrollingFrame:GetChildren()) do
-        if frame:FindFirstChild("Main_Frame") then
+        if frame:IsA("Frame") and frame:FindFirstChild("Main_Frame") then
             local mainFrame = frame.Main_Frame
             local stockText = mainFrame.Stock_Text
-            local rarityText = mainFrame.Rarity_Text and mainFrame.Rarity_Text.Text or "Rarity: Common"
+            local itemName = frame.Name
             
             if stockText and stockText.Text ~= "X0 Stock" then
                 local stockNum = tonumber(stockText.Text:match("X(%d+)"))
                 if stockNum and stockNum > 0 then
+                    local shopId
+                    if itemName == "Fall Egg" then
+                        shopId = 3
+                    elseif itemName == "Turnip" then
+                        shopId = 1
+                    elseif itemName == "Firefly Jar" then
+                        shopId = 2
+                    elseif itemName == "Fall Leaf Chair" then
+                        shopId = 4
+                    else
+                        shopId = 1 
+                        print("Using default shop ID for: " .. itemName)
+                    end
+
                     for i = 1, stockNum do
-                        local args = {frame.Name}
+                        local args = {itemName, shopId}
                         ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyEventShopStock"):FireServer(unpack(args))
                         task.wait(0.1)
                     end
-                    createColoredNotification("Bought "..stockNum.." "..frame.Name.."!", rarityText)
+                    
+                    createColoredNotification("BOUGHT " .. stockNum .. " " .. itemName .. " FROM SHOP " .. shopId .. "!", 
+                        mainFrame.Rarity_Text and mainFrame.Rarity_Text.Text or "Rarity: Common")
                 end
             end
         end
