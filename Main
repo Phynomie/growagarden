@@ -297,9 +297,25 @@ local function EventLoop()
                 task.wait(1)
                 waitTime -= 1
             end
+
+            local newCurrentItems = getInventoryCount()
+            if newCurrentItems < maxInv then
+                print("Inventory has space! " .. newCurrentItems .. "/" .. maxInv .. " - Proceeding to harvest...")
+            else
+                print("Inventory still full after waiting! " .. newCurrentItems .. "/" .. maxInv .. " - Something went wrong.")
+                continue 
+            end
+        end
+
+        local currentSpace = maxInv - getInventoryCount()
+        if currentSpace <= 0 then
+            print("No inventory space available, skipping harvest...")
+            task.wait(5)
             continue
         end
 
+        print("Available inventory space: " .. currentSpace .. " slots")
+    
         local requiredType = getRequiredPlantType()
         if not requiredType then 
             task.wait(5)
@@ -327,7 +343,7 @@ local function EventLoop()
         end
         
         local foundHarvestable = false
-        local inventoryFull = false 
+        local inventoryFull = false
         
         for _, plant in pairs(plantsPhysical:GetChildren()) do
             if not running then break end
@@ -372,9 +388,7 @@ local function EventLoop()
                         return false
                     end
 
-                    if inventoryFull then
-                        break
-                    end
+                    if inventoryFull then break end
 
                     local fruitsFolder = plant:FindFirstChild("Fruits")
                     if fruitsFolder then
@@ -389,9 +403,7 @@ local function EventLoop()
                         end
                     end
 
-                    if inventoryFull then
-                        break
-                    end
+                    if inventoryFull then break end
                 end
             end
         end
