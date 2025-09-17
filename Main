@@ -236,6 +236,25 @@ local function getInventoryCount()
     return #backpack:GetChildren()
 end
 
+local function findPlayerFarm()
+    local username = LocalPlayer.Name
+    local farms = workspace:FindFirstChild("Farm")
+    
+    if not farms then
+        warn("Farm system not found in workspace")
+        return nil
+    end
+
+    for _, farmFolder in ipairs(farms:GetDescendants()) do
+        if farmFolder.Name == "Owner" and farmFolder:IsA("StringValue") and farmFolder.Value == username then
+            return farmFolder.Parent.Parent.Parent
+        end
+    end
+    
+    warn("Could not find farm belonging to: " .. username)
+    return nil
+end
+
 local maxInv = getInventoryCount()
 
 local function EventLoop()
@@ -431,25 +450,6 @@ local tab3 = Main:CreateTab("Misc")
 local savedPrompts = {}
 local playerFarm = nil
 local enabled = nil
-
-local function findPlayerFarm()
-    local username = LocalPlayer.Name
-    local farms = workspace:FindFirstChild("Farm")
-    
-    if not farms then
-        warn("Farm system not found in workspace")
-        return nil
-    end
-
-    for _, farmFolder in ipairs(farms:GetDescendants()) do
-        if farmFolder.Name == "Owner" and farmFolder:IsA("StringValue") and farmFolder.Value == username then
-            return farmFolder.Parent.Parent.Parent
-        end
-    end
-    
-    warn("Could not find farm belonging to: " .. username)
-    return nil
-end
 
 local function managePrompts(enable)
     if not playerFarm then
